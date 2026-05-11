@@ -1,6 +1,6 @@
 # xml-validator
 
-Strict XML 1.1 validator. Anything unsupported is a hard error.
+Strict XML 1.1 validator with XSD schema validation. Anything unsupported is a hard error.
 
 ## Build & Test
 
@@ -13,8 +13,9 @@ This handles `go mod tidy`, `go vet`, tests with coverage, and builds the binary
 ## Usage
 
 ```bash
-xml-validator <file>    # validate a file
-xml-validator           # validate from stdin
+xml-validator <file>                    # well-formedness validation only
+xml-validator                           # validate from stdin
+xml-validator --schema schema.xsd file  # validate against XSD schema
 ```
 
 Exit 0 on valid XML 1.1, exit 1 with error message on failure.
@@ -29,6 +30,17 @@ Exit 0 on valid XML 1.1, exit 1 with error message on failure.
 - XML 1.1 line ending normalization (`#x85`, `#x2028`)
 - XML 1.1 character and name character classes
 - Restricted character enforcement (must use character references)
+- XSD schema validation (`--schema`):
+  - Element declarations (global, local, refs)
+  - Complex types (sequence, choice, all content models)
+  - Simple types (restriction with facets, list, union)
+  - Attributes (required/optional/prohibited, type checking, fixed values)
+  - Named types, groups, attribute groups
+  - simpleContent and complexContent (extension/restriction)
+  - 35+ built-in XSD types (string, integer, boolean, decimal, date, etc.)
+  - Facets: enumeration, pattern, minLength, maxLength, length, min/maxInclusive, min/maxExclusive, totalDigits, fractionDigits
+  - minOccurs/maxOccurs enforcement
+  - xs:any wildcard particles
 
 ## Hard Errors (Unsupported)
 
@@ -37,14 +49,25 @@ Exit 0 on valid XML 1.1, exit 1 with error message on failure.
 - XML 1.0 documents
 - Missing XML declaration
 - Encodings other than UTF-8/UTF-16
+- xs:import, xs:include (schema composition)
+- xs:redefine, xs:override
+- xs:notation
+- Identity constraints (xs:key, xs:keyref, xs:unique)
+- Type substitution (substitutionGroup)
 
 ## Project Structure
 
 - `cmd/root.go` -- CLI (cobra)
-- `validator/validator.go` -- public `Validate(io.Reader) error` entry point
+- `validator/validator.go` -- public `Validate` and `ValidateWithSchemaBytes` entry points
 - `validator/parser.go` -- recursive descent parser core, XML declaration, comments, PIs
 - `validator/elements.go` -- element, attribute, content, CDATA, reference parsing
 - `validator/namespace.go` -- QName validation, namespace scope management
 - `validator/chars.go` -- XML 1.1 character class predicates
 - `validator/reader.go` -- encoding detection, UTF-8/UTF-16 decoding, line normalization
 - `validator/error.go` -- error type with line/column position
+- `validator/document.go` -- document tree model (Element, Attr, CharData)
+- `validator/tree.go` -- version-agnostic XML tree parser
+- `validator/schema_model.go` -- XSD schema model types
+- `validator/schema_builtin.go` -- 35+ built-in XSD types with validation
+- `validator/schema_parse.go` -- XSD file parser (document tree to schema model)
+- `validator/schema_validate.go` -- schema validation engine
