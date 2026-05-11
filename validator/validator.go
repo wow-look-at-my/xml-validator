@@ -11,27 +11,6 @@ func Validate(r io.Reader) error {
 	return p.parseDocument()
 }
 
-func ValidateWithSchema(xmlReader, xsdReader io.Reader) error {
-	if err := Validate(xmlReader); err != nil {
-		return err
-	}
-
-	xsdDoc, err := ParseTree(xsdReader)
-	if err != nil {
-		return &Error{Line: 0, Col: 0, Message: "schema: " + err.Error()}
-	}
-
-	schema, err := ParseSchema(xsdDoc)
-	if err != nil {
-		return &Error{Line: 0, Col: 0, Message: "schema: " + err.Error()}
-	}
-
-	// Re-parse the XML into a tree for schema validation.
-	// The xmlReader is already consumed, so we need the caller to provide seekable input.
-	// This is handled by the CLI reading the file into memory first.
-	return &Error{Line: 0, Col: 0, Message: "internal: use ValidateWithSchemaFromBytes"}
-}
-
 func ValidateWithSchemaBytes(xmlData, xsdData []byte) error {
 	runes, enc, err := readInput(newBytesReader(xmlData))
 	if err != nil {
