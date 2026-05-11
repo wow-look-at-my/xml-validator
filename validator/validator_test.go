@@ -262,7 +262,7 @@ func TestRejectMarkupDeclarationInContent(t *testing.T) {
 }
 
 func TestRejectEmptyEntityRef(t *testing.T) {
-	mustReject(t, `<?xml version="1.1"?><r>&;</r>`, "invalid name start character")
+	mustReject(t, `<?xml version="1.1"?><r>&;</r>`, "expected entity name")
 }
 
 // --- Line ending normalization tests ---
