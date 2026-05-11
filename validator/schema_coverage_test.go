@@ -593,3 +593,130 @@ func TestTreeParserMixedContent(t *testing.T) {
 	require.True(t, ok)
 	assert.Equal(t, "text1", cd.Content)
 }
+
+func TestSchemaNestedSequence(t *testing.T) {
+	xsd := `<?xml version="1.0"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:element name="root">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:sequence minOccurs="1" maxOccurs="unbounded">
+          <xs:element name="a" type="xs:string"/>
+          <xs:element name="b" type="xs:string"/>
+        </xs:sequence>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>`
+	mustSchemaValid(t, `<?xml version="1.1"?><root><a>1</a><b>2</b><a>3</a><b>4</b></root>`, xsd)
+	mustSchemaReject(t, `<?xml version="1.1"?><root></root>`, xsd, "requires at least")
+}
+
+func TestSchemaNestedChoice(t *testing.T) {
+	xsd := `<?xml version="1.0"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:element name="root">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:choice minOccurs="1" maxOccurs="3">
+          <xs:element name="x" type="xs:string"/>
+          <xs:element name="y" type="xs:string"/>
+        </xs:choice>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>`
+	mustSchemaValid(t, `<?xml version="1.1"?><root><x>1</x><y>2</y></root>`, xsd)
+}
+
+func TestSchemaComplexContentRestriction(t *testing.T) {
+	xsd := `<?xml version="1.0"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:element name="root">
+    <xs:complexType>
+      <xs:complexContent>
+        <xs:restriction base="xs:anyType">
+          <xs:sequence>
+            <xs:element name="item" type="xs:string" maxOccurs="unbounded"/>
+          </xs:sequence>
+        </xs:restriction>
+      </xs:complexContent>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>`
+	mustSchemaValid(t, `<?xml version="1.1"?><root><item>a</item><item>b</item></root>`, xsd)
+}
+
+func TestSchemaGroupDecl(t *testing.T) {
+	xsd := `<?xml version="1.0"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:group name="pair">
+    <xs:sequence>
+      <xs:element name="key" type="xs:string"/>
+      <xs:element name="value" type="xs:string"/>
+    </xs:sequence>
+  </xs:group>
+  <xs:element name="root">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="data" type="xs:string"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>`
+	mustSchemaValid(t, `<?xml version="1.1"?><root><data>test</data></root>`, xsd)
+}
+
+func TestSchemaAttrGroupDecl(t *testing.T) {
+	xsd := `<?xml version="1.0"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:attributeGroup name="common">
+    <xs:attribute name="id" type="xs:integer"/>
+  </xs:attributeGroup>
+  <xs:element name="root">
+    <xs:complexType>
+      <xs:attribute name="name" type="xs:string"/>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>`
+	mustSchemaValid(t, `<?xml version="1.1"?><root name="test"/>`, xsd)
+}
+
+func TestSchemaUnsupportedNotation(t *testing.T) {
+	xsd := `<?xml version="1.0"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:notation name="jpeg" public="image/jpeg"/>
+  <xs:element name="root" type="xs:string"/>
+</xs:schema>`
+	err := schemaValidate(t, `<?xml version="1.1"?><root>val</root>`, xsd)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "unsupported")
+}
+
+func TestSchemaChoiceRequired(t *testing.T) {
+	xsd := `<?xml version="1.0"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:element name="root">
+    <xs:complexType>
+      <xs:choice>
+        <xs:element name="a" type="xs:string"/>
+        <xs:element name="b" type="xs:string"/>
+      </xs:choice>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>`
+	mustSchemaReject(t, `<?xml version="1.1"?><root/>`, xsd, "requires one of")
+}
+
+func TestTreeParserDoctype(t *testing.T) {
+	doc, err := ParseTree(strings.NewReader(`<?xml version="1.0"?><!DOCTYPE root><root/>`))
+	require.NoError(t, err)
+	assert.Equal(t, "root", doc.Root.Local)
+}
+
+func TestSchemaInvalidRoot(t *testing.T) {
+	xsd := `<?xml version="1.0"?><notschema/>`
+	err := schemaValidate(t, `<?xml version="1.1"?><root/>`, xsd)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "expected xs:schema")
+}
