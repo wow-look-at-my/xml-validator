@@ -297,6 +297,16 @@ func (p *parser) parseCharRef() (rune, error) {
 	}
 
 	for !p.eof() && p.peek() != ';' {
+		r := p.peek()
+		if hex {
+			if !((r >= '0' && r <= '9') || (r >= 'a' && r <= 'f') || (r >= 'A' && r <= 'F')) {
+				return 0, p.errorf("invalid hex digit %q in character reference", string(r))
+			}
+		} else {
+			if r < '0' || r > '9' {
+				return 0, p.errorf("invalid digit %q in character reference", string(r))
+			}
+		}
 		digits = append(digits, p.advance())
 	}
 	if p.eof() {
