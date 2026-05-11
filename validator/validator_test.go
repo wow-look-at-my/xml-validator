@@ -4,24 +4,23 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"github.com/wow-look-at-my/testify/assert"
+	"github.com/wow-look-at-my/testify/require"
 )
 
 func mustValidate(t *testing.T, input string) {
 	t.Helper()
-	if err := Validate(strings.NewReader(input)); err != nil {
-		t.Fatalf("expected valid, got error: %s", err)
-	}
+	require.NoError(t, Validate(strings.NewReader(input)))
+
 }
 
 func mustReject(t *testing.T, input string, wantSubstr string) {
 	t.Helper()
 	err := Validate(strings.NewReader(input))
-	if err == nil {
-		t.Fatalf("expected error containing %q, got nil", wantSubstr)
-	}
-	if !strings.Contains(err.Error(), wantSubstr) {
-		t.Fatalf("expected error containing %q, got: %s", wantSubstr, err)
-	}
+	require.NotNil(t, err)
+
+	require.Contains(t, err.Error(), wantSubstr)
+
 }
 
 func TestMinimalDocument(t *testing.T) {
@@ -270,9 +269,9 @@ func TestRejectEmptyEntityRef(t *testing.T) {
 
 func TestLineEndingNormalization(t *testing.T) {
 	tests := []struct {
-		name  string
-		input []rune
-		want  []rune
+		name	string
+		input	[]rune
+		want	[]rune
 	}{
 		{"CR LF", []rune{'\r', '\n'}, []rune{'\n'}},
 		{"CR NEL", []rune{'\r', 0x85}, []rune{'\n'}},
@@ -286,13 +285,11 @@ func TestLineEndingNormalization(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := normalizeLineEndings(tt.input)
-			if len(got) != len(tt.want) {
-				t.Fatalf("length mismatch: got %d, want %d", len(got), len(tt.want))
-			}
+			require.Equal(t, len(tt.want), len(got))
+
 			for i := range got {
-				if got[i] != tt.want[i] {
-					t.Errorf("position %d: got U+%04X, want U+%04X", i, got[i], tt.want[i])
-				}
+				assert.Equal(t, tt.want[i], got[i])
+
 			}
 		})
 	}
@@ -301,101 +298,77 @@ func TestLineEndingNormalization(t *testing.T) {
 // --- Character class tests ---
 
 func TestCharClassifications(t *testing.T) {
-	if !IsChar(0x1) {
-		t.Error("U+0001 should be a valid Char in XML 1.1")
-	}
-	if IsChar(0x0) {
-		t.Error("U+0000 (NUL) must not be a valid Char")
-	}
-	if IsChar(0xFFFE) {
-		t.Error("U+FFFE must not be a valid Char")
-	}
-	if IsChar(0xFFFF) {
-		t.Error("U+FFFF must not be a valid Char")
-	}
-	if !IsChar(0x10000) {
-		t.Error("U+10000 should be a valid Char")
-	}
-	if !IsRestrictedChar(0x1) {
-		t.Error("U+0001 should be a restricted char")
-	}
-	if IsRestrictedChar(0x9) {
-		t.Error("U+0009 (TAB) should NOT be restricted")
-	}
-	if IsRestrictedChar(0xA) {
-		t.Error("U+000A (LF) should NOT be restricted")
-	}
-	if IsRestrictedChar(0xD) {
-		t.Error("U+000D (CR) should NOT be restricted")
-	}
-	if !IsRestrictedChar(0x7F) {
-		t.Error("U+007F (DEL) should be restricted")
-	}
-	if IsRestrictedChar(0x85) {
-		t.Error("U+0085 (NEL) should NOT be restricted")
-	}
-	if !IsRestrictedChar(0x86) {
-		t.Error("U+0086 should be restricted")
-	}
+	assert.True(t, IsChar(0x1))
+
+	assert.False(t, IsChar(0x0))
+
+	assert.False(t, IsChar(0xFFFE))
+
+	assert.False(t, IsChar(0xFFFF))
+
+	assert.True(t, IsChar(0x10000))
+
+	assert.True(t, IsRestrictedChar(0x1))
+
+	assert.False(t, IsRestrictedChar(0x9))
+
+	assert.False(t, IsRestrictedChar(0xA))
+
+	assert.False(t, IsRestrictedChar(0xD))
+
+	assert.True(t, IsRestrictedChar(0x7F))
+
+	assert.False(t, IsRestrictedChar(0x85))
+
+	assert.True(t, IsRestrictedChar(0x86))
+
 }
 
 func TestNameCharClassifications(t *testing.T) {
-	if !IsNameStartChar(':') {
-		t.Error("colon should be a NameStartChar")
-	}
-	if !IsNameStartChar('_') {
-		t.Error("underscore should be a NameStartChar")
-	}
-	if !IsNameStartChar('A') {
-		t.Error("'A' should be a NameStartChar")
-	}
-	if IsNameStartChar('0') {
-		t.Error("'0' should NOT be a NameStartChar")
-	}
-	if IsNameStartChar('-') {
-		t.Error("'-' should NOT be a NameStartChar")
-	}
-	if !IsNameChar('-') {
-		t.Error("'-' should be a NameChar")
-	}
-	if !IsNameChar('.') {
-		t.Error("'.' should be a NameChar")
-	}
-	if !IsNameChar('0') {
-		t.Error("'0' should be a NameChar")
-	}
-	if !IsNCNameStartChar('A') {
-		t.Error("'A' should be an NCNameStartChar")
-	}
-	if IsNCNameStartChar(':') {
-		t.Error("colon should NOT be an NCNameStartChar")
-	}
+	assert.True(t, IsNameStartChar(':'))
+
+	assert.True(t, IsNameStartChar('_'))
+
+	assert.True(t, IsNameStartChar('A'))
+
+	assert.False(t, IsNameStartChar('0'))
+
+	assert.False(t, IsNameStartChar('-'))
+
+	assert.True(t, IsNameChar('-'))
+
+	assert.True(t, IsNameChar('.'))
+
+	assert.True(t, IsNameChar('0'))
+
+	assert.True(t, IsNCNameStartChar('A'))
+
+	assert.False(t, IsNCNameStartChar(':'))
+
 }
 
 // --- UTF-16 encoding tests ---
 
 func TestUTF16BEWithBOM(t *testing.T) {
-	utf16be := []byte{0xFE, 0xFF} // BOM
+	utf16be := []byte{0xFE, 0xFF}	// BOM
 	xmlStr := `<?xml version="1.1"?><r/>`
 	for _, r := range xmlStr {
 		utf16be = append(utf16be, byte(r>>8), byte(r))
 	}
 	err := Validate(strings.NewReader(string(utf16be)))
-	if err != nil {
-		t.Fatalf("UTF-16BE with BOM should be valid: %s", err)
-	}
+	require.Nil(t, err)
+
 }
 
 func TestUTF16LEWithBOM(t *testing.T) {
-	utf16le := []byte{0xFF, 0xFE} // BOM
+	utf16le := []byte{0xFF, 0xFE}	// BOM
 	xmlStr := `<?xml version="1.1"?><r/>`
 	for _, r := range xmlStr {
 		utf16le = append(utf16le, byte(r), byte(r>>8))
 	}
 	err := Validate(strings.NewReader(string(utf16le)))
-	if err != nil {
-		t.Fatalf("UTF-16LE with BOM should be valid: %s", err)
-	}
+	require.Nil(t, err)
+
 }
 
 func TestUTF8WithBOM(t *testing.T) {
