@@ -1,7 +1,13 @@
 package validator
 
-import "io"
+import (
+	"bytes"
+	"fmt"
+	"io"
+)
 
+// Validate verifies that the input is a well-formed XML 1.1 document.
+// On failure it returns a *[Error] with the line and column of the problem.
 func Validate(r io.Reader) error {
 	runes, enc, err := readInput(r)
 	if err != nil {
@@ -11,8 +17,25 @@ func Validate(r io.Reader) error {
 	return p.parseDocument()
 }
 
+// ValidateWithSchema runs XML 1.1 well-formedness validation on xml, parses
+// the XSD schema from xsd, and then validates the document against the schema.
+// On failure it returns a *[Error].
+func ValidateWithSchema(xml, xsd io.Reader) error {
+	xmlData, err := io.ReadAll(xml)
+	if err != nil {
+		return fmt.Errorf("reading XML input: %w", err)
+	}
+	xsdData, err := io.ReadAll(xsd)
+	if err != nil {
+		return fmt.Errorf("reading XSD input: %w", err)
+	}
+	return ValidateWithSchemaBytes(xmlData, xsdData)
+}
+
+// ValidateWithSchemaBytes is the byte-oriented form of [ValidateWithSchema].
+// It is useful when the document and schema are already in memory.
 func ValidateWithSchemaBytes(xmlData, xsdData []byte) error {
-	runes, enc, err := readInput(newBytesReader(xmlData))
+	runes, enc, err := readInput(bytes.NewReader(xmlData))
 	if err != nil {
 		return err
 	}
@@ -21,38 +44,20 @@ func ValidateWithSchemaBytes(xmlData, xsdData []byte) error {
 		return err
 	}
 
-	xsdDoc, err := ParseTree(newBytesReader(xsdData))
+	xsdDoc, err := ParseTree(bytes.NewReader(xsdData))
 	if err != nil {
-		return &Error{Line: 0, Col: 0, Message: "schema: " + err.Error()}
+		return &Error{Message: "schema: " + err.Error()}
 	}
 
 	schema, err := ParseSchema(xsdDoc)
 	if err != nil {
-		return &Error{Line: 0, Col: 0, Message: "schema: " + err.Error()}
+		return &Error{Message: "schema: " + err.Error()}
 	}
 
-	xmlDoc, err := ParseTree(newBytesReader(xmlData))
+	xmlDoc, err := ParseTree(bytes.NewReader(xmlData))
 	if err != nil {
-		return &Error{Line: 0, Col: 0, Message: "parsing document tree: " + err.Error()}
+		return &Error{Message: "parsing document tree: " + err.Error()}
 	}
 
 	return ValidateSchema(xmlDoc, schema)
-}
-
-type bytesReader struct {
-	data []byte
-	pos  int
-}
-
-func newBytesReader(data []byte) *bytesReader {
-	return &bytesReader{data: data}
-}
-
-func (r *bytesReader) Read(p []byte) (int, error) {
-	if r.pos >= len(r.data) {
-		return 0, io.EOF
-	}
-	n := copy(p, r.data[r.pos:])
-	r.pos += n
-	return n, nil
 }

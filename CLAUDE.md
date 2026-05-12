@@ -2,6 +2,10 @@
 
 Strict XML 1.1 validator with XSD schema validation. Anything unsupported is a hard error.
 
+Ships as **both** a CLI and a Go library that share the same engine. Keep both
+working when making changes -- the `validator` package is the public library
+surface, and `cmd/` + `main.go` are the CLI shell over it.
+
 ## Build & Test
 
 ```bash
@@ -10,7 +14,7 @@ go-toolchain
 
 This handles `go mod tidy`, `go vet`, tests with coverage, and builds the binary to `build/xml-validator`.
 
-## Usage
+## CLI usage
 
 ```bash
 xml-validator <file>                    # well-formedness validation only
@@ -19,6 +23,20 @@ xml-validator --schema schema.xsd file  # validate against XSD schema
 ```
 
 Exit 0 on valid XML 1.1, exit 1 with error message on failure.
+
+## Library usage
+
+Importable as `github.com/wow-look-at-my/xml-validator/validator`. Public
+entry points:
+
+- `Validate(io.Reader) error` -- well-formedness only.
+- `ValidateWithSchema(xml, xsd io.Reader) error` -- well-formedness + XSD.
+- `ValidateWithSchemaBytes(xml, xsd []byte) error` -- byte-oriented form.
+- `ParseTree(io.Reader) (*Document, error)` -- parse to tree without validating.
+- `ParseSchema(*Document) (*Schema, error)` -- parse an XSD tree to a schema model.
+- `ValidateSchema(*Document, *Schema) error` -- validate a parsed tree against a parsed schema.
+
+Errors come back as `*validator.Error` with `Line`, `Col`, and `Message`.
 
 ## Supported
 
@@ -58,7 +76,9 @@ Exit 0 on valid XML 1.1, exit 1 with error message on failure.
 ## Project Structure
 
 - `cmd/root.go` -- CLI (cobra)
-- `validator/validator.go` -- public `Validate` and `ValidateWithSchemaBytes` entry points
+- `validator/doc.go` -- package-level godoc
+- `validator/validator.go` -- public `Validate`, `ValidateWithSchema`, and `ValidateWithSchemaBytes` entry points
+- `validator/example_test.go` -- runnable godoc examples
 - `validator/parser.go` -- recursive descent parser core, XML declaration, comments, PIs
 - `validator/elements.go` -- element, attribute, content, CDATA, reference parsing
 - `validator/namespace.go` -- QName validation, namespace scope management
