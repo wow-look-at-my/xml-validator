@@ -194,6 +194,9 @@ func (sv *schemaValidator) validateAttributes(el *Element, decls []*AttrDecl) {
 		if strings.HasPrefix(attr.Name, "xml:") {
 			continue
 		}
+		if attr.Namespace == xsiNS {
+			continue
+		}
 		ad, ok := declared[attr.Local]
 		if !ok {
 			sv.addError(el, "unexpected attribute %q on element %q", attr.Local, el.Local)
@@ -314,16 +317,39 @@ func (sv *schemaValidator) validateChoice(el *Element, children []*Element, ch *
 func (sv *schemaValidator) validateAll(el *Element, children []*Element, all *All) {
 	seen := make(map[string]int)
 	declMap := make(map[string]*ElementDecl)
+	var anyParticles []*AnyParticle
 	for _, item := range all.Items {
 		if ed, ok := item.(*ElementDecl); ok {
 			declMap[ed.Name] = ed
 		}
+		if ap, ok := item.(*AnyParticle); ok {
+			anyParticles = append(anyParticles, ap)
+		}
 	}
+
+	anyCount := make(map[*AnyParticle]int)
 
 	for _, child := range children {
 		decl, ok := declMap[child.Local]
 		if !ok {
-			sv.addError(child, "unexpected element %q in all group of %q", child.Local, el.Local)
+			matched := false
+			for _, ap := range anyParticles {
+				if sv.anyMatchesElement(ap, child) {
+					anyCount[ap]++
+					maxOccurs := ap.MaxOccurs
+					if maxOccurs < 0 {
+						maxOccurs = len(children)
+					}
+					if anyCount[ap] > maxOccurs {
+						sv.addError(child, "xs:any wildcard exceeded maxOccurs %d", ap.MaxOccurs)
+					}
+					matched = true
+					break
+				}
+			}
+			if !matched {
+				sv.addError(child, "unexpected element %q in all group of %q", child.Local, el.Local)
+			}
 			continue
 		}
 		seen[child.Local]++
@@ -468,12 +494,45 @@ func (sv *schemaValidator) matchAny(children []*Element, ap *AnyParticle) (int, 
 		maxOccurs = len(children) + 1
 	}
 	for count < len(children) && count < maxOccurs {
+		if !sv.anyMatchesElement(ap, children[count]) {
+			break
+		}
 		count++
 	}
 	if count < ap.MinOccurs {
 		return count, fmt.Errorf("xs:any requires at least %d element(s), got %d", ap.MinOccurs, count)
 	}
 	return count, nil
+}
+
+func (sv *schemaValidator) anyMatchesElement(ap *AnyParticle, el *Element) bool {
+	ns := ap.Namespace
+	if ns == "" || ns == "##any" {
+		return true
+	}
+	if ns == "##local" {
+		return el.Namespace == ""
+	}
+	if ns == "##other" {
+		return el.Namespace != "" && el.Namespace != sv.schema.TargetNamespace
+	}
+	if ns == "##targetNamespace" {
+		return el.Namespace == sv.schema.TargetNamespace
+	}
+	for _, allowed := range strings.Fields(ns) {
+		if allowed == "##targetNamespace" {
+			if el.Namespace == sv.schema.TargetNamespace {
+				return true
+			}
+		} else if allowed == "##local" {
+			if el.Namespace == "" {
+				return true
+			}
+		} else if allowed == el.Namespace {
+			return true
+		}
+	}
+	return false
 }
 
 func resolveSimpleTypeBaseName(st *SimpleType) string {
