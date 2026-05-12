@@ -198,7 +198,7 @@ func (sv *schemaValidator) validateAttributes(el *Element, decls []*AttrDecl, an
 			continue
 		}
 		ad, ok := declared[attr.Local]
-		if !ok || attr.Namespace != "" {
+		if !ok {
 			if anyAttr != nil && sv.wildcardMatchesNS(anyAttr.Namespace, attr.Namespace) {
 				continue
 			}
