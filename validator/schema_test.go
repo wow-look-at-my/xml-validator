@@ -531,6 +531,33 @@ func TestAnyAttributeDeclaredAttrStillValidated(t *testing.T) {
 <r xmlns:x="http://x.com" x:extra="yes"/>`, xsd, "required attribute")
 }
 
+func TestAnyAttributeNamespacedSameLocalName(t *testing.T) {
+	xsd := `<?xml version="1.1"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:element name="r">
+    <xs:complexType>
+      <xs:attribute name="id" type="xs:integer"/>
+      <xs:anyAttribute namespace="http://x.com" processContents="skip"/>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>`
+	mustSchemaValid(t, `<?xml version="1.1"?>
+<r id="42" xmlns:x="http://x.com" x:id="not-an-int"/>`, xsd)
+}
+
+func TestAnyAttributeNamespacedNoWildcardRejected(t *testing.T) {
+	xsd := `<?xml version="1.1"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:element name="r">
+    <xs:complexType>
+      <xs:attribute name="id" type="xs:integer"/>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>`
+	mustSchemaReject(t, `<?xml version="1.1"?>
+<r id="42" xmlns:x="http://x.com" x:id="hello"/>`, xsd, "unexpected attribute")
+}
+
 // --- Tree parser tests ---
 
 func TestTreeParserBasic(t *testing.T) {
