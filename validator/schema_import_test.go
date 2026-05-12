@@ -183,7 +183,7 @@ func TestSchemaImportResolverError(t *testing.T) {
 	assert.Contains(t, err.Error(), "missing.xsd")
 }
 
-func TestSchemaImportEmptyLocation(t *testing.T) {
+func TestSchemaImportNilDataSkips(t *testing.T) {
 	xsd := `<?xml version="1.0"?>
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
   <xs:import namespace="http://other" schemaLocation="skip.xsd"/>
@@ -196,4 +196,76 @@ func TestSchemaImportEmptyLocation(t *testing.T) {
 		[]byte(`<?xml version="1.1"?><root>val</root>`),
 		[]byte(xsd), resolver)
 	require.NoError(t, err)
+}
+
+func TestSchemaImportEmptySliceErrors(t *testing.T) {
+	xsd := `<?xml version="1.0"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:import namespace="http://other" schemaLocation="empty.xsd"/>
+  <xs:element name="root" type="xs:string"/>
+</xs:schema>`
+	resolver := func(_, _ string) ([]byte, error) {
+		return []byte{}, nil
+	}
+	err := ValidateWithSchemaResolver(
+		[]byte(`<?xml version="1.1"?><root>val</root>`),
+		[]byte(xsd), resolver)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "empty.xsd")
+}
+
+func TestSchemaImportNamespaceCollision(t *testing.T) {
+	mainXSD := `<?xml version="1.0"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:import namespace="http://a" schemaLocation="a.xsd"/>
+  <xs:import namespace="http://b" schemaLocation="b.xsd"/>
+  <xs:element name="root" type="xs:string"/>
+</xs:schema>`
+	aXSD := `<?xml version="1.0"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="http://a">
+  <xs:simpleType name="shared">
+    <xs:restriction base="xs:string"/>
+  </xs:simpleType>
+</xs:schema>`
+	bXSD := `<?xml version="1.0"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="http://b">
+  <xs:simpleType name="shared">
+    <xs:restriction base="xs:integer"/>
+  </xs:simpleType>
+</xs:schema>`
+	resolver := func(_, loc string) ([]byte, error) {
+		switch loc {
+		case "a.xsd":
+			return []byte(aXSD), nil
+		case "b.xsd":
+			return []byte(bXSD), nil
+		}
+		return nil, fmt.Errorf("unexpected %q", loc)
+	}
+	err := ValidateWithSchemaResolver(
+		[]byte(`<?xml version="1.1"?><root>val</root>`),
+		[]byte(mainXSD), resolver)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), `type "shared"`)
+	assert.Contains(t, err.Error(), "more than once")
+}
+
+func TestSchemaImportCycleKeyWithPipe(t *testing.T) {
+	mainXSD := `<?xml version="1.0"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:import namespace="ns|a" schemaLocation="x.xsd"/>
+  <xs:import namespace="ns" schemaLocation="a|x.xsd"/>
+  <xs:element name="root" type="xs:string"/>
+</xs:schema>`
+	calls := 0
+	resolver := func(ns, loc string) ([]byte, error) {
+		calls++
+		return []byte(fmt.Sprintf(`<?xml version="1.0"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace=%q/>`, ns)), nil
+	}
+	err := ValidateWithSchemaResolver(
+		[]byte(`<?xml version="1.1"?><root>val</root>`),
+		[]byte(mainXSD), resolver)
+	require.NoError(t, err)
+	assert.Equal(t, 2, calls, "both imports should resolve despite the ns+|+loc concatenation matching")
 }
