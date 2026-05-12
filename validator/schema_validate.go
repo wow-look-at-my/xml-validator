@@ -341,7 +341,7 @@ func (sv *schemaValidator) validateAll(el *Element, children []*Element, all *Al
 						maxOccurs = len(children)
 					}
 					if anyCount[ap] > maxOccurs {
-						sv.addError(child, "xs:any wildcard exceeded maxOccurs %d", ap.MaxOccurs)
+						sv.addError(child, "xs:any wildcard in element %q exceeded maxOccurs %d", el.Local, maxOccurs)
 					}
 					matched = true
 					break
@@ -370,6 +370,12 @@ func (sv *schemaValidator) validateAll(el *Element, children []*Element, all *Al
 				sv.addError(el, "element %q requires at least %d occurrence(s) of %q, got %d",
 					el.Local, ed.MinOccurs, ed.Name, seen[ed.Name])
 			}
+		}
+	}
+	for _, ap := range anyParticles {
+		if anyCount[ap] < ap.MinOccurs {
+			sv.addError(el, "xs:any wildcard in element %q requires at least %d element(s), got %d",
+				el.Local, ap.MinOccurs, anyCount[ap])
 		}
 	}
 }
