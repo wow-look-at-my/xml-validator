@@ -39,11 +39,12 @@ type Type interface {
 }
 
 type ComplexType struct {
-	Name       string
-	Mixed      bool
-	Content    ContentModel
-	Attributes []*AttrDecl
-	SimpleText Type // non-nil for simpleContent
+	Name         string
+	Mixed        bool
+	Content      ContentModel
+	Attributes   []*AttrDecl
+	AnyAttribute *AnyAttrDecl
+	SimpleText   Type // non-nil for simpleContent
 }
 
 func (t *ComplexType) typeName() string { return t.Name }
@@ -98,6 +99,11 @@ type AnyParticle struct {
 	ProcessContents string
 	MinOccurs       int
 	MaxOccurs       int
+}
+
+type AnyAttrDecl struct {
+	Namespace       string
+	ProcessContents string
 }
 
 type AttrDecl struct {

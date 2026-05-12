@@ -117,7 +117,7 @@ func (sv *schemaValidator) validateUnionType(el *Element, members []*SimpleType)
 }
 
 func (sv *schemaValidator) validateComplexElement(el *Element, ct *ComplexType) {
-	sv.validateAttributes(el, ct.Attributes)
+	sv.validateAttributes(el, ct.Attributes, ct.AnyAttribute)
 
 	if ct.SimpleText != nil {
 		sv.validateSimpleText(el, ct.SimpleText)
@@ -178,7 +178,7 @@ func (sv *schemaValidator) validateSimpleText(el *Element, textType Type) {
 	}
 }
 
-func (sv *schemaValidator) validateAttributes(el *Element, decls []*AttrDecl) {
+func (sv *schemaValidator) validateAttributes(el *Element, decls []*AttrDecl, anyAttr *AnyAttrDecl) {
 	declared := make(map[string]*AttrDecl)
 	for _, ad := range decls {
 		if ad.Use == "prohibited" {
@@ -199,6 +199,9 @@ func (sv *schemaValidator) validateAttributes(el *Element, decls []*AttrDecl) {
 		}
 		ad, ok := declared[attr.Local]
 		if !ok {
+			if anyAttr != nil && sv.wildcardMatchesNS(anyAttr.Namespace, attr.Namespace) {
+				continue
+			}
 			sv.addError(el, "unexpected attribute %q on element %q", attr.Local, el.Local)
 			continue
 		}
@@ -512,29 +515,32 @@ func (sv *schemaValidator) matchAny(children []*Element, ap *AnyParticle) (int, 
 }
 
 func (sv *schemaValidator) anyMatchesElement(ap *AnyParticle, el *Element) bool {
-	ns := ap.Namespace
-	if ns == "" || ns == "##any" {
+	return sv.wildcardMatchesNS(ap.Namespace, el.Namespace)
+}
+
+func (sv *schemaValidator) wildcardMatchesNS(constraint, ns string) bool {
+	if constraint == "" || constraint == "##any" {
 		return true
 	}
-	if ns == "##local" {
-		return el.Namespace == ""
+	if constraint == "##local" {
+		return ns == ""
 	}
-	if ns == "##other" {
-		return el.Namespace != "" && el.Namespace != sv.schema.TargetNamespace
+	if constraint == "##other" {
+		return ns != "" && ns != sv.schema.TargetNamespace
 	}
-	if ns == "##targetNamespace" {
-		return el.Namespace == sv.schema.TargetNamespace
+	if constraint == "##targetNamespace" {
+		return ns == sv.schema.TargetNamespace
 	}
-	for _, allowed := range strings.Fields(ns) {
+	for _, allowed := range strings.Fields(constraint) {
 		if allowed == "##targetNamespace" {
-			if el.Namespace == sv.schema.TargetNamespace {
+			if ns == sv.schema.TargetNamespace {
 				return true
 			}
 		} else if allowed == "##local" {
-			if el.Namespace == "" {
+			if ns == "" {
 				return true
 			}
-		} else if allowed == el.Namespace {
+		} else if allowed == ns {
 			return true
 		}
 	}
