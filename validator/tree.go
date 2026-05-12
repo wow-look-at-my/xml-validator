@@ -1,0 +1,393 @@
+package validator
+
+import (
+	"fmt"
+	"io"
+	"strconv"
+	"strings"
+)
+
+func ParseTree(r io.Reader) (*Document, error) {
+	runes, _, err := readInput(r)
+	if err != nil {
+		return nil, err
+	}
+	tp := &treeParser{input: runes, line: 1, col: 1}
+	return tp.parseDocument()
+}
+
+type treeParser struct {
+	input []rune
+	pos   int
+	line  int
+	col   int
+}
+
+func (tp *treeParser) peek() rune {
+	if tp.pos >= len(tp.input) {
+		return 0
+	}
+	return tp.input[tp.pos]
+}
+
+func (tp *treeParser) peekAt(offset int) rune {
+	i := tp.pos + offset
+	if i >= len(tp.input) || i < 0 {
+		return 0
+	}
+	return tp.input[i]
+}
+
+func (tp *treeParser) advance() rune {
+	if tp.pos >= len(tp.input) {
+		return 0
+	}
+	r := tp.input[tp.pos]
+	tp.pos++
+	if r == '\n' {
+		tp.line++
+		tp.col = 1
+	} else {
+		tp.col++
+	}
+	return r
+}
+
+func (tp *treeParser) eof() bool { return tp.pos >= len(tp.input) }
+
+func (tp *treeParser) errorf(format string, args ...any) error {
+	return &Error{Line: tp.line, Col: tp.col, Message: fmt.Sprintf(format, args...)}
+}
+
+func (tp *treeParser) expect(s string) error {
+	for _, c := range s {
+		if tp.eof() || tp.peek() != c {
+			return tp.errorf("expected %q", s)
+		}
+		tp.advance()
+	}
+	return nil
+}
+
+func (tp *treeParser) lookingAt(s string) bool {
+	for i, c := range []rune(s) {
+		if tp.pos+i >= len(tp.input) || tp.input[tp.pos+i] != c {
+			return false
+		}
+	}
+	return true
+}
+
+func (tp *treeParser) skipWS() {
+	for !tp.eof() && IsWhitespace(tp.peek()) {
+		tp.advance()
+	}
+}
+
+func (tp *treeParser) parseDocument() (*Document, error) {
+	if tp.lookingAt("<?xml") {
+		tp.skipPIOrDecl()
+	}
+	tp.skipMisc()
+	if tp.eof() {
+		return nil, tp.errorf("no root element")
+	}
+	root, err := tp.parseElement(map[string]string{})
+	if err != nil {
+		return nil, err
+	}
+	return &Document{Root: root}, nil
+}
+
+func (tp *treeParser) skipPIOrDecl() {
+	tp.expect("<?")
+	for !tp.eof() {
+		if tp.lookingAt("?>") {
+			tp.expect("?>")
+			return
+		}
+		tp.advance()
+	}
+}
+
+func (tp *treeParser) skipComment() {
+	tp.expect("<!--")
+	for !tp.eof() {
+		if tp.lookingAt("-->") {
+			tp.expect("-->")
+			return
+		}
+		tp.advance()
+	}
+}
+
+func (tp *treeParser) skipMisc() {
+	for {
+		tp.skipWS()
+		if tp.lookingAt("<!--") {
+			tp.skipComment()
+		} else if tp.lookingAt("<?") {
+			tp.skipPIOrDecl()
+		} else if tp.lookingAt("<!DOCTYPE") {
+			tp.skipDoctype()
+		} else {
+			return
+		}
+	}
+}
+
+func (tp *treeParser) skipDoctype() {
+	depth := 0
+	for !tp.eof() {
+		r := tp.advance()
+		if r == '<' {
+			depth++
+		} else if r == '>' {
+			if depth <= 1 {
+				return
+			}
+			depth--
+		}
+	}
+}
+
+func (tp *treeParser) parseName() string {
+	var name []rune
+	if !tp.eof() && IsNameStartChar(tp.peek()) {
+		name = append(name, tp.advance())
+	}
+	for !tp.eof() && IsNameChar(tp.peek()) {
+		name = append(name, tp.advance())
+	}
+	return string(name)
+}
+
+func (tp *treeParser) parseElement(parentNS map[string]string) (*Element, error) {
+	line, col := tp.line, tp.col
+	if err := tp.expect("<"); err != nil {
+		return nil, err
+	}
+	name := tp.parseName()
+	if name == "" {
+		return nil, tp.errorf("expected element name")
+	}
+
+	nsScope := make(map[string]string)
+	for k, v := range parentNS {
+		nsScope[k] = v
+	}
+
+	var rawAttrs []struct {
+		name, value string
+	}
+	for {
+		before := tp.pos
+		tp.skipWS()
+		if tp.eof() || tp.peek() == '>' || tp.peek() == '/' {
+			break
+		}
+		aname := tp.parseName()
+		if aname == "" {
+			tp.pos = before
+			break
+		}
+		tp.skipWS()
+		tp.expect("=")
+		tp.skipWS()
+		val, err := tp.parseAttrValue()
+		if err != nil {
+			return nil, err
+		}
+
+		if aname == "xmlns" {
+			nsScope[""] = val
+		} else if strings.HasPrefix(aname, "xmlns:") {
+			nsScope[aname[6:]] = val
+		}
+		rawAttrs = append(rawAttrs, struct{ name, value string }{aname, val})
+	}
+
+	var attrs []Attr
+	for _, ra := range rawAttrs {
+		if ra.name == "xmlns" || strings.HasPrefix(ra.name, "xmlns:") {
+			continue
+		}
+		a := Attr{Name: ra.name, Value: ra.value}
+		if idx := strings.Index(ra.name, ":"); idx >= 0 {
+			a.Prefix = ra.name[:idx]
+			a.Local = ra.name[idx+1:]
+			a.Namespace = nsScope[a.Prefix]
+		} else {
+			a.Local = ra.name
+		}
+		attrs = append(attrs, a)
+	}
+
+	elem := &Element{
+		Name:  name,
+		Attrs: attrs,
+		Line:  line,
+		Col:   col,
+	}
+	if idx := strings.Index(name, ":"); idx >= 0 {
+		elem.Prefix = name[:idx]
+		elem.Local = name[idx+1:]
+		elem.Namespace = nsScope[elem.Prefix]
+	} else {
+		elem.Local = name
+		elem.Namespace = nsScope[""]
+	}
+
+	if tp.lookingAt("/>") {
+		tp.expect("/>")
+		return elem, nil
+	}
+	if err := tp.expect(">"); err != nil {
+		return nil, err
+	}
+
+	children, err := tp.parseContent(nsScope)
+	if err != nil {
+		return nil, err
+	}
+	elem.Children = children
+
+	tp.expect("</")
+	tp.parseName()
+	tp.skipWS()
+	tp.expect(">")
+	return elem, nil
+}
+
+func (tp *treeParser) parseContent(nsScope map[string]string) ([]Node, error) {
+	var nodes []Node
+	var text []rune
+
+	flushText := func() {
+		if len(text) > 0 {
+			nodes = append(nodes, &CharData{Content: string(text)})
+			text = nil
+		}
+	}
+
+	for !tp.eof() {
+		if tp.lookingAt("</") {
+			flushText()
+			return nodes, nil
+		}
+		if tp.lookingAt("<!--") {
+			flushText()
+			tp.skipComment()
+			continue
+		}
+		if tp.lookingAt("<?") {
+			flushText()
+			tp.skipPIOrDecl()
+			continue
+		}
+		if tp.lookingAt("<![CDATA[") {
+			tp.expect("<![CDATA[")
+			for !tp.eof() {
+				if tp.lookingAt("]]>") {
+					tp.expect("]]>")
+					break
+				}
+				text = append(text, tp.advance())
+			}
+			continue
+		}
+		if tp.peek() == '<' {
+			flushText()
+			child, err := tp.parseElement(nsScope)
+			if err != nil {
+				return nil, err
+			}
+			nodes = append(nodes, child)
+			continue
+		}
+		if tp.peek() == '&' {
+			r, err := tp.parseRef()
+			if err != nil {
+				return nil, err
+			}
+			text = append(text, r)
+			continue
+		}
+		text = append(text, tp.advance())
+	}
+	flushText()
+	return nodes, nil
+}
+
+func (tp *treeParser) parseAttrValue() (string, error) {
+	quote := tp.peek()
+	if quote != '"' && quote != '\'' {
+		return "", tp.errorf("expected quote")
+	}
+	tp.advance()
+	var val []rune
+	for !tp.eof() && tp.peek() != quote {
+		if tp.peek() == '&' {
+			r, err := tp.parseRef()
+			if err != nil {
+				return "", err
+			}
+			val = append(val, r)
+		} else {
+			val = append(val, tp.advance())
+		}
+	}
+	if !tp.eof() {
+		tp.advance()
+	}
+	return string(val), nil
+}
+
+func (tp *treeParser) parseRef() (rune, error) {
+	tp.advance() // '&'
+	if tp.peek() == '#' {
+		tp.advance()
+		hex := false
+		if tp.peek() == 'x' {
+			hex = true
+			tp.advance()
+		}
+		var digits []rune
+		for !tp.eof() && tp.peek() != ';' {
+			digits = append(digits, tp.advance())
+		}
+		if !tp.eof() {
+			tp.advance()
+		}
+		s := string(digits)
+		var val int64
+		var err error
+		if hex {
+			val, err = strconv.ParseInt(s, 16, 32)
+		} else {
+			val, err = strconv.ParseInt(s, 10, 32)
+		}
+		if err != nil {
+			return 0, tp.errorf("invalid character reference")
+		}
+		return rune(val), nil
+	}
+	name := tp.parseName()
+	if !tp.eof() && tp.peek() == ';' {
+		tp.advance()
+	}
+	switch name {
+	case "amp":
+		return '&', nil
+	case "lt":
+		return '<', nil
+	case "gt":
+		return '>', nil
+	case "apos":
+		return '\'', nil
+	case "quot":
+		return '"', nil
+	default:
+		return 0, tp.errorf("unknown entity &%s;", name)
+	}
+}
