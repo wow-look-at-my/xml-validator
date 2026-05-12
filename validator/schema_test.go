@@ -421,14 +421,14 @@ const anyAttrXSD = `<?xml version="1.1" encoding="UTF-8"?>
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
   <xs:element name="root">
     <xs:complexType>
-      <xs:all>
+      <xs:sequence>
         <xs:element name="item" minOccurs="0" maxOccurs="unbounded">
           <xs:complexType mixed="true">
             <xs:attribute name="id" type="xs:string"/>
             <xs:anyAttribute namespace="https://example.com/v" processContents="lax"/>
           </xs:complexType>
         </xs:element>
-      </xs:all>
+      </xs:sequence>
     </xs:complexType>
   </xs:element>
 </xs:schema>`
@@ -529,6 +529,20 @@ func TestAnyAttributeDeclaredAttrStillValidated(t *testing.T) {
 <r id="notint" xmlns:x="http://x.com" x:extra="yes"/>`, xsd, "not a valid integer")
 	mustSchemaReject(t, `<?xml version="1.1"?>
 <r xmlns:x="http://x.com" x:extra="yes"/>`, xsd, "required attribute")
+}
+
+func TestAnyAttributeNamespacedSameLocalName(t *testing.T) {
+	xsd := `<?xml version="1.1"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:element name="r">
+    <xs:complexType>
+      <xs:attribute name="id" type="xs:integer"/>
+      <xs:anyAttribute namespace="http://x.com" processContents="skip"/>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>`
+	mustSchemaValid(t, `<?xml version="1.1"?>
+<r id="42" xmlns:x="http://x.com" x:id="not-an-int"/>`, xsd)
 }
 
 // --- Tree parser tests ---
