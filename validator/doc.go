@@ -23,6 +23,10 @@
 //
 //	err := validator.ValidateWithSchemaBytes(xmlData, xsdData)
 //
+// If the schema uses xs:import directives with a schemaLocation, use
+// [ValidateWithSchemaFile] to resolve them from the filesystem, or
+// [ValidateWithSchemaResolver] to supply a custom [SchemaResolver].
+//
 // # Lower-level building blocks
 //
 // For callers that want to parse once and validate many times, or build their

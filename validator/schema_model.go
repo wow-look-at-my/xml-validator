@@ -10,6 +10,15 @@ type Schema struct {
 	Types                map[string]Type
 	Groups               map[string]*Group
 	AttrGroups           map[string]*AttrGroup
+	Imports              []*Import
+}
+
+// Import is an xs:import directive recorded on the schema. The Namespace is
+// the imported target namespace (may be empty) and SchemaLocation is the URI
+// hint provided to locate the imported schema (may be empty).
+type Import struct {
+	Namespace      string
+	SchemaLocation string
 }
 
 type ElementDecl struct {

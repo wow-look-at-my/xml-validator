@@ -417,17 +417,6 @@ func TestSchemaSimpleContentRestriction(t *testing.T) {
 	mustSchemaReject(t, `<?xml version="1.1"?><status>unknown</status>`, xsd, "not one of the allowed values")
 }
 
-func TestSchemaUnsupportedImport(t *testing.T) {
-	xsd := `<?xml version="1.0"?>
-<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
-  <xs:import namespace="http://other" schemaLocation="other.xsd"/>
-  <xs:element name="root" type="xs:string"/>
-</xs:schema>`
-	err := schemaValidate(t, `<?xml version="1.1"?><root>val</root>`, xsd)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "unsupported")
-}
-
 func TestSchemaAttributeFixed(t *testing.T) {
 	xsd := `<?xml version="1.0"?>
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">

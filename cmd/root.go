@@ -79,17 +79,7 @@ func runWithSchema(args []string) error {
 		return fmt.Errorf("--schema requires an XML file argument (stdin not supported with schema validation)")
 	}
 
-	xmlData, err := os.ReadFile(args[0])
-	if err != nil {
-		return fmt.Errorf("cannot read XML file: %w", err)
-	}
-
-	xsdData, err := os.ReadFile(schemaFile)
-	if err != nil {
-		return fmt.Errorf("cannot read schema file: %w", err)
-	}
-
-	if err := validator.ValidateWithSchemaBytes(xmlData, xsdData); err != nil {
+	if err := validator.ValidateWithSchemaFile(args[0], schemaFile); err != nil {
 		fmt.Fprintf(os.Stderr, "error: %s\n", err)
 		os.Exit(1)
 	}
