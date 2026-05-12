@@ -216,7 +216,9 @@ func parseComplexType(el *Element) (*ComplexType, error) {
 			}
 			ct.Attributes = append(ct.Attributes, ad)
 		case "attributeGroup":
-			// will be resolved later
+			if ref, ok := child.Attr("ref"); ok {
+				ct.attrGroupRefs = append(ct.attrGroupRefs, stripPrefix(ref))
+			}
 		case "simpleContent":
 			if err := parseSimpleContent(child, ct); err != nil {
 				return nil, err
@@ -256,6 +258,10 @@ func parseSimpleContent(el *Element, ct *ComplexType) error {
 					ct.Attributes = append(ct.Attributes, ad)
 				} else if attr.Local == "anyAttribute" {
 					ct.AnyAttribute = parseAnyAttrDecl(attr)
+				} else if attr.Local == "attributeGroup" {
+					if ref, ok := attr.Attr("ref"); ok {
+						ct.attrGroupRefs = append(ct.attrGroupRefs, stripPrefix(ref))
+					}
 				}
 			}
 		case "restriction":
@@ -276,6 +282,10 @@ func parseSimpleContent(el *Element, ct *ComplexType) error {
 					ct.Attributes = append(ct.Attributes, ad)
 				} else if facetEl.Local == "anyAttribute" {
 					ct.AnyAttribute = parseAnyAttrDecl(facetEl)
+				} else if facetEl.Local == "attributeGroup" {
+					if ref, ok := facetEl.Attr("ref"); ok {
+						ct.attrGroupRefs = append(ct.attrGroupRefs, stripPrefix(ref))
+					}
 				}
 			}
 			ct.SimpleText = st
@@ -325,6 +335,10 @@ func parseComplexContent(el *Element, ct *ComplexType) error {
 					ct.Attributes = append(ct.Attributes, ad)
 				case "anyAttribute":
 					ct.AnyAttribute = parseAnyAttrDecl(inner)
+				case "attributeGroup":
+					if ref, ok := inner.Attr("ref"); ok {
+						ct.attrGroupRefs = append(ct.attrGroupRefs, stripPrefix(ref))
+					}
 				}
 			}
 		}
@@ -509,12 +523,18 @@ func parseAttrGroup(el *Element) (*AttrGroup, error) {
 	ag := &AttrGroup{}
 	ag.Name, _ = el.Attr("name")
 	for _, child := range el.ChildElements() {
-		if child.Namespace == xsdNS && child.Local == "attribute" {
+		if child.Namespace != xsdNS {
+			continue
+		}
+		switch child.Local {
+		case "attribute":
 			ad, err := parseAttrDecl(child)
 			if err != nil {
 				return nil, err
 			}
 			ag.Attributes = append(ag.Attributes, ad)
+		case "anyAttribute":
+			ag.AnyAttribute = parseAnyAttrDecl(child)
 		}
 	}
 	return ag, nil
@@ -603,6 +623,14 @@ func resolveElementType(ed *ElementDecl, s *Schema) {
 }
 
 func resolveComplexTypeRefs(ct *ComplexType, s *Schema) {
+	for _, ref := range ct.attrGroupRefs {
+		if ag, ok := s.AttrGroups[ref]; ok {
+			ct.Attributes = append(ct.Attributes, ag.Attributes...)
+			if ag.AnyAttribute != nil && ct.AnyAttribute == nil {
+				ct.AnyAttribute = ag.AnyAttribute
+			}
+		}
+	}
 	if ct.Content != nil {
 		resolveContentModel(ct.Content, s)
 	}
