@@ -1,6 +1,7 @@
 package validator
 
 const xsdNS = "http://www.w3.org/2001/XMLSchema"
+const xsiNS = "http://www.w3.org/2001/XMLSchema-instance"
 
 type Schema struct {
 	TargetNamespace      string
