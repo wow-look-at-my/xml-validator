@@ -415,6 +415,149 @@ func TestSchemaChildWithSimpleType(t *testing.T) {
 	mustSchemaReject(t, `<?xml version="1.1"?><data><count><nested/></count></data>`, xsd, "simple type")
 }
 
+// --- anyAttribute tests ---
+
+const anyAttrXSD = `<?xml version="1.1" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:element name="root">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="item" minOccurs="0" maxOccurs="unbounded">
+          <xs:complexType mixed="true">
+            <xs:attribute name="id" type="xs:string"/>
+            <xs:anyAttribute namespace="https://example.com/v" processContents="lax"/>
+          </xs:complexType>
+        </xs:element>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>`
+
+func TestAnyAttributeExactNamespace(t *testing.T) {
+	mustSchemaValid(t, `<?xml version="1.1"?>
+<root xmlns:v="https://example.com/v">
+  <item id="x" v:status="ok">hello</item>
+</root>`, anyAttrXSD)
+}
+
+func TestAnyAttributeWrongNamespaceRejected(t *testing.T) {
+	mustSchemaReject(t, `<?xml version="1.1"?>
+<root xmlns:v="https://other.com/v">
+  <item id="x" v:status="ok">hello</item>
+</root>`, anyAttrXSD, "unexpected attribute")
+}
+
+func TestAnyAttributeNoNamespaceRejected(t *testing.T) {
+	mustSchemaReject(t, `<?xml version="1.1"?>
+<root>
+  <item id="x" unknown="bad">hello</item>
+</root>`, anyAttrXSD, "unexpected attribute")
+}
+
+func TestAnyAttributeAny(t *testing.T) {
+	xsd := `<?xml version="1.1"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:element name="r">
+    <xs:complexType>
+      <xs:anyAttribute namespace="##any" processContents="skip"/>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>`
+	mustSchemaValid(t, `<?xml version="1.1"?>
+<r xmlns:x="http://x.com" x:foo="1" x:bar="2"/>`, xsd)
+	mustSchemaValid(t, `<?xml version="1.1"?><r local="ok"/>`, xsd)
+}
+
+func TestAnyAttributeOther(t *testing.T) {
+	xsd := `<?xml version="1.1"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           targetNamespace="http://mine.com">
+  <xs:element name="r">
+    <xs:complexType>
+      <xs:anyAttribute namespace="##other" processContents="lax"/>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>`
+	mustSchemaValid(t, `<?xml version="1.1"?>
+<r xmlns:x="http://x.com" x:foo="1"/>`, xsd)
+	mustSchemaReject(t, `<?xml version="1.1"?><r local="bad"/>`, xsd, "unexpected attribute")
+}
+
+func TestAnyAttributeMultipleNamespaces(t *testing.T) {
+	xsd := `<?xml version="1.1"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:element name="r">
+    <xs:complexType>
+      <xs:anyAttribute namespace="http://a.com http://b.com" processContents="skip"/>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>`
+	mustSchemaValid(t, `<?xml version="1.1"?>
+<r xmlns:a="http://a.com" a:x="1"/>`, xsd)
+	mustSchemaValid(t, `<?xml version="1.1"?>
+<r xmlns:b="http://b.com" b:y="2"/>`, xsd)
+	mustSchemaReject(t, `<?xml version="1.1"?>
+<r xmlns:c="http://c.com" c:z="3"/>`, xsd, "unexpected attribute")
+}
+
+func TestAnyAttributeDefaultProcessContents(t *testing.T) {
+	xsd := `<?xml version="1.1"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:element name="r">
+    <xs:complexType>
+      <xs:anyAttribute namespace="##any"/>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>`
+	mustSchemaValid(t, `<?xml version="1.1"?>
+<r xmlns:x="http://x.com" x:a="1"/>`, xsd)
+}
+
+func TestAnyAttributeDeclaredAttrStillValidated(t *testing.T) {
+	xsd := `<?xml version="1.1"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:element name="r">
+    <xs:complexType>
+      <xs:attribute name="id" type="xs:integer" use="required"/>
+      <xs:anyAttribute namespace="##any" processContents="skip"/>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>`
+	mustSchemaValid(t, `<?xml version="1.1"?>
+<r id="42" xmlns:x="http://x.com" x:extra="yes"/>`, xsd)
+	mustSchemaReject(t, `<?xml version="1.1"?>
+<r id="notint" xmlns:x="http://x.com" x:extra="yes"/>`, xsd, "not a valid integer")
+	mustSchemaReject(t, `<?xml version="1.1"?>
+<r xmlns:x="http://x.com" x:extra="yes"/>`, xsd, "required attribute")
+}
+
+func TestAnyAttributeNamespacedSameLocalName(t *testing.T) {
+	xsd := `<?xml version="1.1"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:element name="r">
+    <xs:complexType>
+      <xs:attribute name="id" type="xs:integer"/>
+      <xs:anyAttribute namespace="http://x.com" processContents="skip"/>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>`
+	mustSchemaValid(t, `<?xml version="1.1"?>
+<r id="42" xmlns:x="http://x.com" x:id="not-an-int"/>`, xsd)
+}
+
+func TestAnyAttributeNamespacedNoWildcardRejected(t *testing.T) {
+	xsd := `<?xml version="1.1"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:element name="r">
+    <xs:complexType>
+      <xs:attribute name="id" type="xs:integer"/>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>`
+	mustSchemaReject(t, `<?xml version="1.1"?>
+<r id="42" xmlns:x="http://x.com" x:id="hello"/>`, xsd, "unexpected attribute")
+}
+
 // --- Tree parser tests ---
 
 func TestTreeParserBasic(t *testing.T) {

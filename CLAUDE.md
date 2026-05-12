@@ -68,6 +68,7 @@ Errors come back as `*validator.Error` with `Line`, `Col`, and `Message`.
   - Facets: enumeration, pattern, minLength, maxLength, length, min/maxInclusive, min/maxExclusive, totalDigits, fractionDigits
   - minOccurs/maxOccurs enforcement
   - xs:any wildcard particles
+  - xs:anyAttribute wildcard attributes
   - xs:import with optional schemaLocation (loaded via a `SchemaResolver`;
     the CLI and `ValidateWithSchemaFile` wire a filesystem-backed one)
 

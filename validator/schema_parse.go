@@ -226,7 +226,7 @@ func parseComplexType(el *Element) (*ComplexType, error) {
 				return nil, err
 			}
 		case "anyAttribute":
-			// permissive - allow any attributes
+			ct.AnyAttribute = parseAnyAttrDecl(child)
 		case "annotation":
 			// skip
 		}
@@ -245,12 +245,17 @@ func parseSimpleContent(el *Element, ct *ComplexType) error {
 			base, _ := child.Attr("base")
 			ct.SimpleText = resolveTypeByName(base)
 			for _, attr := range child.ChildElements() {
-				if attr.Namespace == xsdNS && attr.Local == "attribute" {
+				if attr.Namespace != xsdNS {
+					continue
+				}
+				if attr.Local == "attribute" {
 					ad, err := parseAttrDecl(attr)
 					if err != nil {
 						return err
 					}
 					ct.Attributes = append(ct.Attributes, ad)
+				} else if attr.Local == "anyAttribute" {
+					ct.AnyAttribute = parseAnyAttrDecl(attr)
 				}
 			}
 		case "restriction":
@@ -269,6 +274,8 @@ func parseSimpleContent(el *Element, ct *ComplexType) error {
 						return err
 					}
 					ct.Attributes = append(ct.Attributes, ad)
+				} else if facetEl.Local == "anyAttribute" {
+					ct.AnyAttribute = parseAnyAttrDecl(facetEl)
 				}
 			}
 			ct.SimpleText = st
@@ -316,6 +323,8 @@ func parseComplexContent(el *Element, ct *ComplexType) error {
 						return err
 					}
 					ct.Attributes = append(ct.Attributes, ad)
+				case "anyAttribute":
+					ct.AnyAttribute = parseAnyAttrDecl(inner)
 				}
 			}
 		}
@@ -509,6 +518,16 @@ func parseAttrGroup(el *Element) (*AttrGroup, error) {
 		}
 	}
 	return ag, nil
+}
+
+func parseAnyAttrDecl(el *Element) *AnyAttrDecl {
+	aa := &AnyAttrDecl{}
+	aa.Namespace, _ = el.Attr("namespace")
+	aa.ProcessContents, _ = el.Attr("processContents")
+	if aa.ProcessContents == "" {
+		aa.ProcessContents = "strict"
+	}
+	return aa
 }
 
 func parseOccurs(el *Element, min, max *int) {
