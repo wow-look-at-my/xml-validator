@@ -6,7 +6,26 @@ import (
 	"strings"
 )
 
+// ParseSchema parses an XSD schema tree with no support for resolving
+// xs:import schemaLocation hints. Imports without a schemaLocation are
+// accepted as namespace declarations; imports that name a schemaLocation
+// produce an error. Callers that need to follow schemaLocation hints should
+// use ParseSchemaWithResolver instead.
 func ParseSchema(doc *Document) (*Schema, error) {
+	return ParseSchemaWithResolver(doc, nil)
+}
+
+// ParseSchemaWithResolver parses an XSD schema tree. Each xs:import directive
+// with a non-empty schemaLocation is loaded via resolver, parsed, and merged
+// into the returned schema. Components from imported schemas are looked up by
+// local name (the same way the validator resolves types in the main schema),
+// so per-namespace name collisions are not supported.
+func ParseSchemaWithResolver(doc *Document, resolver SchemaResolver) (*Schema, error) {
+	visited := make(map[string]bool)
+	return parseSchemaDoc(doc, resolver, visited)
+}
+
+func parseSchemaDoc(doc *Document, resolver SchemaResolver, visited map[string]bool) (*Schema, error) {
 	root := doc.Root
 	if root.Local != "schema" || root.Namespace != xsdNS {
 		return nil, fmt.Errorf("expected xs:schema root element, got {%s}%s", root.Namespace, root.Local)
@@ -74,8 +93,17 @@ func ParseSchema(doc *Document) (*Schema, error) {
 			if ag.Name != "" {
 				s.AttrGroups[ag.Name] = ag
 			}
-		case "import", "include":
-			return nil, fmt.Errorf("unsupported: xs:%s is not supported", child.Local)
+		case "import":
+			imp, err := parseImport(child, resolver, visited)
+			if err != nil {
+				return nil, err
+			}
+			s.Imports = append(s.Imports, imp.directive)
+			if imp.imported != nil {
+				mergeImportedSchema(s, imp.imported)
+			}
+		case "include":
+			return nil, fmt.Errorf("unsupported: xs:include is not supported")
 		case "redefine", "override":
 			return nil, fmt.Errorf("unsupported: xs:%s is not supported", child.Local)
 		case "notation":

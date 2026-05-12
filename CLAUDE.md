@@ -32,8 +32,17 @@ entry points:
 - `Validate(io.Reader) error` -- well-formedness only.
 - `ValidateWithSchema(xml, xsd io.Reader) error` -- well-formedness + XSD.
 - `ValidateWithSchemaBytes(xml, xsd []byte) error` -- byte-oriented form.
+- `ValidateWithSchemaResolver(xml, xsd []byte, SchemaResolver) error` -- as above
+  but with a callback for resolving `xs:import schemaLocation` hints.
+- `ValidateWithSchemaFile(xmlPath, xsdPath string) error` -- convenience that
+  reads both files from disk and resolves imports relative to the XSD's
+  directory.
+- `FileSchemaResolver(baseDir string) SchemaResolver` -- filesystem-backed
+  resolver for use with `ParseSchemaWithResolver` / `ValidateWithSchemaResolver`.
 - `ParseTree(io.Reader) (*Document, error)` -- parse to tree without validating.
 - `ParseSchema(*Document) (*Schema, error)` -- parse an XSD tree to a schema model.
+- `ParseSchemaWithResolver(*Document, SchemaResolver) (*Schema, error)` -- as
+  above but follows `xs:import` directives via the resolver.
 - `ValidateSchema(*Document, *Schema) error` -- validate a parsed tree against a parsed schema.
 
 Errors come back as `*validator.Error` with `Line`, `Col`, and `Message`.
@@ -59,6 +68,8 @@ Errors come back as `*validator.Error` with `Line`, `Col`, and `Message`.
   - Facets: enumeration, pattern, minLength, maxLength, length, min/maxInclusive, min/maxExclusive, totalDigits, fractionDigits
   - minOccurs/maxOccurs enforcement
   - xs:any wildcard particles
+  - xs:import with optional schemaLocation (loaded via a `SchemaResolver`;
+    the CLI and `ValidateWithSchemaFile` wire a filesystem-backed one)
 
 ## Hard Errors (Unsupported)
 
@@ -67,7 +78,7 @@ Errors come back as `*validator.Error` with `Line`, `Col`, and `Message`.
 - XML 1.0 documents
 - Missing XML declaration
 - Encodings other than UTF-8/UTF-16
-- xs:import, xs:include (schema composition)
+- xs:include (schema composition)
 - xs:redefine, xs:override
 - xs:notation
 - Identity constraints (xs:key, xs:keyref, xs:unique)
@@ -90,4 +101,5 @@ Errors come back as `*validator.Error` with `Line`, `Col`, and `Message`.
 - `validator/schema_model.go` -- XSD schema model types
 - `validator/schema_builtin.go` -- 35+ built-in XSD types with validation
 - `validator/schema_parse.go` -- XSD file parser (document tree to schema model)
+- `validator/schema_import.go` -- `SchemaResolver` and `xs:import` handling
 - `validator/schema_validate.go` -- schema validation engine

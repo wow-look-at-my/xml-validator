@@ -50,7 +50,7 @@ if err != nil {
 
 ### With an XSD schema
 
-Two helpers are provided -- pick whichever fits your call site:
+Several helpers are provided -- pick whichever fits your call site:
 
 ```go
 // io.Reader form
@@ -58,6 +58,16 @@ err := validator.ValidateWithSchema(xmlReader, xsdReader)
 
 // []byte form
 err := validator.ValidateWithSchemaBytes(xmlBytes, xsdBytes)
+
+// File-based form (resolves xs:import schemaLocation hints relative to
+// the directory containing xsdPath)
+err := validator.ValidateWithSchemaFile(xmlPath, xsdPath)
+
+// Custom xs:import resolver (e.g. fetch over HTTP, read from a registry)
+err := validator.ValidateWithSchemaResolver(xmlBytes, xsdBytes,
+    func(namespace, schemaLocation string) ([]byte, error) {
+        return loadFromSomewhere(schemaLocation)
+    })
 ```
 
 ### Parsing without validating
@@ -86,6 +96,9 @@ err = validator.ValidateSchema(xmlDoc, schema)
 - XSD schema validation: complex/simple types, facets, sequence/choice/all,
   attribute groups, simpleContent/complexContent, `xs:any`, and 35+ built-in
   types
+- `xs:import` (with optional `schemaLocation`). The CLI and
+  `ValidateWithSchemaFile` resolve hints relative to the importing schema's
+  directory; library callers can supply a custom `SchemaResolver`
 
 ## What is rejected as unsupported
 
@@ -94,7 +107,7 @@ err = validator.ValidateSchema(xmlDoc, schema)
 - XML 1.0 documents (the declaration must say `version="1.1"`)
 - Missing XML declaration
 - Encodings other than UTF-8 / UTF-16
-- XSD: `xs:import`, `xs:include`, `xs:redefine`, `xs:override`, `xs:notation`,
+- XSD: `xs:include`, `xs:redefine`, `xs:override`, `xs:notation`,
   identity constraints (`xs:key` / `xs:keyref` / `xs:unique`), and
   `substitutionGroup`
 
