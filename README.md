@@ -99,6 +99,8 @@ err = validator.ValidateSchema(xmlDoc, schema)
 - `xs:import` (with optional `schemaLocation`). The CLI and
   `ValidateWithSchemaFile` resolve hints relative to the importing schema's
   directory; library callers can supply a custom `SchemaResolver`
+- `xs:include` (with `schemaLocation`). Uses the same resolver mechanism as
+  `xs:import`
 
 ## What is rejected as unsupported
 
@@ -107,7 +109,7 @@ err = validator.ValidateSchema(xmlDoc, schema)
 - XML 1.0 documents (the declaration must say `version="1.1"`)
 - Missing XML declaration
 - Encodings other than UTF-8 / UTF-16
-- XSD: `xs:include`, `xs:redefine`, `xs:override`, `xs:notation`,
+- XSD: `xs:redefine`, `xs:override`, `xs:notation`,
   identity constraints (`xs:key` / `xs:keyref` / `xs:unique`), and
   `substitutionGroup`
 

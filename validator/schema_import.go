@@ -24,6 +24,38 @@ type importResult struct {
 	imported  *Schema
 }
 
+func parseInclude(el *Element, resolver SchemaResolver, visited map[importKey]bool) (*importResult, error) {
+	loc, _ := el.Attr("schemaLocation")
+	if loc == "" {
+		return nil, fmt.Errorf("xs:include requires a schemaLocation attribute")
+	}
+	if resolver == nil {
+		return nil, fmt.Errorf("xs:include schemaLocation %q requires a schema resolver", loc)
+	}
+	key := importKey{Location: loc}
+	if visited[key] {
+		return &importResult{directive: &Import{SchemaLocation: loc}}, nil
+	}
+	visited[key] = true
+
+	data, err := resolver("", loc)
+	if err != nil {
+		return nil, fmt.Errorf("resolving xs:include %q: %w", loc, err)
+	}
+	if data == nil {
+		return &importResult{directive: &Import{SchemaLocation: loc}}, nil
+	}
+	doc, err := ParseTree(bytes.NewReader(data))
+	if err != nil {
+		return nil, fmt.Errorf("parsing included schema %q: %w", loc, err)
+	}
+	included, err := parseSchemaDoc(doc, resolver, visited)
+	if err != nil {
+		return nil, fmt.Errorf("parsing included schema %q: %w", loc, err)
+	}
+	return &importResult{directive: &Import{SchemaLocation: loc}, imported: included}, nil
+}
+
 func parseImport(el *Element, resolver SchemaResolver, visited map[importKey]bool) (*importResult, error) {
 	ns, _ := el.Attr("namespace")
 	loc, _ := el.Attr("schemaLocation")

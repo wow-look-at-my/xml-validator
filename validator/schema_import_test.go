@@ -269,3 +269,171 @@ func TestSchemaImportCycleKeyWithPipe(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 2, calls, "both imports should resolve despite the ns+|+loc concatenation matching")
 }
+
+func TestSchemaIncludeResolved(t *testing.T) {
+	mainXSD := `<?xml version="1.0"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:include schemaLocation="common.xsd"/>
+  <xs:element name="root">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="ts" type="tsType"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>`
+	commonXSD := `<?xml version="1.0"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:simpleType name="tsType">
+    <xs:restriction base="xs:string">
+      <xs:pattern value="\d{4}-\d{2}-\d{2}"/>
+    </xs:restriction>
+  </xs:simpleType>
+</xs:schema>`
+	resolver := func(_, loc string) ([]byte, error) {
+		if loc == "common.xsd" {
+			return []byte(commonXSD), nil
+		}
+		return nil, fmt.Errorf("unexpected %q", loc)
+	}
+	err := ValidateWithSchemaResolver(
+		[]byte(`<?xml version="1.1"?><root><ts>2024-01-15</ts></root>`),
+		[]byte(mainXSD), resolver)
+	require.NoError(t, err)
+
+	err = ValidateWithSchemaResolver(
+		[]byte(`<?xml version="1.1"?><root><ts>not-a-date</ts></root>`),
+		[]byte(mainXSD), resolver)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "pattern")
+}
+
+func TestSchemaIncludeRequiresSchemaLocation(t *testing.T) {
+	xsd := `<?xml version="1.0"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:include/>
+  <xs:element name="root" type="xs:string"/>
+</xs:schema>`
+	err := schemaValidate(t, `<?xml version="1.1"?><root>val</root>`, xsd)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "schemaLocation")
+}
+
+func TestSchemaIncludeRequiresResolver(t *testing.T) {
+	xsd := `<?xml version="1.0"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:include schemaLocation="other.xsd"/>
+  <xs:element name="root" type="xs:string"/>
+</xs:schema>`
+	err := schemaValidate(t, `<?xml version="1.1"?><root>val</root>`, xsd)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "schema resolver")
+}
+
+func TestSchemaIncludeFromFile(t *testing.T) {
+	dir := t.TempDir()
+	mainPath := filepath.Join(dir, "main.xsd")
+	commonPath := filepath.Join(dir, "common.xsd")
+	xmlPath := filepath.Join(dir, "doc.xml")
+
+	mainXSD := `<?xml version="1.0"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:include schemaLocation="common.xsd"/>
+  <xs:element name="root">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="label" type="labelType"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>`
+	commonXSD := `<?xml version="1.0"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:simpleType name="labelType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="alpha"/>
+      <xs:enumeration value="beta"/>
+    </xs:restriction>
+  </xs:simpleType>
+</xs:schema>`
+	require.NoError(t, os.WriteFile(mainPath, []byte(mainXSD), 0o600))
+	require.NoError(t, os.WriteFile(commonPath, []byte(commonXSD), 0o600))
+	require.NoError(t, os.WriteFile(xmlPath, []byte(`<?xml version="1.1"?><root><label>alpha</label></root>`), 0o600))
+
+	require.NoError(t, ValidateWithSchemaFile(xmlPath, mainPath))
+
+	require.NoError(t, os.WriteFile(xmlPath, []byte(`<?xml version="1.1"?><root><label>gamma</label></root>`), 0o600))
+	err := ValidateWithSchemaFile(xmlPath, mainPath)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "not one of the allowed values")
+}
+
+func TestSchemaIncludeAndImportTogether(t *testing.T) {
+	mainXSD := `<?xml version="1.0"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:include schemaLocation="common.xsd"/>
+  <xs:import namespace="http://other" schemaLocation="other.xsd"/>
+  <xs:element name="root">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="ts" type="tsType"/>
+        <xs:element name="amount" type="moneyType"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>`
+	commonXSD := `<?xml version="1.0"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:simpleType name="tsType">
+    <xs:restriction base="xs:string">
+      <xs:pattern value="\d{4}"/>
+    </xs:restriction>
+  </xs:simpleType>
+</xs:schema>`
+	otherXSD := `<?xml version="1.0"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="http://other">
+  <xs:simpleType name="moneyType">
+    <xs:restriction base="xs:decimal">
+      <xs:minInclusive value="0"/>
+    </xs:restriction>
+  </xs:simpleType>
+</xs:schema>`
+	resolver := func(_, loc string) ([]byte, error) {
+		switch loc {
+		case "common.xsd":
+			return []byte(commonXSD), nil
+		case "other.xsd":
+			return []byte(otherXSD), nil
+		}
+		return nil, fmt.Errorf("unexpected %q", loc)
+	}
+	err := ValidateWithSchemaResolver(
+		[]byte(`<?xml version="1.1"?><root><ts>2024</ts><amount>5.00</amount></root>`),
+		[]byte(mainXSD), resolver)
+	require.NoError(t, err)
+}
+
+func TestSchemaIncludeCycle(t *testing.T) {
+	aXSD := `<?xml version="1.0"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:include schemaLocation="b.xsd"/>
+  <xs:element name="root" type="xs:string"/>
+</xs:schema>`
+	bXSD := `<?xml version="1.0"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:include schemaLocation="a.xsd"/>
+</xs:schema>`
+	resolver := func(_, loc string) ([]byte, error) {
+		switch loc {
+		case "a.xsd":
+			return []byte(aXSD), nil
+		case "b.xsd":
+			return []byte(bXSD), nil
+		}
+		return nil, fmt.Errorf("unexpected %q", loc)
+	}
+	err := ValidateWithSchemaResolver(
+		[]byte(`<?xml version="1.1"?><root>hi</root>`),
+		[]byte(aXSD), resolver)
+	require.NoError(t, err)
+}

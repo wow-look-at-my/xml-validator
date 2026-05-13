@@ -42,7 +42,7 @@ entry points:
 - `ParseTree(io.Reader) (*Document, error)` -- parse to tree without validating.
 - `ParseSchema(*Document) (*Schema, error)` -- parse an XSD tree to a schema model.
 - `ParseSchemaWithResolver(*Document, SchemaResolver) (*Schema, error)` -- as
-  above but follows `xs:import` directives via the resolver.
+  above but follows `xs:import` and `xs:include` directives via the resolver.
 - `ValidateSchema(*Document, *Schema) error` -- validate a parsed tree against a parsed schema.
 
 Errors come back as `*validator.Error` with `Line`, `Col`, and `Message`.
@@ -71,6 +71,7 @@ Errors come back as `*validator.Error` with `Line`, `Col`, and `Message`.
   - xs:anyAttribute wildcard attributes
   - xs:import with optional schemaLocation (loaded via a `SchemaResolver`;
     the CLI and `ValidateWithSchemaFile` wire a filesystem-backed one)
+  - xs:include with schemaLocation (same resolver mechanism as xs:import)
 
 ## Hard Errors (Unsupported)
 
@@ -79,7 +80,6 @@ Errors come back as `*validator.Error` with `Line`, `Col`, and `Message`.
 - XML 1.0 documents
 - Missing XML declaration
 - Encodings other than UTF-8/UTF-16
-- xs:include (schema composition)
 - xs:redefine, xs:override
 - xs:notation
 - Identity constraints (xs:key, xs:keyref, xs:unique)
