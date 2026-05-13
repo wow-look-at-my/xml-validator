@@ -631,6 +631,7 @@ func resolveComplexTypeRefs(ct *ComplexType, s *Schema) {
 			}
 		}
 	}
+	ct.attrGroupRefs = nil
 	if ct.Content != nil {
 		resolveContentModel(ct.Content, s)
 	}
