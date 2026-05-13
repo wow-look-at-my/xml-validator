@@ -39,12 +39,13 @@ type Type interface {
 }
 
 type ComplexType struct {
-	Name         string
-	Mixed        bool
-	Content      ContentModel
-	Attributes   []*AttrDecl
-	AnyAttribute *AnyAttrDecl
-	SimpleText   Type // non-nil for simpleContent
+	Name           string
+	Mixed          bool
+	Content        ContentModel
+	Attributes     []*AttrDecl
+	AnyAttribute   *AnyAttrDecl
+	SimpleText     Type // non-nil for simpleContent
+	attrGroupRefs  []string
 }
 
 func (t *ComplexType) typeName() string { return t.Name }
@@ -127,6 +128,7 @@ type Group struct {
 }
 
 type AttrGroup struct {
-	Name       string
-	Attributes []*AttrDecl
+	Name         string
+	Attributes   []*AttrDecl
+	AnyAttribute *AnyAttrDecl
 }

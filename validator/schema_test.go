@@ -558,6 +558,109 @@ func TestAnyAttributeNamespacedNoWildcardRejected(t *testing.T) {
 <r id="42" xmlns:x="http://x.com" x:id="hello"/>`, xsd, "unexpected attribute")
 }
 
+func TestAnyAttributeViaAttrGroup(t *testing.T) {
+	xsd := `<?xml version="1.1"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:attributeGroup name="extras">
+    <xs:attribute name="id" type="xs:string"/>
+    <xs:anyAttribute namespace="##any" processContents="skip"/>
+  </xs:attributeGroup>
+  <xs:element name="r">
+    <xs:complexType>
+      <xs:attributeGroup ref="extras"/>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>`
+	mustSchemaValid(t, `<?xml version="1.1"?>
+<r id="hello" xmlns:x="http://x.com" x:foo="bar"/>`, xsd)
+}
+
+func TestAnyAttributeViaAttrGroupNamespaceFiltered(t *testing.T) {
+	xsd := `<?xml version="1.1"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:attributeGroup name="extras">
+    <xs:anyAttribute namespace="http://allowed.com" processContents="skip"/>
+  </xs:attributeGroup>
+  <xs:element name="r">
+    <xs:complexType>
+      <xs:attributeGroup ref="extras"/>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>`
+	mustSchemaValid(t, `<?xml version="1.1"?>
+<r xmlns:a="http://allowed.com" a:x="1"/>`, xsd)
+	mustSchemaReject(t, `<?xml version="1.1"?>
+<r xmlns:b="http://other.com" b:x="1"/>`, xsd, "unexpected attribute")
+}
+
+func TestAnyAttributeViaAttrGroupInComplexContent(t *testing.T) {
+	xsd := `<?xml version="1.1"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:attributeGroup name="extras">
+    <xs:anyAttribute namespace="##any" processContents="skip"/>
+  </xs:attributeGroup>
+  <xs:complexType name="base"/>
+  <xs:element name="r">
+    <xs:complexType>
+      <xs:complexContent>
+        <xs:extension base="base">
+          <xs:attributeGroup ref="extras"/>
+        </xs:extension>
+      </xs:complexContent>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>`
+	mustSchemaValid(t, `<?xml version="1.1"?>
+<r xmlns:x="http://x.com" x:foo="bar"/>`, xsd)
+}
+
+func TestAnyAttributeViaAttrGroupInSimpleContent(t *testing.T) {
+	xsd := `<?xml version="1.1"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:attributeGroup name="extras">
+    <xs:anyAttribute namespace="##any" processContents="skip"/>
+  </xs:attributeGroup>
+  <xs:element name="r">
+    <xs:complexType>
+      <xs:simpleContent>
+        <xs:extension base="xs:string">
+          <xs:attributeGroup ref="extras"/>
+        </xs:extension>
+      </xs:simpleContent>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>`
+	mustSchemaValid(t, `<?xml version="1.1"?>
+<r xmlns:x="http://x.com" x:note="yes">hello</r>`, xsd)
+}
+
+func TestAnyAttributeViaAttrGroupReusedSchema(t *testing.T) {
+	xsd := `<?xml version="1.1"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:attributeGroup name="extras">
+    <xs:attribute name="id" type="xs:string"/>
+    <xs:anyAttribute namespace="##any" processContents="skip"/>
+  </xs:attributeGroup>
+  <xs:element name="r">
+    <xs:complexType>
+      <xs:attributeGroup ref="extras"/>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>`
+	schemaDoc, err := ParseTree(strings.NewReader(xsd))
+	require.NoError(t, err)
+	schema, err := ParseSchema(schemaDoc)
+	require.NoError(t, err)
+
+	for i := 0; i < 3; i++ {
+		doc, err := ParseTree(strings.NewReader(`<?xml version="1.1"?>
+<r id="hello" xmlns:x="http://x.com" x:foo="bar"/>`))
+		require.NoError(t, err)
+		err = ValidateSchema(doc, schema)
+		require.NoError(t, err, "validation run %d failed", i+1)
+	}
+}
+
 // --- Tree parser tests ---
 
 func TestTreeParserBasic(t *testing.T) {
