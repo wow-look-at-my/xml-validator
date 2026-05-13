@@ -24,6 +24,42 @@ type importResult struct {
 	imported  *Schema
 }
 
+func parseInclude(el *Element, parentNS string, resolver SchemaResolver, visited map[importKey]bool) (*Schema, error) {
+	loc, _ := el.Attr("schemaLocation")
+	if loc == "" {
+		return nil, fmt.Errorf("xs:include requires a schemaLocation attribute")
+	}
+	if resolver == nil {
+		return nil, fmt.Errorf("xs:include schemaLocation %q requires a schema resolver", loc)
+	}
+	key := importKey{Location: loc}
+	if visited[key] {
+		return nil, nil
+	}
+	visited[key] = true
+
+	data, err := resolver(parentNS, loc)
+	if err != nil {
+		return nil, fmt.Errorf("resolving xs:include %q: %w", loc, err)
+	}
+	if data == nil {
+		return nil, nil
+	}
+	doc, err := ParseTree(bytes.NewReader(data))
+	if err != nil {
+		return nil, fmt.Errorf("parsing included schema %q: %w", loc, err)
+	}
+	included, err := parseSchemaDoc(doc, resolver, visited)
+	if err != nil {
+		return nil, fmt.Errorf("parsing included schema %q: %w", loc, err)
+	}
+	if included.TargetNamespace != "" && included.TargetNamespace != parentNS {
+		return nil, fmt.Errorf("xs:include %q: included schema targetNamespace %q does not match including schema %q",
+			loc, included.TargetNamespace, parentNS)
+	}
+	return included, nil
+}
+
 func parseImport(el *Element, resolver SchemaResolver, visited map[importKey]bool) (*importResult, error) {
 	ns, _ := el.Attr("namespace")
 	loc, _ := el.Attr("schemaLocation")

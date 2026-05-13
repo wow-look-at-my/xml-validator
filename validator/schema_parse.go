@@ -15,11 +15,12 @@ func ParseSchema(doc *Document) (*Schema, error) {
 	return ParseSchemaWithResolver(doc, nil)
 }
 
-// ParseSchemaWithResolver parses an XSD schema tree. Each xs:import directive
-// with a non-empty schemaLocation is loaded via resolver, parsed, and merged
-// into the returned schema. Components from imported schemas are looked up by
-// local name (the same way the validator resolves types in the main schema),
-// so per-namespace name collisions are not supported.
+// ParseSchemaWithResolver parses an XSD schema tree. Each xs:import or
+// xs:include directive with a non-empty schemaLocation is loaded via resolver,
+// parsed, and merged into the returned schema. Components from
+// imported/included schemas are looked up by local name (the same way the
+// validator resolves types in the main schema), so per-namespace name
+// collisions are not supported.
 func ParseSchemaWithResolver(doc *Document, resolver SchemaResolver) (*Schema, error) {
 	visited := make(map[importKey]bool)
 	return parseSchemaDoc(doc, resolver, visited)
@@ -105,7 +106,15 @@ func parseSchemaDoc(doc *Document, resolver SchemaResolver, visited map[importKe
 				}
 			}
 		case "include":
-			return nil, fmt.Errorf("unsupported: xs:include is not supported")
+			included, err := parseInclude(child, s.TargetNamespace, resolver, visited)
+			if err != nil {
+				return nil, err
+			}
+			if included != nil {
+				if err := mergeImportedSchema(s, included); err != nil {
+					return nil, fmt.Errorf("xs:include: %w", err)
+				}
+			}
 		case "redefine", "override":
 			return nil, fmt.Errorf("unsupported: xs:%s is not supported", child.Local)
 		case "notation":
