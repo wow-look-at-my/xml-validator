@@ -413,6 +413,31 @@ func TestSchemaIncludeAndImportTogether(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestSchemaIncludeNamespaceMismatch(t *testing.T) {
+	mainXSD := `<?xml version="1.0"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="http://main">
+  <xs:include schemaLocation="other.xsd"/>
+  <xs:element name="root" type="xs:string"/>
+</xs:schema>`
+	otherXSD := `<?xml version="1.0"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="http://other">
+  <xs:simpleType name="foo">
+    <xs:restriction base="xs:string"/>
+  </xs:simpleType>
+</xs:schema>`
+	resolver := func(_, loc string) ([]byte, error) {
+		if loc == "other.xsd" {
+			return []byte(otherXSD), nil
+		}
+		return nil, fmt.Errorf("unexpected %q", loc)
+	}
+	err := ValidateWithSchemaResolver(
+		[]byte(`<?xml version="1.1"?><root>val</root>`),
+		[]byte(mainXSD), resolver)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "does not match")
+}
+
 func TestSchemaIncludeCycle(t *testing.T) {
 	aXSD := `<?xml version="1.0"?>
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">

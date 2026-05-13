@@ -106,13 +106,13 @@ func parseSchemaDoc(doc *Document, resolver SchemaResolver, visited map[importKe
 				}
 			}
 		case "include":
-			inc, err := parseInclude(child, resolver, visited)
+			included, err := parseInclude(child, s.TargetNamespace, resolver, visited)
 			if err != nil {
 				return nil, err
 			}
-			if inc.imported != nil {
-				if err := mergeImportedSchema(s, inc.imported); err != nil {
-					return nil, err
+			if included != nil {
+				if err := mergeImportedSchema(s, included); err != nil {
+					return nil, fmt.Errorf("xs:include: %w", err)
 				}
 			}
 		case "redefine", "override":
