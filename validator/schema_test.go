@@ -425,7 +425,7 @@ const anyAttrXSD = `<?xml version="1.1" encoding="UTF-8"?>
         <xs:element name="item" minOccurs="0" maxOccurs="unbounded">
           <xs:complexType mixed="true">
             <xs:attribute name="id" type="xs:string"/>
-            <xs:anyAttribute namespace="https://example.com/v" processContents="lax"/>
+            <xs:anyAttribute namespace="https://example.com/v"/>
           </xs:complexType>
         </xs:element>
       </xs:sequence>
@@ -459,7 +459,7 @@ func TestAnyAttributeAny(t *testing.T) {
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
   <xs:element name="r">
     <xs:complexType>
-      <xs:anyAttribute namespace="##any" processContents="skip"/>
+      <xs:anyAttribute namespace="##any"/>
     </xs:complexType>
   </xs:element>
 </xs:schema>`
@@ -474,7 +474,7 @@ func TestAnyAttributeOther(t *testing.T) {
            targetNamespace="http://mine.com">
   <xs:element name="r">
     <xs:complexType>
-      <xs:anyAttribute namespace="##other" processContents="lax"/>
+      <xs:anyAttribute namespace="##other"/>
     </xs:complexType>
   </xs:element>
 </xs:schema>`
@@ -488,7 +488,7 @@ func TestAnyAttributeMultipleNamespaces(t *testing.T) {
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
   <xs:element name="r">
     <xs:complexType>
-      <xs:anyAttribute namespace="http://a.com http://b.com" processContents="skip"/>
+      <xs:anyAttribute namespace="http://a.com http://b.com"/>
     </xs:complexType>
   </xs:element>
 </xs:schema>`
@@ -519,7 +519,7 @@ func TestAnyAttributeDeclaredAttrStillValidated(t *testing.T) {
   <xs:element name="r">
     <xs:complexType>
       <xs:attribute name="id" type="xs:integer" use="required"/>
-      <xs:anyAttribute namespace="##any" processContents="skip"/>
+      <xs:anyAttribute namespace="##any"/>
     </xs:complexType>
   </xs:element>
 </xs:schema>`
@@ -537,7 +537,7 @@ func TestAnyAttributeNamespacedSameLocalName(t *testing.T) {
   <xs:element name="r">
     <xs:complexType>
       <xs:attribute name="id" type="xs:integer"/>
-      <xs:anyAttribute namespace="http://x.com" processContents="skip"/>
+      <xs:anyAttribute namespace="http://x.com"/>
     </xs:complexType>
   </xs:element>
 </xs:schema>`
@@ -563,7 +563,7 @@ func TestAnyAttributeViaAttrGroup(t *testing.T) {
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
   <xs:attributeGroup name="extras">
     <xs:attribute name="id" type="xs:string"/>
-    <xs:anyAttribute namespace="##any" processContents="skip"/>
+    <xs:anyAttribute namespace="##any"/>
   </xs:attributeGroup>
   <xs:element name="r">
     <xs:complexType>
@@ -579,7 +579,7 @@ func TestAnyAttributeViaAttrGroupNamespaceFiltered(t *testing.T) {
 	xsd := `<?xml version="1.1"?>
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
   <xs:attributeGroup name="extras">
-    <xs:anyAttribute namespace="http://allowed.com" processContents="skip"/>
+    <xs:anyAttribute namespace="http://allowed.com"/>
   </xs:attributeGroup>
   <xs:element name="r">
     <xs:complexType>
@@ -597,7 +597,7 @@ func TestAnyAttributeViaAttrGroupInComplexContent(t *testing.T) {
 	xsd := `<?xml version="1.1"?>
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
   <xs:attributeGroup name="extras">
-    <xs:anyAttribute namespace="##any" processContents="skip"/>
+    <xs:anyAttribute namespace="##any"/>
   </xs:attributeGroup>
   <xs:complexType name="base"/>
   <xs:element name="r">
@@ -618,7 +618,7 @@ func TestAnyAttributeViaAttrGroupInSimpleContent(t *testing.T) {
 	xsd := `<?xml version="1.1"?>
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
   <xs:attributeGroup name="extras">
-    <xs:anyAttribute namespace="##any" processContents="skip"/>
+    <xs:anyAttribute namespace="##any"/>
   </xs:attributeGroup>
   <xs:element name="r">
     <xs:complexType>
@@ -639,7 +639,7 @@ func TestAnyAttributeViaAttrGroupReusedSchema(t *testing.T) {
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
   <xs:attributeGroup name="extras">
     <xs:attribute name="id" type="xs:string"/>
-    <xs:anyAttribute namespace="##any" processContents="skip"/>
+    <xs:anyAttribute namespace="##any"/>
   </xs:attributeGroup>
   <xs:element name="r">
     <xs:complexType>

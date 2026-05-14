@@ -60,6 +60,7 @@ func parseSchemaDoc(doc *Document, resolver SchemaResolver, visited map[importKe
 				return nil, fmt.Errorf("parsing element declaration: %w", err)
 			}
 			if ed.Name != "" {
+				ed.Namespace = s.TargetNamespace
 				s.Elements[ed.Name] = ed
 			}
 		case "complexType":
@@ -237,7 +238,11 @@ func parseComplexType(el *Element) (*ComplexType, error) {
 				return nil, err
 			}
 		case "anyAttribute":
-			ct.AnyAttribute = parseAnyAttrDecl(child)
+			aa, err := parseAnyAttrDecl(child)
+			if err != nil {
+				return nil, err
+			}
+			ct.AnyAttribute = aa
 		case "annotation":
 			// skip
 		}
@@ -266,7 +271,11 @@ func parseSimpleContent(el *Element, ct *ComplexType) error {
 					}
 					ct.Attributes = append(ct.Attributes, ad)
 				} else if attr.Local == "anyAttribute" {
-					ct.AnyAttribute = parseAnyAttrDecl(attr)
+					aa, err := parseAnyAttrDecl(attr)
+					if err != nil {
+						return err
+					}
+					ct.AnyAttribute = aa
 				} else if attr.Local == "attributeGroup" {
 					if ref, ok := attr.Attr("ref"); ok {
 						ct.attrGroupRefs = append(ct.attrGroupRefs, stripPrefix(ref))
@@ -290,7 +299,11 @@ func parseSimpleContent(el *Element, ct *ComplexType) error {
 					}
 					ct.Attributes = append(ct.Attributes, ad)
 				} else if facetEl.Local == "anyAttribute" {
-					ct.AnyAttribute = parseAnyAttrDecl(facetEl)
+					aa, err := parseAnyAttrDecl(facetEl)
+					if err != nil {
+						return err
+					}
+					ct.AnyAttribute = aa
 				} else if facetEl.Local == "attributeGroup" {
 					if ref, ok := facetEl.Attr("ref"); ok {
 						ct.attrGroupRefs = append(ct.attrGroupRefs, stripPrefix(ref))
@@ -343,7 +356,11 @@ func parseComplexContent(el *Element, ct *ComplexType) error {
 					}
 					ct.Attributes = append(ct.Attributes, ad)
 				case "anyAttribute":
-					ct.AnyAttribute = parseAnyAttrDecl(inner)
+					aa, err := parseAnyAttrDecl(inner)
+					if err != nil {
+						return err
+					}
+					ct.AnyAttribute = aa
 				case "attributeGroup":
 					if ref, ok := inner.Attr("ref"); ok {
 						ct.attrGroupRefs = append(ct.attrGroupRefs, stripPrefix(ref))
@@ -425,9 +442,12 @@ func parseParticles(el *Element) ([]Particle, error) {
 			ap := &AnyParticle{MinOccurs: 1, MaxOccurs: 1}
 			parseOccurs(child, &ap.MinOccurs, &ap.MaxOccurs)
 			ap.Namespace, _ = child.Attr("namespace")
-			ap.ProcessContents, _ = child.Attr("processContents")
-			if ap.ProcessContents == "" {
-				ap.ProcessContents = "strict"
+			pc, _ := child.Attr("processContents")
+			if pc == "" {
+				pc = "strict"
+			}
+			if err := validateProcessContents(pc); err != nil {
+				return nil, fmt.Errorf("xs:any: %w", err)
 			}
 			items = append(items, ap)
 		case "annotation":
@@ -543,20 +563,44 @@ func parseAttrGroup(el *Element) (*AttrGroup, error) {
 			}
 			ag.Attributes = append(ag.Attributes, ad)
 		case "anyAttribute":
-			ag.AnyAttribute = parseAnyAttrDecl(child)
+			aa, err := parseAnyAttrDecl(child)
+			if err != nil {
+				return nil, err
+			}
+			ag.AnyAttribute = aa
 		}
 	}
 	return ag, nil
 }
 
-func parseAnyAttrDecl(el *Element) *AnyAttrDecl {
+func parseAnyAttrDecl(el *Element) (*AnyAttrDecl, error) {
 	aa := &AnyAttrDecl{}
 	aa.Namespace, _ = el.Attr("namespace")
-	aa.ProcessContents, _ = el.Attr("processContents")
-	if aa.ProcessContents == "" {
-		aa.ProcessContents = "strict"
+	pc, _ := el.Attr("processContents")
+	if pc == "" {
+		pc = "strict"
 	}
-	return aa
+	if err := validateProcessContents(pc); err != nil {
+		return nil, fmt.Errorf("xs:anyAttribute: %w", err)
+	}
+	return aa, nil
+}
+
+// validateProcessContents rejects every wildcard processContents value other
+// than "strict". This validator does not provide a no-validation mode: "skip"
+// disables validation outright, and "lax" disables it for any element whose
+// declaration cannot be located -- both contradict the project's reason for
+// existing. Use "strict" (the default) or do not run the validator.
+func validateProcessContents(pc string) error {
+	if pc == "strict" {
+		return nil
+	}
+	switch pc {
+	case "skip", "lax":
+		return fmt.Errorf(`processContents=%q is not supported: this validator does not provide a partial- or no-validation mode (only "strict" is allowed)`, pc)
+	default:
+		return fmt.Errorf("invalid processContents value %q (only \"strict\" is allowed)", pc)
+	}
 }
 
 func parseOccurs(el *Element, min, max *int) {
@@ -603,112 +647,3 @@ func stripPrefix(name string) string {
 	return name
 }
 
-func resolveSchemaRefs(s *Schema) {
-	for _, ed := range s.Elements {
-		resolveElementType(ed, s)
-	}
-	for _, t := range s.Types {
-		if ct, ok := t.(*ComplexType); ok {
-			resolveComplexTypeRefs(ct, s)
-		}
-	}
-}
-
-func resolveElementType(ed *ElementDecl, s *Schema) {
-	if ed.Type != nil {
-		if ct, ok := ed.Type.(*ComplexType); ok {
-			resolveComplexTypeRefs(ct, s)
-		}
-		return
-	}
-	if ed.TypeName != "" {
-		local := stripPrefix(ed.TypeName)
-		if t, ok := s.Types[local]; ok {
-			ed.Type = t
-		} else if bt := resolveBuiltinType(local); bt != nil {
-			ed.Type = bt
-		}
-	}
-}
-
-func resolveComplexTypeRefs(ct *ComplexType, s *Schema) {
-	for _, ref := range ct.attrGroupRefs {
-		if ag, ok := s.AttrGroups[ref]; ok {
-			ct.Attributes = append(ct.Attributes, ag.Attributes...)
-			if ag.AnyAttribute != nil && ct.AnyAttribute == nil {
-				ct.AnyAttribute = ag.AnyAttribute
-			}
-		}
-	}
-	ct.attrGroupRefs = nil
-	if ct.Content != nil {
-		resolveContentModel(ct.Content, s)
-	}
-	for _, ad := range ct.Attributes {
-		resolveAttrType(ad, s)
-	}
-	if ct.SimpleText != nil {
-		if st, ok := ct.SimpleText.(*SimpleType); ok {
-			resolveSimpleTypeBase(st, s)
-		}
-	}
-}
-
-func resolveContentModel(cm ContentModel, s *Schema) {
-	var items []Particle
-	switch c := cm.(type) {
-	case *Sequence:
-		items = c.Items
-	case *Choice:
-		items = c.Items
-	case *All:
-		items = c.Items
-	}
-	for _, item := range items {
-		switch p := item.(type) {
-		case *ElementDecl:
-			if p.Ref != "" {
-				local := stripPrefix(p.Ref)
-				if ref, ok := s.Elements[local]; ok {
-					p.Name = ref.Name
-					p.TypeName = ref.TypeName
-					p.Type = ref.Type
-					resolveElementType(p, s)
-				}
-			} else {
-				resolveElementType(p, s)
-			}
-		case *Sequence:
-			resolveContentModel(p, s)
-		case *Choice:
-			resolveContentModel(p, s)
-		case *All:
-			resolveContentModel(p, s)
-		}
-	}
-}
-
-func resolveAttrType(ad *AttrDecl, s *Schema) {
-	if ad.Type != nil {
-		return
-	}
-	if ad.TypeName != "" {
-		local := stripPrefix(ad.TypeName)
-		if t, ok := s.Types[local]; ok {
-			ad.Type = t
-		} else if bt := resolveBuiltinType(local); bt != nil {
-			ad.Type = bt
-		}
-	}
-}
-
-func resolveSimpleTypeBase(st *SimpleType, s *Schema) {
-	if st.Base != "" {
-		local := stripPrefix(st.Base)
-		if bt := resolveBuiltinType(local); bt != nil {
-			st.BaseType = bt
-		} else if t, ok := s.Types[local]; ok {
-			st.BaseType = t
-		}
-	}
-}

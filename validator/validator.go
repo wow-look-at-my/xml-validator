@@ -2,20 +2,31 @@ package validator
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 )
 
+// asError converts any error into a *[Error] so the public Validate*
+// entry points always return *Error. If err is already *Error it is
+// returned unchanged; otherwise it is wrapped at line 1, column 1.
+func asError(err error) *Error {
+	if e, ok := err.(*Error); ok {
+		return e
+	}
+	return &Error{Line: 1, Col: 1, Message: err.Error()}
+}
+
 // Validate verifies that the input is a well-formed XML 1.1 document.
 // On failure it returns a *[Error] with the line and column of the problem.
+// Input-level failures (read errors, empty input, unsupported encoding)
+// are reported at line 1, column 1.
 func Validate(r io.Reader) error {
-	runes, enc, err := readInput(r)
+	runes, err := readInput(r)
 	if err != nil {
-		return err
+		return asError(err)
 	}
-	p := newParser(runes, enc)
+	p := newParser(runes)
 	return p.parseDocument()
 }
 
@@ -30,11 +41,11 @@ func Validate(r io.Reader) error {
 func ValidateWithSchema(xml, xsd io.Reader) error {
 	xmlData, err := io.ReadAll(xml)
 	if err != nil {
-		return fmt.Errorf("reading XML input: %w", err)
+		return &Error{Line: 1, Col: 1, Message: "reading XML input: " + err.Error()}
 	}
 	xsdData, err := io.ReadAll(xsd)
 	if err != nil {
-		return fmt.Errorf("reading XSD input: %w", err)
+		return &Error{Line: 1, Col: 1, Message: "reading XSD input: " + err.Error()}
 	}
 	return ValidateWithSchemaBytes(xmlData, xsdData)
 }
@@ -49,11 +60,11 @@ func ValidateWithSchemaBytes(xmlData, xsdData []byte) error {
 // to load any xs:import directives that name a schemaLocation. Passing a nil
 // resolver behaves like [ValidateWithSchemaBytes].
 func ValidateWithSchemaResolver(xmlData, xsdData []byte, resolver SchemaResolver) error {
-	runes, enc, err := readInput(bytes.NewReader(xmlData))
+	runes, err := readInput(bytes.NewReader(xmlData))
 	if err != nil {
-		return err
+		return asError(err)
 	}
-	p := newParser(runes, enc)
+	p := newParser(runes)
 	if err := p.parseDocument(); err != nil {
 		return err
 	}
@@ -82,11 +93,11 @@ func ValidateWithSchemaResolver(xmlData, xsdData []byte, resolver SchemaResolver
 func ValidateWithSchemaFile(xmlPath, xsdPath string) error {
 	xmlData, err := os.ReadFile(xmlPath)
 	if err != nil {
-		return fmt.Errorf("reading XML file: %w", err)
+		return &Error{Line: 1, Col: 1, Message: "reading XML file: " + err.Error()}
 	}
 	xsdData, err := os.ReadFile(xsdPath)
 	if err != nil {
-		return fmt.Errorf("reading XSD file: %w", err)
+		return &Error{Line: 1, Col: 1, Message: "reading XSD file: " + err.Error()}
 	}
 	resolver := FileSchemaResolver(filepath.Dir(xsdPath))
 	return ValidateWithSchemaResolver(xmlData, xsdData, resolver)

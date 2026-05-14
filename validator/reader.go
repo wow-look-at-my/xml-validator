@@ -1,73 +1,56 @@
 package validator
 
 import (
-	"bytes"
-	"encoding/binary"
 	"fmt"
 	"io"
-	"unicode/utf16"
 	"unicode/utf8"
 )
 
-type encoding int
-
-const (
-	encUTF8 encoding = iota
-	encUTF16BE
-	encUTF16LE
-)
-
-func readInput(r io.Reader) ([]rune, encoding, error) {
+func readInput(r io.Reader) ([]rune, error) {
 	raw, err := io.ReadAll(r)
 	if err != nil {
-		return nil, 0, fmt.Errorf("reading input: %w", err)
+		return nil, fmt.Errorf("reading input: %w", err)
 	}
 	if len(raw) == 0 {
-		return nil, 0, fmt.Errorf("empty input")
+		return nil, fmt.Errorf("empty input")
 	}
 
-	enc, raw := detectEncoding(raw)
-	runes, err := decode(raw, enc)
+	if err := rejectNonUTF8(raw); err != nil {
+		return nil, err
+	}
+
+	runes, err := decodeUTF8(raw)
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 
-	runes = normalizeLineEndings(runes)
-	return runes, enc, nil
+	return normalizeLineEndings(runes), nil
 }
 
-func detectEncoding(data []byte) (encoding, []byte) {
+// rejectNonUTF8 rejects any input that begins with a byte-order mark or that
+// matches the UTF-16 leading-NUL heuristic from XML 1.1 appendix F. The
+// validator requires raw UTF-8 with no BOM (per the utf8everywhere
+// recommendation); the BOM is meaningless for UTF-8 and is interpreted by
+// some downstream tools as a literal U+FEFF.
+func rejectNonUTF8(data []byte) error {
 	if len(data) >= 3 && data[0] == 0xEF && data[1] == 0xBB && data[2] == 0xBF {
-		return encUTF8, data[3:]
-	}
-	if len(data) >= 2 && data[0] == 0xFE && data[1] == 0xFF {
-		return encUTF16BE, data[2:]
-	}
-	if len(data) >= 2 && data[0] == 0xFF && data[1] == 0xFE {
-		return encUTF16LE, data[2:]
+		return fmt.Errorf("unsupported encoding: input begins with a UTF-8 BOM (raw UTF-8 only)")
 	}
 	if len(data) >= 2 {
+		if data[0] == 0xFE && data[1] == 0xFF {
+			return fmt.Errorf("unsupported encoding: UTF-16 BE (only UTF-8 is supported)")
+		}
+		if data[0] == 0xFF && data[1] == 0xFE {
+			return fmt.Errorf("unsupported encoding: UTF-16 LE (only UTF-8 is supported)")
+		}
 		if data[0] == 0x00 && data[1] == 0x3C {
-			return encUTF16BE, data
+			return fmt.Errorf("unsupported encoding: input looks like UTF-16 BE (only UTF-8 is supported)")
 		}
 		if data[0] == 0x3C && data[1] == 0x00 {
-			return encUTF16LE, data
+			return fmt.Errorf("unsupported encoding: input looks like UTF-16 LE (only UTF-8 is supported)")
 		}
 	}
-	return encUTF8, data
-}
-
-func decode(data []byte, enc encoding) ([]rune, error) {
-	switch enc {
-	case encUTF8:
-		return decodeUTF8(data)
-	case encUTF16BE:
-		return decodeUTF16(data, binary.BigEndian)
-	case encUTF16LE:
-		return decodeUTF16(data, binary.LittleEndian)
-	default:
-		return nil, fmt.Errorf("unsupported encoding")
-	}
+	return nil
 }
 
 func decodeUTF8(data []byte) ([]rune, error) {
@@ -80,45 +63,6 @@ func decodeUTF8(data []byte) ([]rune, error) {
 		runes = append(runes, r)
 		data = data[size:]
 	}
-	return runes, nil
-}
-
-func decodeUTF16(data []byte, order binary.ByteOrder) ([]rune, error) {
-	if len(data)%2 != 0 {
-		return nil, fmt.Errorf("invalid UTF-16: odd number of bytes")
-	}
-
-	reader := bytes.NewReader(data)
-	units := make([]uint16, 0, len(data)/2)
-	for reader.Len() >= 2 {
-		var u uint16
-		if err := binary.Read(reader, order, &u); err != nil {
-			break
-		}
-		units = append(units, u)
-	}
-
-	runes := make([]rune, 0, len(units))
-	for i := 0; i < len(units); {
-		u := units[i]
-		if u >= 0xD800 && u <= 0xDBFF {
-			if i+1 >= len(units) {
-				return nil, fmt.Errorf("invalid UTF-16: truncated surrogate pair")
-			}
-			low := units[i+1]
-			if low < 0xDC00 || low > 0xDFFF {
-				return nil, fmt.Errorf("invalid UTF-16: invalid low surrogate U+%04X", low)
-			}
-			runes = append(runes, utf16.DecodeRune(rune(u), rune(low)))
-			i += 2
-		} else if u >= 0xDC00 && u <= 0xDFFF {
-			return nil, fmt.Errorf("invalid UTF-16: unexpected low surrogate U+%04X", u)
-		} else {
-			runes = append(runes, rune(u))
-			i++
-		}
-	}
-
 	return runes, nil
 }
 

@@ -6,8 +6,7 @@
 //
 // Use [Validate] to verify that an input stream is a well-formed XML 1.1
 // document. Anything the validator does not recognise (DOCTYPE, undeclared
-// general entities, XML 1.0, encodings other than UTF-8/UTF-16) is a hard
-// error:
+// general entities, XML 1.0, encodings other than UTF-8) is a hard error:
 //
 //	err := validator.Validate(strings.NewReader(`<?xml version="1.1"?><r/>`))
 //	if err != nil {

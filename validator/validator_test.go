@@ -218,7 +218,7 @@ func TestRejectBadEncodingName(t *testing.T) {
 }
 
 func TestRejectEncodingMismatch(t *testing.T) {
-	mustReject(t, `<?xml version="1.1" encoding="ISO-8859-1"?><r/>`, "conflicts with detected UTF-8")
+	mustReject(t, `<?xml version="1.1" encoding="ISO-8859-1"?><r/>`, "only UTF-8 is supported")
 }
 
 func TestRejectStandaloneBad(t *testing.T) {
@@ -347,33 +347,88 @@ func TestNameCharClassifications(t *testing.T) {
 
 }
 
-// --- UTF-16 encoding tests ---
+// --- Encoding rejection tests ---
 
-func TestUTF16BEWithBOM(t *testing.T) {
-	utf16be := []byte{0xFE, 0xFF}	// BOM
+func TestUTF16BEBOMRejected(t *testing.T) {
+	utf16be := []byte{0xFE, 0xFF} // BOM
 	xmlStr := `<?xml version="1.1"?><r/>`
 	for _, r := range xmlStr {
 		utf16be = append(utf16be, byte(r>>8), byte(r))
 	}
 	err := Validate(strings.NewReader(string(utf16be)))
-	require.Nil(t, err)
-
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "UTF-16")
 }
 
-func TestUTF16LEWithBOM(t *testing.T) {
-	utf16le := []byte{0xFF, 0xFE}	// BOM
+func TestUTF16LEBOMRejected(t *testing.T) {
+	utf16le := []byte{0xFF, 0xFE} // BOM
 	xmlStr := `<?xml version="1.1"?><r/>`
 	for _, r := range xmlStr {
 		utf16le = append(utf16le, byte(r), byte(r>>8))
 	}
 	err := Validate(strings.NewReader(string(utf16le)))
-	require.Nil(t, err)
-
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "UTF-16")
 }
 
-func TestUTF8WithBOM(t *testing.T) {
+func TestUTF16BENoBOMRejected(t *testing.T) {
+	// UTF-16 BE with no BOM but the leading-NUL heuristic should still be
+	// detected and rejected.
+	xmlStr := `<?xml version="1.1"?><r/>`
+	var buf []byte
+	for _, r := range xmlStr {
+		buf = append(buf, byte(r>>8), byte(r))
+	}
+	err := Validate(strings.NewReader(string(buf)))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "UTF-16")
+}
+
+func TestUTF16LENoBOMRejected(t *testing.T) {
+	xmlStr := `<?xml version="1.1"?><r/>`
+	var buf []byte
+	for _, r := range xmlStr {
+		buf = append(buf, byte(r), byte(r>>8))
+	}
+	err := Validate(strings.NewReader(string(buf)))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "UTF-16")
+}
+
+func TestEncodingDeclarationUTF16Rejected(t *testing.T) {
+	err := Validate(strings.NewReader(`<?xml version="1.1" encoding="UTF-16"?><r/>`))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "UTF-8")
+}
+
+// TestValidateReturnsErrorType asserts the documented contract that Validate
+// always returns *[Error] -- including for input-level failures (empty input,
+// unsupported encoding, BOM) that occur before any XML parsing.
+func TestValidateReturnsErrorType(t *testing.T) {
+	cases := []struct {
+		name  string
+		input string
+	}{
+		{"empty input", ""},
+		{"utf-8 BOM", "\xEF\xBB\xBF<?xml version=\"1.1\"?><r/>"},
+		{"utf-16 BOM", "\xFF\xFE<?xml version=\"1.1\"?><r/>"},
+		{"bad version", `<?xml version="1.0"?><r/>`},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := Validate(strings.NewReader(tc.input))
+			require.Error(t, err)
+			_, ok := err.(*Error)
+			assert.True(t, ok, "expected *validator.Error, got %T", err)
+		})
+	}
+}
+
+func TestUTF8BOMRejected(t *testing.T) {
 	input := "\xEF\xBB\xBF" + `<?xml version="1.1"?><r/>`
-	mustValidate(t, input)
+	err := Validate(strings.NewReader(input))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "BOM")
 }
 
 func TestComplexDocument(t *testing.T) {

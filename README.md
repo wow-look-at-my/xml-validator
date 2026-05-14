@@ -91,7 +91,7 @@ err = validator.ValidateSchema(xmlDoc, schema)
 - Elements, attributes, text content, CDATA sections, comments, PIs
 - Character references (`&#N;`, `&#xN;`) and the five predefined entities
 - Namespaces in XML 1.1
-- UTF-8 and UTF-16 (BE/LE) with BOM detection
+- UTF-8 only, no BOM (per [utf8everywhere](https://utf8everywhere.org/))
 - XML 1.1 line-ending normalization (`#x85`, `#x2028`)
 - XSD schema validation: complex/simple types, facets, sequence/choice/all,
   attribute groups, simpleContent/complexContent, `xs:any`, and 35+ built-in
@@ -108,10 +108,15 @@ err = validator.ValidateSchema(xmlDoc, schema)
 - General entity references beyond the five predefined ones
 - XML 1.0 documents (the declaration must say `version="1.1"`)
 - Missing XML declaration
-- Encodings other than UTF-8 / UTF-16
+- Encodings other than UTF-8 (UTF-16 inputs and UTF-8 BOMs are rejected)
 - XSD: `xs:redefine`, `xs:override`, `xs:notation`,
   identity constraints (`xs:key` / `xs:keyref` / `xs:unique`), and
   `substitutionGroup`
+- `processContents="skip"` and `processContents="lax"` on `xs:any` /
+  `xs:anyAttribute` -- only `strict` (the default) is allowed. This tool
+  always validates: every element matched by a wildcard must have a global
+  declaration the validator can find. If you do not want validation, do
+  not run the validator.
 
 ## Build & test
 

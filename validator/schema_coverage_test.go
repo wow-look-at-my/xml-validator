@@ -459,17 +459,21 @@ func TestSchemaMultipleChoiceOccurrences(t *testing.T) {
 }
 
 func TestSchemaAnyParticle(t *testing.T) {
+	// strict xs:any: each matched element must have a global declaration.
 	xsd := `<?xml version="1.0"?>
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:element name="anything" type="xs:string"/>
+  <xs:element name="other" type="xs:string"/>
   <xs:element name="root">
     <xs:complexType>
       <xs:sequence>
-        <xs:any processContents="skip" minOccurs="0" maxOccurs="unbounded"/>
+        <xs:any minOccurs="0" maxOccurs="unbounded"/>
       </xs:sequence>
     </xs:complexType>
   </xs:element>
 </xs:schema>`
 	mustSchemaValid(t, `<?xml version="1.1"?><root><anything>here</anything><other/></root>`, xsd)
+	mustSchemaReject(t, `<?xml version="1.1"?><root><undeclared/></root>`, xsd, "no declaration found")
 }
 
 func TestSchemaEmptyContent(t *testing.T) {

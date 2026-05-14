@@ -6,21 +6,19 @@ import (
 )
 
 type parser struct {
-	input       []rune
-	pos         int
-	line        int
-	col         int
-	detectedEnc encoding
-	nsStack     []map[string]string
+	input   []rune
+	pos     int
+	line    int
+	col     int
+	nsStack []map[string]string
 }
 
-func newParser(input []rune, enc encoding) *parser {
+func newParser(input []rune) *parser {
 	return &parser{
-		input:       input,
-		pos:         0,
-		line:        1,
-		col:         1,
-		detectedEnc: enc,
+		input: input,
+		pos:   0,
+		line:  1,
+		col:   1,
 	}
 }
 
@@ -232,16 +230,8 @@ func (p *parser) validateEncName(name string) error {
 }
 
 func (p *parser) validateEncodingMatch(declared string) error {
-	upper := strings.ToUpper(declared)
-	switch p.detectedEnc {
-	case encUTF8:
-		if upper != "UTF-8" {
-			return p.errorf("encoding declaration %q conflicts with detected UTF-8 encoding", declared)
-		}
-	case encUTF16BE, encUTF16LE:
-		if upper != "UTF-16" && upper != "UTF-16BE" && upper != "UTF-16LE" {
-			return p.errorf("encoding declaration %q conflicts with detected UTF-16 encoding", declared)
-		}
+	if strings.ToUpper(declared) != "UTF-8" {
+		return p.errorf("unsupported encoding %q (only UTF-8 is supported)", declared)
 	}
 	return nil
 }

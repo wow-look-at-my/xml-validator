@@ -8,7 +8,7 @@ import (
 )
 
 func ParseTree(r io.Reader) (*Document, error) {
-	runes, _, err := readInput(r)
+	runes, err := readInput(r)
 	if err != nil {
 		return nil, err
 	}

@@ -23,7 +23,7 @@ Supported features:
   - Comments and processing instructions
   - Character references and predefined entity references
   - Namespace validation (Namespaces in XML 1.1)
-  - UTF-8 and UTF-16 encodings with BOM detection
+  - UTF-8 encoding (no BOM)
   - XML 1.1 line ending normalization
   - XSD schema validation (--schema)
 
@@ -32,7 +32,9 @@ Anything unsupported is a hard error:
   - General entity references (beyond the 5 predefined)
   - XML 1.0 documents (version must be "1.1")
   - Missing XML declaration
-  - Encodings other than UTF-8 and UTF-16`,
+  - Encodings other than UTF-8 (UTF-16 inputs and UTF-8 BOMs are rejected)
+  - processContents="skip" or "lax" on xs:any / xs:anyAttribute -- only
+    "strict" (the default) is allowed`,
 	Args:         cobra.MaximumNArgs(1),
 	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
