@@ -346,6 +346,7 @@ func (sv *schemaValidator) validateAll(el *Element, children []*Element, all *Al
 					if anyCount[ap] > maxOccurs {
 						sv.addError(child, "xs:any wildcard in element %q exceeded maxOccurs %d", el.Local, maxOccurs)
 					}
+					sv.processWildcardElement(ap, child)
 					matched = true
 					break
 				}
@@ -506,6 +507,7 @@ func (sv *schemaValidator) matchAny(children []*Element, ap *AnyParticle) (int, 
 		if !sv.anyMatchesElement(ap, children[count]) {
 			break
 		}
+		sv.processWildcardElement(ap, children[count])
 		count++
 	}
 	if count < ap.MinOccurs {
@@ -516,6 +518,48 @@ func (sv *schemaValidator) matchAny(children []*Element, ap *AnyParticle) (int, 
 
 func (sv *schemaValidator) anyMatchesElement(ap *AnyParticle, el *Element) bool {
 	return sv.wildcardMatchesNS(ap.Namespace, el.Namespace)
+}
+
+// processWildcardElement applies XML Schema processContents semantics to an
+// element that has already been confirmed to match a wildcard's namespace
+// constraint. For "lax", the element is validated against its global
+// declaration if one can be located; otherwise it is silently accepted.
+// For "strict", failure to locate a declaration is an error. For "skip"
+// (or any other value), no validation is performed.
+func (sv *schemaValidator) processWildcardElement(ap *AnyParticle, el *Element) {
+	switch ap.ProcessContents {
+	case "skip":
+		return
+	case "strict":
+		decl := sv.lookupGlobalElement(el.Local, el.Namespace)
+		if decl == nil {
+			sv.addError(el, "strict xs:any wildcard: no declaration found for element {%s}%s", el.Namespace, el.Local)
+			return
+		}
+		sv.validateElement(el, decl)
+	default:
+		// "lax" (and the unspecified default per the parser, which writes
+		// "strict" when absent, so this branch is only reached for "lax").
+		if decl := sv.lookupGlobalElement(el.Local, el.Namespace); decl != nil {
+			sv.validateElement(el, decl)
+		}
+	}
+}
+
+// lookupGlobalElement returns the global element declaration matching the
+// given local name and namespace, or nil if none is found. The schema's
+// Elements map is keyed by local name only (xs:import / xs:include flatten
+// names across namespaces); we use the Namespace field recorded at parse time
+// to disambiguate.
+func (sv *schemaValidator) lookupGlobalElement(local, ns string) *ElementDecl {
+	decl, ok := sv.schema.Elements[local]
+	if !ok {
+		return nil
+	}
+	if decl.Namespace != ns {
+		return nil
+	}
+	return decl
 }
 
 func (sv *schemaValidator) wildcardMatchesNS(constraint, ns string) bool {

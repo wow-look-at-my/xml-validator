@@ -24,6 +24,7 @@ type Import struct {
 
 type ElementDecl struct {
 	Name      string
+	Namespace string // target namespace of the schema declaring this global element
 	TypeName  string
 	Type      Type
 	MinOccurs int

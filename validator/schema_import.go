@@ -57,6 +57,15 @@ func parseInclude(el *Element, parentNS string, resolver SchemaResolver, visited
 		return nil, fmt.Errorf("xs:include %q: included schema targetNamespace %q does not match including schema %q",
 			loc, included.TargetNamespace, parentNS)
 	}
+	// Chameleon include: an included schema with no targetNamespace adopts the
+	// including schema's namespace. Re-stamp global element declarations so
+	// wildcard lookups can find them under the correct namespace.
+	if included.TargetNamespace == "" && parentNS != "" {
+		for _, ed := range included.Elements {
+			ed.Namespace = parentNS
+		}
+		included.TargetNamespace = parentNS
+	}
 	return included, nil
 }
 

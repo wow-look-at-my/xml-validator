@@ -60,6 +60,7 @@ func parseSchemaDoc(doc *Document, resolver SchemaResolver, visited map[importKe
 				return nil, fmt.Errorf("parsing element declaration: %w", err)
 			}
 			if ed.Name != "" {
+				ed.Namespace = s.TargetNamespace
 				s.Elements[ed.Name] = ed
 			}
 		case "complexType":
