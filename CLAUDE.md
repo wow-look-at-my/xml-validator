@@ -75,6 +75,7 @@ Errors come back as `*validator.Error` with `Line`, `Col`, and `Message`.
 
 ## Hard Errors (Unsupported)
 
+- `processContents="skip"` and `processContents="lax"` on `xs:any` / `xs:anyAttribute` -- only `strict` (the default) is allowed; this validator does not offer a no- or partial-validation mode
 - DOCTYPE declarations
 - General entity references (beyond the 5 predefined)
 - XML 1.0 documents

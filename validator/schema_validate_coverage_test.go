@@ -279,18 +279,23 @@ func TestSchemaAllChildExceedsMaxOccurs(t *testing.T) {
 }
 
 func TestSchemaAllAnyExceedsMaxOccurs(t *testing.T) {
+	// strict xs:any requires matched elements to have global declarations,
+	// so the test elements are declared at the top level. The wildcard's
+	// maxOccurs=1 bound is what we are testing here.
 	xsd := `<?xml version="1.0"?>
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:element name="a" type="xs:string"/>
+  <xs:element name="b" type="xs:string"/>
   <xs:element name="root">
     <xs:complexType>
       <xs:all>
         <xs:element name="name" type="xs:string"/>
-        <xs:any namespace="##any" processContents="skip" minOccurs="0" maxOccurs="1"/>
+        <xs:any namespace="##local" minOccurs="0" maxOccurs="1"/>
       </xs:all>
     </xs:complexType>
   </xs:element>
 </xs:schema>`
-	mustSchemaReject(t, `<?xml version="1.1"?><root xmlns:e="http://x"><name>hi</name><e:a/><e:b/></root>`, xsd, "exceeded maxOccurs")
+	mustSchemaReject(t, `<?xml version="1.1"?><root><name>hi</name><a/><b/></root>`, xsd, "exceeded maxOccurs")
 }
 
 func TestSchemaMatchAnyMinOccurs(t *testing.T) {
@@ -299,7 +304,7 @@ func TestSchemaMatchAnyMinOccurs(t *testing.T) {
   <xs:element name="root">
     <xs:complexType>
       <xs:sequence>
-        <xs:any namespace="##any" processContents="skip" minOccurs="2" maxOccurs="unbounded"/>
+        <xs:any namespace="##any" minOccurs="2" maxOccurs="unbounded"/>
       </xs:sequence>
     </xs:complexType>
   </xs:element>
@@ -344,13 +349,17 @@ func TestSchemaMatchChoiceMinOccurs(t *testing.T) {
 }
 
 func TestSchemaWildcardTargetNamespaceToken(t *testing.T) {
+	// Exercises the multi-token namespace constraint with ##targetNamespace.
+	// Under strict, the matched element must have a global declaration in the
+	// target namespace -- so "more" is declared at the top level.
 	xsd := `<?xml version="1.0"?>
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="https://example.com/main" xmlns:tns="https://example.com/main" elementFormDefault="qualified">
+  <xs:element name="more" type="xs:string"/>
   <xs:element name="root">
     <xs:complexType>
       <xs:sequence>
         <xs:element name="x" type="xs:string"/>
-        <xs:any namespace="##targetNamespace http://other" processContents="skip" minOccurs="0" maxOccurs="unbounded"/>
+        <xs:any namespace="##targetNamespace http://other" minOccurs="0" maxOccurs="unbounded"/>
       </xs:sequence>
     </xs:complexType>
   </xs:element>
@@ -543,7 +552,7 @@ func TestSchemaAttrAnyAttrUnmatched(t *testing.T) {
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
   <xs:element name="root">
     <xs:complexType>
-      <xs:anyAttribute namespace="http://allowed" processContents="skip"/>
+      <xs:anyAttribute namespace="http://allowed"/>
     </xs:complexType>
   </xs:element>
 </xs:schema>`

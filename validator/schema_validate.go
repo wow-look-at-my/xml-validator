@@ -520,30 +520,18 @@ func (sv *schemaValidator) anyMatchesElement(ap *AnyParticle, el *Element) bool 
 	return sv.wildcardMatchesNS(ap.Namespace, el.Namespace)
 }
 
-// processWildcardElement applies XML Schema processContents semantics to an
-// element that has already been confirmed to match a wildcard's namespace
-// constraint. For "lax", the element is validated against its global
-// declaration if one can be located; otherwise it is silently accepted.
-// For "strict", failure to locate a declaration is an error. For "skip"
-// (and any unrecognised value -- the parser writes "strict" when the
-// attribute is absent, so reaching the default branch means the schema
-// supplied a non-spec value), no validation is performed.
-func (sv *schemaValidator) processWildcardElement(ap *AnyParticle, el *Element) {
-	switch ap.ProcessContents {
-	case "lax":
-		if decl := sv.lookupGlobalElement(el.Local, el.Namespace); decl != nil {
-			sv.validateElement(el, decl)
-		}
-	case "strict":
-		decl := sv.lookupGlobalElement(el.Local, el.Namespace)
-		if decl == nil {
-			sv.addError(el, "strict xs:any wildcard: no declaration found for element {%s}%s", el.Namespace, el.Local)
-			return
-		}
-		sv.validateElement(el, decl)
-	default:
+// processWildcardElement validates an element matched by an xs:any wildcard
+// against its global declaration. The matching element MUST have a global
+// declaration the validator can find -- the schema parser rejects every
+// processContents value other than "strict", so there is no "silently
+// accept" branch.
+func (sv *schemaValidator) processWildcardElement(_ *AnyParticle, el *Element) {
+	decl := sv.lookupGlobalElement(el.Local, el.Namespace)
+	if decl == nil {
+		sv.addError(el, "xs:any wildcard: no declaration found for element {%s}%s", el.Namespace, el.Local)
 		return
 	}
+	sv.validateElement(el, decl)
 }
 
 // lookupGlobalElement returns the global element declaration matching the

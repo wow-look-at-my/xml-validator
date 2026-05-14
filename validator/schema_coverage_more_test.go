@@ -197,7 +197,7 @@ func TestSchemaComplexContentExtensionAnyAttribute(t *testing.T) {
           <xs:sequence>
             <xs:element name="payload" type="xs:string"/>
           </xs:sequence>
-          <xs:anyAttribute namespace="##any" processContents="skip"/>
+          <xs:anyAttribute namespace="##any"/>
         </xs:extension>
       </xs:complexContent>
     </xs:complexType>
@@ -249,7 +249,7 @@ func TestSchemaSimpleContentRestrictionAnyAttribute(t *testing.T) {
     <xs:complexType>
       <xs:simpleContent>
         <xs:restriction base="xs:string">
-          <xs:anyAttribute namespace="##any" processContents="skip"/>
+          <xs:anyAttribute namespace="##any"/>
         </xs:restriction>
       </xs:simpleContent>
     </xs:complexType>
@@ -305,7 +305,7 @@ func TestSchemaSimpleContentExtensionAnyAttribute(t *testing.T) {
     <xs:complexType>
       <xs:simpleContent>
         <xs:extension base="xs:string">
-          <xs:anyAttribute namespace="##any" processContents="skip"/>
+          <xs:anyAttribute namespace="##any"/>
         </xs:extension>
       </xs:simpleContent>
     </xs:complexType>
@@ -500,7 +500,7 @@ func TestSchemaIncludeChameleon(t *testing.T) {
   <xs:element name="root">
     <xs:complexType>
       <xs:sequence>
-        <xs:any namespace="https://example.com/main" processContents="lax" minOccurs="0" maxOccurs="unbounded"/>
+        <xs:any namespace="https://example.com/main" minOccurs="0" maxOccurs="unbounded"/>
       </xs:sequence>
     </xs:complexType>
   </xs:element>

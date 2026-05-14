@@ -32,7 +32,9 @@ Anything unsupported is a hard error:
   - General entity references (beyond the 5 predefined)
   - XML 1.0 documents (version must be "1.1")
   - Missing XML declaration
-  - Encodings other than UTF-8 (UTF-16 inputs and UTF-8 BOMs are rejected)`,
+  - Encodings other than UTF-8 (UTF-16 inputs and UTF-8 BOMs are rejected)
+  - processContents="skip" or "lax" on xs:any / xs:anyAttribute -- only
+    "strict" (the default) is allowed`,
 	Args:         cobra.MaximumNArgs(1),
 	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, args []string) error {

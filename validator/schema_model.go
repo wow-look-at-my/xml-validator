@@ -96,16 +96,19 @@ func (*Choice) particle()      {}
 func (*All) particle()         {}
 func (*AnyParticle) particle() {}
 
+// AnyParticle is an xs:any wildcard. processContents is always "strict";
+// the schema parser rejects any other value because this validator does not
+// support a no-validation mode.
 type AnyParticle struct {
-	Namespace       string
-	ProcessContents string
-	MinOccurs       int
-	MaxOccurs       int
+	Namespace string
+	MinOccurs int
+	MaxOccurs int
 }
 
+// AnyAttrDecl is an xs:anyAttribute wildcard. processContents is always
+// "strict" -- see [AnyParticle] for the rationale.
 type AnyAttrDecl struct {
-	Namespace       string
-	ProcessContents string
+	Namespace string
 }
 
 type AttrDecl struct {

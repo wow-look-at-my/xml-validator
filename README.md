@@ -112,6 +112,11 @@ err = validator.ValidateSchema(xmlDoc, schema)
 - XSD: `xs:redefine`, `xs:override`, `xs:notation`,
   identity constraints (`xs:key` / `xs:keyref` / `xs:unique`), and
   `substitutionGroup`
+- `processContents="skip"` and `processContents="lax"` on `xs:any` /
+  `xs:anyAttribute` -- only `strict` (the default) is allowed. This tool
+  always validates: every element matched by a wildcard must have a global
+  declaration the validator can find. If you do not want validation, do
+  not run the validator.
 
 ## Build & test
 
