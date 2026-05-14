@@ -11,11 +11,11 @@ import (
 // Validate verifies that the input is a well-formed XML 1.1 document.
 // On failure it returns a *[Error] with the line and column of the problem.
 func Validate(r io.Reader) error {
-	runes, enc, err := readInput(r)
+	runes, err := readInput(r)
 	if err != nil {
 		return err
 	}
-	p := newParser(runes, enc)
+	p := newParser(runes)
 	return p.parseDocument()
 }
 
@@ -49,11 +49,11 @@ func ValidateWithSchemaBytes(xmlData, xsdData []byte) error {
 // to load any xs:import directives that name a schemaLocation. Passing a nil
 // resolver behaves like [ValidateWithSchemaBytes].
 func ValidateWithSchemaResolver(xmlData, xsdData []byte, resolver SchemaResolver) error {
-	runes, enc, err := readInput(bytes.NewReader(xmlData))
+	runes, err := readInput(bytes.NewReader(xmlData))
 	if err != nil {
 		return err
 	}
-	p := newParser(runes, enc)
+	p := newParser(runes)
 	if err := p.parseDocument(); err != nil {
 		return err
 	}

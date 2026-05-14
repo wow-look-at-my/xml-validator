@@ -1,59 +1,12 @@
 package validator
 
 import (
-	"encoding/binary"
 	"strings"
 	"testing"
 
 	"github.com/wow-look-at-my/testify/assert"
 	"github.com/wow-look-at-my/testify/require"
 )
-
-func TestUTF16OddBytes(t *testing.T) {
-	// odd number of bytes is malformed
-	data := []byte{0xFF, 0xFE, 0x3C, 0x00, 0x72}
-	err := Validate(strings.NewReader(string(data)))
-	require.Error(t, err)
-}
-
-func TestUTF16TruncatedSurrogate(t *testing.T) {
-	// BOM + high surrogate with nothing after it
-	var buf []byte
-	buf = append(buf, 0xFF, 0xFE)            // UTF-16LE BOM
-	buf = append(buf, 0x00, 0xD8)            // high surrogate, missing low half
-	err := Validate(strings.NewReader(string(buf)))
-	require.Error(t, err)
-}
-
-func TestUTF16InvalidLowSurrogate(t *testing.T) {
-	var buf []byte
-	buf = append(buf, 0xFF, 0xFE)             // UTF-16LE BOM
-	buf = append(buf, 0x00, 0xD8, 0x00, 0x00) // high surrogate followed by non-low-surrogate
-	err := Validate(strings.NewReader(string(buf)))
-	require.Error(t, err)
-}
-
-func TestUTF16UnexpectedLowSurrogate(t *testing.T) {
-	var buf []byte
-	buf = append(buf, 0xFE, 0xFF) // UTF-16BE BOM
-	buf = append(buf, 0xDC, 0x00) // bare low surrogate
-	err := Validate(strings.NewReader(string(buf)))
-	require.Error(t, err)
-}
-
-func TestUTF16BEBOM(t *testing.T) {
-	// well-formed BE doc
-	src := []rune(`<?xml version="1.1" encoding="UTF-16"?><r/>`)
-	var buf []byte
-	buf = append(buf, 0xFE, 0xFF) // BE BOM
-	for _, r := range src {
-		var two [2]byte
-		binary.BigEndian.PutUint16(two[:], uint16(r))
-		buf = append(buf, two[:]...)
-	}
-	err := Validate(strings.NewReader(string(buf)))
-	require.NoError(t, err)
-}
 
 func TestParseXMLDeclMissingVersion(t *testing.T) {
 	err := Validate(strings.NewReader(`<?xml encoding="UTF-8"?><r/>`))
@@ -168,11 +121,6 @@ func TestParseAttrUniquenessNSExpanded(t *testing.T) {
 	err := Validate(strings.NewReader(`<?xml version="1.1"?><r xmlns:a="http://x" xmlns:b="http://x" a:k="1" b:k="2"/>`))
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "conflicts")
-}
-
-func TestEncodingDeclMismatch(t *testing.T) {
-	err := Validate(strings.NewReader(`<?xml version="1.1" encoding="UTF-16"?><r/>`))
-	require.Error(t, err)
 }
 
 func TestParseInvalidContent(t *testing.T) {
