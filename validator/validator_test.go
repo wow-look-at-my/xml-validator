@@ -401,6 +401,29 @@ func TestEncodingDeclarationUTF16Rejected(t *testing.T) {
 	assert.Contains(t, err.Error(), "UTF-8")
 }
 
+// TestValidateReturnsErrorType asserts the documented contract that Validate
+// always returns *[Error] -- including for input-level failures (empty input,
+// unsupported encoding, BOM) that occur before any XML parsing.
+func TestValidateReturnsErrorType(t *testing.T) {
+	cases := []struct {
+		name  string
+		input string
+	}{
+		{"empty input", ""},
+		{"utf-8 BOM", "\xEF\xBB\xBF<?xml version=\"1.1\"?><r/>"},
+		{"utf-16 BOM", "\xFF\xFE<?xml version=\"1.1\"?><r/>"},
+		{"bad version", `<?xml version="1.0"?><r/>`},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := Validate(strings.NewReader(tc.input))
+			require.Error(t, err)
+			_, ok := err.(*Error)
+			assert.True(t, ok, "expected *validator.Error, got %T", err)
+		})
+	}
+}
+
 func TestUTF8BOMRejected(t *testing.T) {
 	input := "\xEF\xBB\xBF" + `<?xml version="1.1"?><r/>`
 	err := Validate(strings.NewReader(input))

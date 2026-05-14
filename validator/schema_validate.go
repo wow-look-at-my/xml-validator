@@ -525,11 +525,15 @@ func (sv *schemaValidator) anyMatchesElement(ap *AnyParticle, el *Element) bool 
 // constraint. For "lax", the element is validated against its global
 // declaration if one can be located; otherwise it is silently accepted.
 // For "strict", failure to locate a declaration is an error. For "skip"
-// (or any other value), no validation is performed.
+// (and any unrecognised value -- the parser writes "strict" when the
+// attribute is absent, so reaching the default branch means the schema
+// supplied a non-spec value), no validation is performed.
 func (sv *schemaValidator) processWildcardElement(ap *AnyParticle, el *Element) {
 	switch ap.ProcessContents {
-	case "skip":
-		return
+	case "lax":
+		if decl := sv.lookupGlobalElement(el.Local, el.Namespace); decl != nil {
+			sv.validateElement(el, decl)
+		}
 	case "strict":
 		decl := sv.lookupGlobalElement(el.Local, el.Namespace)
 		if decl == nil {
@@ -538,11 +542,7 @@ func (sv *schemaValidator) processWildcardElement(ap *AnyParticle, el *Element) 
 		}
 		sv.validateElement(el, decl)
 	default:
-		// "lax" (and the unspecified default per the parser, which writes
-		// "strict" when absent, so this branch is only reached for "lax").
-		if decl := sv.lookupGlobalElement(el.Local, el.Namespace); decl != nil {
-			sv.validateElement(el, decl)
-		}
+		return
 	}
 }
 
