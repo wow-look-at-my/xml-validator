@@ -105,4 +105,7 @@ Errors come back as `*validator.Error` with `Line`, `Col`, and `Message`.
 - `validator/schema_parse.go` -- XSD file parser (document tree to schema model)
 - `validator/schema_import.go` -- `SchemaResolver` and `xs:import` handling
 - `validator/schema_validate.go` -- schema validation engine
-- `action.yml` -- composite GitHub Action (build with caching + run, one file per invocation)
+- `action.yml` -- composite GitHub Action (build with caching + run). The
+  cache-key, build, and validation steps run as TypeScript (tsc-checked, Node)
+  via `wow-look-at-my/actions@typescript#latest` instead of inline shell, so the
+  logic stays portable across runner OSes; the validator is invoked once per file.

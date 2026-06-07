@@ -6,7 +6,7 @@ branding:
 
 inputs:
   files:
-    description: 'Space-separated files or glob patterns to validate. When omitted, auto-discovers all *.xml files in the workspace.'
+    description: 'Space-separated files or glob patterns to validate. When omitted, auto-discovers every *.xml file in the workspace.'
     required: false
     default: ''
   schema:
@@ -27,66 +27,128 @@ runs:
         go-version-file: '${{ github.action_path }}/go.mod'
         cache: false
 
+    # Logic lives in TypeScript (validated with tsc, run on Node) via the org's
+    # reusable typescript action -- no hand-written, non-portable shell.
     - name: Compute cache key
       id: cache-key
-      shell: bash
-      run: |
-        HASH=$(find "${{ github.action_path }}" -type f \( -name '*.go' -o -name 'go.sum' -o -name 'go.mod' \) | sort | xargs sha256sum | sha256sum | cut -d' ' -f1)
-        echo "hash=${HASH}" >> "$GITHUB_OUTPUT"
+      uses: wow-look-at-my/actions@typescript#latest
+      env:
+        ACTION_DIR: ${{ github.action_path }}
+      with:
+        script: |
+          const nodeCrypto = require('crypto');
+          const actionDir = process.env.ACTION_DIR ?? '';
+
+          const include = (name: string): boolean =>
+            name.endsWith('.go') || name === 'go.mod' || name === 'go.sum';
+
+          const sources: string[] = [];
+          const walk = (dir: string): void => {
+            for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+              const full = path.join(dir, entry.name);
+              if (entry.isDirectory()) {
+                walk(full);
+              } else if (entry.isFile() && include(entry.name)) {
+                sources.push(full);
+              }
+            }
+          };
+          walk(actionDir);
+          sources.sort();
+
+          const hash = nodeCrypto.createHash('sha256');
+          for (const file of sources) {
+            hash.update(path.relative(actionDir, file));
+            hash.update('\0');
+            hash.update(fs.readFileSync(file));
+            hash.update('\0');
+          }
+          const digest: string = hash.digest('hex');
+          core.info(`Hashed ${sources.length} Go source file(s)`);
+          return digest;
 
     - name: Cache xml-validator binary
       id: cache
       uses: actions/cache@v4
       with:
         path: ${{ runner.tool_cache }}/xml-validator/bin
-        key: xml-validator-${{ runner.os }}-${{ runner.arch }}-${{ steps.cache-key.outputs.hash }}
+        key: xml-validator-${{ runner.os }}-${{ runner.arch }}-${{ fromJSON(steps.cache-key.outputs.result) }}
 
     - name: Build xml-validator
       if: steps.cache.outputs.cache-hit != 'true'
-      shell: bash
-      working-directory: ${{ github.action_path }}
-      run: |
-        mkdir -p "${{ runner.tool_cache }}/xml-validator/bin"
-        go build -o "${{ runner.tool_cache }}/xml-validator/bin/xml-validator" .
+      uses: wow-look-at-my/actions@typescript#latest
+      env:
+        ACTION_DIR: ${{ github.action_path }}
+      with:
+        script: |
+          const actionDir = process.env.ACTION_DIR ?? '';
+          const binName = process.platform === 'win32' ? 'xml-validator.exe' : 'xml-validator';
+          const binDir = path.join(runner.tool_cache, 'xml-validator', 'bin');
+          await io.mkdirP(binDir);
+          await exec.exec('go', ['build', '-o', path.join(binDir, binName), '.'], { cwd: actionDir });
 
     - name: Run xml-validator
-      shell: bash
+      uses: wow-look-at-my/actions@typescript#latest
       env:
-        INPUT_FILES: ${{ inputs.files }}
-        INPUT_SCHEMA: ${{ inputs.schema }}
-        INPUT_ARGS: ${{ inputs.args }}
-        VALIDATOR_BIN: ${{ runner.tool_cache }}/xml-validator/bin/xml-validator
-      run: |
-        BASE=("$VALIDATOR_BIN")
-        if [ -n "$INPUT_SCHEMA" ]; then
-          BASE+=(--schema "$INPUT_SCHEMA")
-        fi
-        # shellcheck disable=SC2206
-        EXTRA=(${INPUT_ARGS})
+        XMLV_FILES: ${{ inputs.files }}
+        XMLV_SCHEMA: ${{ inputs.schema }}
+        XMLV_ARGS: ${{ inputs.args }}
+      with:
+        script: |
+          const binName = process.platform === 'win32' ? 'xml-validator.exe' : 'xml-validator';
+          const bin = path.join(runner.tool_cache, 'xml-validator', 'bin', binName);
 
-        if [ -n "$INPUT_FILES" ]; then
-          # shellcheck disable=SC2206
-          FILES=(${INPUT_FILES})
-        else
-          mapfile -t FILES < <(
-            find . -name .git -prune -o -name node_modules -prune -o \
-              -name '*.xml' -print | sort
-          )
-          if [ ${#FILES[@]} -eq 0 ]; then
-            echo "No XML files found"
-            exit 0
-          fi
-          echo "Auto-discovered ${#FILES[@]} XML file(s)"
-        fi
+          const filesInput = (process.env.XMLV_FILES ?? '').trim();
+          const schema = (process.env.XMLV_SCHEMA ?? '').trim();
+          const extraArgs = (process.env.XMLV_ARGS ?? '').trim();
 
-        # xml-validator takes a single file per invocation, so loop over them
-        # and aggregate the exit status instead of failing on the first error.
-        rc=0
-        for f in "${FILES[@]}"; do
-          echo "::group::xml-validator $f"
-          if ! "${BASE[@]}" "${EXTRA[@]}" "$f"; then
-            rc=1
-          fi
-          echo "::endgroup::"
-        done
-        exit $rc
+          const base: string[] = [];
+          if (schema) base.push('--schema', schema);
+          const extra = extraArgs ? extraArgs.split(/\s+/) : [];
+
+          const discover = (): string[] => {
+            const out: string[] = [];
+            const skip = new Set(['.git', 'node_modules']);
+            const walk = (dir: string): void => {
+              for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+                if (entry.isDirectory()) {
+                  if (!skip.has(entry.name)) walk(path.join(dir, entry.name));
+                } else if (entry.isFile() && entry.name.toLowerCase().endsWith('.xml')) {
+                  out.push(path.join(dir, entry.name));
+                }
+              }
+            };
+            walk('.');
+            return out.sort();
+          };
+
+          let files: string[];
+          if (filesInput) {
+            files = [];
+            for (const token of filesInput.split(/\s+/)) {
+              if (/[*?[]/.test(token)) {
+                files.push(...fs.globSync(token));
+              } else {
+                files.push(token);
+              }
+            }
+          } else {
+            files = discover();
+            if (files.length === 0) {
+              core.info('No XML files found');
+              return;
+            }
+            core.info(`Auto-discovered ${files.length} XML file(s)`);
+          }
+
+          let failed = 0;
+          for (const file of files) {
+            core.startGroup(`xml-validator ${file}`);
+            const code = await exec.exec(bin, [...base, ...extra, file], { ignoreReturnCode: true });
+            if (code !== 0) failed++;
+            core.endGroup();
+          }
+
+          if (failed > 0) {
+            core.setFailed(`${failed} of ${files.length} file(s) failed validation`);
+          }
