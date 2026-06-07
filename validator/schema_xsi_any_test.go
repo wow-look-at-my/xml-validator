@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/wow-look-at-my/testify/assert"
-	"github.com/wow-look-at-my/testify/require"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSchemaXSIAttributesAccepted(t *testing.T) {
@@ -82,9 +82,9 @@ func TestSchemaAnyNamespaceTargetNamespace(t *testing.T) {
 func TestWildcardMatchesNS(t *testing.T) {
 	sv := &schemaValidator{schema: &Schema{TargetNamespace: "http://example.com/tns"}}
 	cases := []struct {
-		constraint string
-		ns         string
-		want       bool
+		constraint	string
+		ns		string
+		want		bool
 	}{
 		{"##any", "http://x", true},
 		{"##any", "", true},

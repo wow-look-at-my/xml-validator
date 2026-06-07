@@ -118,6 +118,48 @@ err = validator.ValidateSchema(xmlDoc, schema)
   declaration the validator can find. If you do not want validation, do
   not run the validator.
 
+## GitHub Action
+
+Use `wow-look-at-my/xml-validator` as a GitHub Action to validate XML files in
+CI. The action builds the tool with caching (subsequent runs skip the build)
+and runs it once per file.
+
+### Zero-config (recommended)
+
+With no inputs, the action auto-discovers every `*.xml` file in the workspace
+and checks each one for XML 1.1 well-formedness:
+
+```yaml
+- uses: wow-look-at-my/xml-validator@v1
+```
+
+### Validate against an XSD schema
+
+Point `schema` at an XSD to validate every file against it:
+
+```yaml
+- uses: wow-look-at-my/xml-validator@v1
+  with:
+    schema: 'schema.xsd'
+```
+
+### Explicit files
+
+```yaml
+- uses: wow-look-at-my/xml-validator@v1
+  with:
+    files: 'doc.xml config.xml'
+    schema: 'schema.xsd'
+```
+
+### Inputs
+
+| Input | Required | Description |
+|-------|----------|-------------|
+| `files` | No | Space-separated files or glob patterns to validate. When omitted, auto-discovers every `*.xml` file in the workspace. |
+| `schema` | No | Path to an XSD schema to validate every file against. When omitted, only XML 1.1 well-formedness is checked. |
+| `args` | No | Additional CLI arguments passed to each invocation. |
+
 ## Build & test
 
 ```bash
