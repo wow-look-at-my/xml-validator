@@ -105,3 +105,4 @@ Errors come back as `*validator.Error` with `Line`, `Col`, and `Message`.
 - `validator/schema_parse.go` -- XSD file parser (document tree to schema model)
 - `validator/schema_import.go` -- `SchemaResolver` and `xs:import` handling
 - `validator/schema_validate.go` -- schema validation engine
+- `action.yml` -- composite GitHub Action (build with caching + run, one file per invocation)

@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/wow-look-at-my/testify/assert"
-	"github.com/wow-look-at-my/testify/require"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestValidateWithSchemaIOReader(t *testing.T) {
@@ -387,22 +387,6 @@ func TestSchemaResolveSimpleTypeBaseChain(t *testing.T) {
 	mustSchemaValid(t, `<?xml version="1.1"?><root>abc</root>`, xsd)
 	mustSchemaReject(t, `<?xml version="1.1"?><root>abcd</root>`, xsd, "maxLength")
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 func TestSchemaImportMultipleNoLocation(t *testing.T) {
 	// xs:import without a schemaLocation is accepted without a resolver.

@@ -1,0 +1,92 @@
+name: 'Validate XML'
+description: 'Build (with caching) and run xml-validator to check XML files for well-formedness and against an XSD schema'
+branding:
+  icon: 'check-circle'
+  color: 'green'
+
+inputs:
+  files:
+    description: 'Space-separated files or glob patterns to validate. When omitted, auto-discovers all *.xml files in the workspace.'
+    required: false
+    default: ''
+  schema:
+    description: 'Path to an XSD schema to validate every file against. When omitted, only XML 1.1 well-formedness is checked.'
+    required: false
+    default: ''
+  args:
+    description: 'Additional CLI arguments passed to each invocation.'
+    required: false
+    default: ''
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Go
+      uses: actions/setup-go@v5
+      with:
+        go-version-file: '${{ github.action_path }}/go.mod'
+        cache: false
+
+    - name: Compute cache key
+      id: cache-key
+      shell: bash
+      run: |
+        HASH=$(find "${{ github.action_path }}" -type f \( -name '*.go' -o -name 'go.sum' -o -name 'go.mod' \) | sort | xargs sha256sum | sha256sum | cut -d' ' -f1)
+        echo "hash=${HASH}" >> "$GITHUB_OUTPUT"
+
+    - name: Cache xml-validator binary
+      id: cache
+      uses: actions/cache@v4
+      with:
+        path: ${{ runner.tool_cache }}/xml-validator/bin
+        key: xml-validator-${{ runner.os }}-${{ runner.arch }}-${{ steps.cache-key.outputs.hash }}
+
+    - name: Build xml-validator
+      if: steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      working-directory: ${{ github.action_path }}
+      run: |
+        mkdir -p "${{ runner.tool_cache }}/xml-validator/bin"
+        go build -o "${{ runner.tool_cache }}/xml-validator/bin/xml-validator" .
+
+    - name: Run xml-validator
+      shell: bash
+      env:
+        INPUT_FILES: ${{ inputs.files }}
+        INPUT_SCHEMA: ${{ inputs.schema }}
+        INPUT_ARGS: ${{ inputs.args }}
+        VALIDATOR_BIN: ${{ runner.tool_cache }}/xml-validator/bin/xml-validator
+      run: |
+        BASE=("$VALIDATOR_BIN")
+        if [ -n "$INPUT_SCHEMA" ]; then
+          BASE+=(--schema "$INPUT_SCHEMA")
+        fi
+        # shellcheck disable=SC2206
+        EXTRA=(${INPUT_ARGS})
+
+        if [ -n "$INPUT_FILES" ]; then
+          # shellcheck disable=SC2206
+          FILES=(${INPUT_FILES})
+        else
+          mapfile -t FILES < <(
+            find . -name .git -prune -o -name node_modules -prune -o \
+              -name '*.xml' -print | sort
+          )
+          if [ ${#FILES[@]} -eq 0 ]; then
+            echo "No XML files found"
+            exit 0
+          fi
+          echo "Auto-discovered ${#FILES[@]} XML file(s)"
+        fi
+
+        # xml-validator takes a single file per invocation, so loop over them
+        # and aggregate the exit status instead of failing on the first error.
+        rc=0
+        for f in "${FILES[@]}"; do
+          echo "::group::xml-validator $f"
+          if ! "${BASE[@]}" "${EXTRA[@]}" "$f"; then
+            rc=1
+          fi
+          echo "::endgroup::"
+        done
+        exit $rc

@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/wow-look-at-my/testify/assert"
-	"github.com/wow-look-at-my/testify/require"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // --- Builtin type coverage ---
@@ -713,4 +713,3 @@ func TestSchemaInvalidRoot(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "expected xs:schema")
 }
-

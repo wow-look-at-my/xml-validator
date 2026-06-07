@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/wow-look-at-my/testify/assert"
-	"github.com/wow-look-at-my/testify/require"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSchemaGroupChoiceContent(t *testing.T) {
@@ -610,11 +610,11 @@ func TestSchemaBuiltinBase64Binary(t *testing.T) {
 
 func TestSchemaBuiltinIntegerRanges(t *testing.T) {
 	for _, tc := range []struct {
-		name    string
-		typ     string
-		good    string
-		bad     string
-		wantErr string
+		name	string
+		typ	string
+		good	string
+		bad	string
+		wantErr	string
 	}{
 		{"byte", "xs:byte", "127", "128", "out of range"},
 		{"short", "xs:short", "32767", "32768", "out of range"},

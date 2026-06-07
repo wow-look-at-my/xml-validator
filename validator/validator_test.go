@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 	"testing"
-	"github.com/wow-look-at-my/testify/assert"
-	"github.com/wow-look-at-my/testify/require"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func mustValidate(t *testing.T, input string) {
@@ -350,7 +350,7 @@ func TestNameCharClassifications(t *testing.T) {
 // --- Encoding rejection tests ---
 
 func TestUTF16BEBOMRejected(t *testing.T) {
-	utf16be := []byte{0xFE, 0xFF} // BOM
+	utf16be := []byte{0xFE, 0xFF}	// BOM
 	xmlStr := `<?xml version="1.1"?><r/>`
 	for _, r := range xmlStr {
 		utf16be = append(utf16be, byte(r>>8), byte(r))
@@ -361,7 +361,7 @@ func TestUTF16BEBOMRejected(t *testing.T) {
 }
 
 func TestUTF16LEBOMRejected(t *testing.T) {
-	utf16le := []byte{0xFF, 0xFE} // BOM
+	utf16le := []byte{0xFF, 0xFE}	// BOM
 	xmlStr := `<?xml version="1.1"?><r/>`
 	for _, r := range xmlStr {
 		utf16le = append(utf16le, byte(r), byte(r>>8))
@@ -406,8 +406,8 @@ func TestEncodingDeclarationUTF16Rejected(t *testing.T) {
 // unsupported encoding, BOM) that occur before any XML parsing.
 func TestValidateReturnsErrorType(t *testing.T) {
 	cases := []struct {
-		name  string
-		input string
+		name	string
+		input	string
 	}{
 		{"empty input", ""},
 		{"utf-8 BOM", "\xEF\xBB\xBF<?xml version=\"1.1\"?><r/>"},
