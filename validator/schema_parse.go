@@ -646,4 +646,3 @@ func stripPrefix(name string) string {
 	}
 	return name
 }
-
