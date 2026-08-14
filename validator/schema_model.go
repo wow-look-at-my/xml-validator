@@ -40,13 +40,13 @@ type Type interface {
 }
 
 type ComplexType struct {
-	Name           string
-	Mixed          bool
-	Content        ContentModel
-	Attributes     []*AttrDecl
-	AnyAttribute   *AnyAttrDecl
-	SimpleText     Type // non-nil for simpleContent
-	attrGroupRefs  []string
+	Name          string
+	Mixed         bool
+	Content       ContentModel
+	Attributes    []*AttrDecl
+	AnyAttribute  *AnyAttrDecl
+	SimpleText    Type // non-nil for simpleContent
+	attrGroupRefs []string
 }
 
 func (t *ComplexType) typeName() string { return t.Name }
@@ -112,13 +112,13 @@ type AnyAttrDecl struct {
 }
 
 type AttrDecl struct {
-	Name    string
+	Name     string
 	TypeName string
-	Type    Type
-	Use     string // required, optional, prohibited
-	Default string
-	Fixed   string
-	Ref     string
+	Type     Type
+	Use      string // required, optional, prohibited
+	Default  string
+	Fixed    string
+	Ref      string
 }
 
 type Facet struct {
