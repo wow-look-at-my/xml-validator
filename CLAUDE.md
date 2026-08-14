@@ -47,6 +47,10 @@ entry points:
 
 Errors come back as `*validator.Error` with `Line`, `Col`, and `Message`.
 
+Tree nodes carry positions too: `Element` and `Attr` both have `Line` and `Col`. A consumer reporting a problem with an
+attribute's value points at that attribute, not at the element that owns it -- on a multi-attribute element those are
+different places.
+
 ## Supported
 
 - XML 1.1 declaration (required)

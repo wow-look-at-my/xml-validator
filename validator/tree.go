@@ -30,14 +30,6 @@ func (tp *treeParser) peek() rune {
 	return tp.input[tp.pos]
 }
 
-func (tp *treeParser) peekAt(offset int) rune {
-	i := tp.pos + offset
-	if i >= len(tp.input) || i < 0 {
-		return 0
-	}
-	return tp.input[i]
-}
-
 func (tp *treeParser) advance() rune {
 	if tp.pos >= len(tp.input) {
 		return 0
@@ -179,6 +171,7 @@ func (tp *treeParser) parseElement(parentNS map[string]string) (*Element, error)
 
 	var rawAttrs []struct {
 		name, value string
+		line, col   int
 	}
 	for {
 		before := tp.pos
@@ -186,6 +179,7 @@ func (tp *treeParser) parseElement(parentNS map[string]string) (*Element, error)
 		if tp.eof() || tp.peek() == '>' || tp.peek() == '/' {
 			break
 		}
+		aline, acol := tp.line, tp.col
 		aname := tp.parseName()
 		if aname == "" {
 			tp.pos = before
@@ -204,7 +198,10 @@ func (tp *treeParser) parseElement(parentNS map[string]string) (*Element, error)
 		} else if strings.HasPrefix(aname, "xmlns:") {
 			nsScope[aname[6:]] = val
 		}
-		rawAttrs = append(rawAttrs, struct{ name, value string }{aname, val})
+		rawAttrs = append(rawAttrs, struct {
+			name, value string
+			line, col   int
+		}{aname, val, aline, acol})
 	}
 
 	var attrs []Attr
@@ -212,7 +209,7 @@ func (tp *treeParser) parseElement(parentNS map[string]string) (*Element, error)
 		if ra.name == "xmlns" || strings.HasPrefix(ra.name, "xmlns:") {
 			continue
 		}
-		a := Attr{Name: ra.name, Value: ra.value}
+		a := Attr{Name: ra.name, Value: ra.value, Line: ra.line, Col: ra.col}
 		if idx := strings.Index(ra.name, ":"); idx >= 0 {
 			a.Prefix = ra.name[:idx]
 			a.Local = ra.name[idx+1:]
