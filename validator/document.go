@@ -23,6 +23,12 @@ type Attr struct {
 	Local     string
 	Prefix    string
 	Value     string
+	// Line and Col locate the attribute's name in the source. Without them a
+	// consumer reporting a problem with an attribute's value can only point at
+	// the element that owns it, which on a multi-attribute element is the wrong
+	// place to look.
+	Line int
+	Col  int
 }
 
 type CharData struct {
