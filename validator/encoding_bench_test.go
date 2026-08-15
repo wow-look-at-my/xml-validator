@@ -90,16 +90,28 @@ func benchForms(payload []byte) map[string][]byte {
 	}
 }
 
+// Every form carries the SAME payload, and MB/s is per payload byte, which
+// answers "I have these bytes, what is the cheapest way to carry them".
+//
+// The documents differ in size because that is what an encoding does, so the
+// per-payload-byte rate mixes two effects: how fast the parser reads this
+// form, and how much of it there is. ns/doc-byte separates them -- it is flat
+// across forms that need no references and rises with the ones that do.
+func report(b *testing.B, doc []byte) {
+	b.SetBytes(int64(benchPayloadSize))
+	b.ReportMetric(float64(len(doc))/float64(benchPayloadSize), "x-size")
+	b.ReportMetric(float64(b.Elapsed().Nanoseconds())/float64(b.N)/float64(len(doc)), "ns/doc-byte")
+}
+
 // Well-formedness only: what the CLI does with no schema.
 func BenchmarkValidateBinary(b *testing.B) {
 	for name, doc := range benchForms(binaryPayload()) {
 		b.Run(name, func(b *testing.B) {
 			b.SetBytes(int64(benchPayloadSize))
-			b.ReportMetric(float64(len(doc))/float64(benchPayloadSize), "x-size")
 			for b.Loop() {
 				require.NoError(b, Validate(bytes.NewReader(doc)))
-
 			}
+			report(b, doc)
 		})
 	}
 }
@@ -110,11 +122,10 @@ func BenchmarkValidateSparseNulText(b *testing.B) {
 	for name, doc := range benchForms(textPayload(512)) {
 		b.Run(name, func(b *testing.B) {
 			b.SetBytes(int64(benchPayloadSize))
-			b.ReportMetric(float64(len(doc))/float64(benchPayloadSize), "x-size")
 			for b.Loop() {
 				require.NoError(b, Validate(bytes.NewReader(doc)))
-
 			}
+			report(b, doc)
 		})
 	}
 }
@@ -131,10 +142,10 @@ func BenchmarkValidateNoReferences(b *testing.B) {
 	for name, doc := range benchForms(payload) {
 		b.Run(name, func(b *testing.B) {
 			b.SetBytes(int64(benchPayloadSize))
-			b.ReportMetric(float64(len(doc))/float64(benchPayloadSize), "x-size")
 			for b.Loop() {
 				require.NoError(b, Validate(bytes.NewReader(doc)))
 			}
+			report(b, doc)
 		})
 	}
 }
