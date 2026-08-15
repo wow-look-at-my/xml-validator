@@ -174,6 +174,9 @@ different places.
 - `validator/schema_parse.go` -- XSD file parser (document tree to schema model)
 - `validator/schema_parse_particles.go` -- the content-model particles: sequence,
   choice, all, group ref, and the wildcard
+- `validator/schema_parse_simple.go` -- simple types, facets, list, union
+- `validator/schema_identity.go` -- xs:key, xs:keyref, xs:unique, and the XPath
+  subset they select with
 - `validator/schema_import.go` -- `SchemaResolver` and `xs:import` handling
 - `validator/schema_qname.go` -- namespace-keyed lookup of global declarations
 - `validator/schema_resolve.go` -- ref and type resolution over a parsed schema
