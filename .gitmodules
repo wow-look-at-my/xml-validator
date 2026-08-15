@@ -14,17 +14,27 @@
 ; fetch fails with "expected 'packfile'". Shallow plus sparse is the recipe
 ; that works.
 
+; `ignore = dirty` on all three: fetching LFS blobs rewrites files in the
+; working tree, and one file upstream (transformers/model_doc/eomt_architecture.png)
+; is committed as real bytes under a path .gitattributes marks as LFS, so
+; git-lfs rewrites it to a pointer on every checkout and the tree never comes
+; back clean. These are read-only data mirrors -- nothing here is ours to
+; commit. A moved gitlink is still reported, which is the part that matters.
+
 [submodule "corpus/images"]
 	path = corpus/images
 	url = https://huggingface.co/datasets/huggingface/documentation-images
 	shallow = true
+	ignore = dirty
 
 [submodule "corpus/rosetta-code"]
 	path = corpus/rosetta-code
 	url = https://huggingface.co/datasets/christopher/rosetta-code
 	shallow = true
+	ignore = dirty
 
 [submodule "corpus/wikipedia"]
 	path = corpus/wikipedia
 	url = https://huggingface.co/datasets/wikimedia/wikipedia
 	shallow = true
+	ignore = dirty
