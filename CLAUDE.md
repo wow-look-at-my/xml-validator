@@ -92,6 +92,12 @@ different places.
     A length facet counts characters, and octets for `xs:hexBinary` and
     `xs:base64Binary` -- never the bytes of the UTF-8 encoding. A facet value
     that is not a non-negative integer is an error, not a length of 0
+    An attribute value and element text take the same path, so every facet
+    constrains both. A restriction of a restriction enforces the facets it
+    inherits as well as the ones it states, and on a list the length facets
+    count items rather than characters
+  - `xs:list` and `xs:union` with an `itemType`/`memberTypes` attribute or with
+    inline `xs:simpleType` members; each item or member carries its own facets
   - minOccurs/maxOccurs enforcement
   - xs:any wildcard particles
   - xs:anyAttribute wildcard attributes
@@ -115,8 +121,13 @@ different places.
 - Encodings other than UTF-8 and ISO-8859-1 (UTF-16 inputs and BOMs are rejected; any other encoding declaration is rejected by name)
 - xs:redefine, xs:override
 - xs:notation
-- Identity constraints (xs:key, xs:keyref, xs:unique)
+- Identity constraints (xs:key, xs:keyref, xs:unique), and any other
+  unrecognized child of an `xs:element` -- an ignored constraint reported
+  "schema validated" on a document with duplicate keys and dangling references
 - Type substitution (substitutionGroup)
+- An `xs:list` with no item type and an `xs:union` with no members -- both used
+  to accept every value
+- A simple type that derives from itself
 
 ## Project Structure
 
@@ -141,6 +152,7 @@ different places.
 - `validator/schema_qname.go` -- namespace-keyed lookup of global declarations
 - `validator/schema_resolve.go` -- ref and type resolution over a parsed schema
 - `validator/schema_derive.go` -- group-ref expansion and complexContent derivation
+- `validator/schema_value.go` -- simple-value validation (facets, list, union) shared by element text and attribute values
 - `validator/schema_validate.go` -- schema validation engine
 - `validator/roundtrip_nul_test.go` -- parse/emit/reparse roundtrips for `&#0;`
   and for a payload carrying every byte value 0..255

@@ -101,6 +101,9 @@ err = validator.ValidateSchema(xmlDoc, schema)
 - XSD schema validation: complex/simple types, facets, sequence/choice/all,
   attribute groups, simpleContent/complexContent, `xs:any`, and 35+ built-in
   types
+- Facets constrain attribute values and element text alike, and a derived
+  simple type enforces the facets it inherits from its base. A violation on an
+  attribute is reported at that attribute's own line and column
 - Global `xs:attribute` declarations and `xs:attribute ref=`. Attributes match
   on namespace and local name together, so a qualified attribute from an
   imported vocabulary is type-checked rather than assumed valid

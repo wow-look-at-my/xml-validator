@@ -155,6 +155,13 @@ func parseElementDecl(el *Element) (*ElementDecl, error) {
 	ed.Default, _ = el.Attr("default")
 	ed.Fixed, _ = el.Attr("fixed")
 
+	// A substitution group lets another element stand in for this one. Nothing
+	// here implements that, and accepting the attribute validated the document
+	// against the declaration it names instead of the one that replaced it.
+	if head, ok := el.Attr("substitutionGroup"); ok {
+		return nil, fmt.Errorf("unsupported: substitutionGroup=%q on element %q is not supported", head, ed.Name)
+	}
+
 	if v, ok := el.Attr("nillable"); ok && v == "true" {
 		ed.Nillable = true
 	}
@@ -196,6 +203,13 @@ func parseElementDecl(el *Element) (*ElementDecl, error) {
 			ed.Type = st
 		case "annotation":
 			// skip
+		case "key", "keyref", "unique":
+			// An identity constraint states a rule this engine cannot check.
+			// Parsing the element and dropping it reported "schema validated"
+			// on a document with duplicate keys and dangling references.
+			return nil, fmt.Errorf("unsupported: identity constraint xs:%s on element %q is not supported", child.Local, ed.Name)
+		default:
+			return nil, fmt.Errorf("unsupported schema element xs:%s inside xs:element %q", child.Local, ed.Name)
 		}
 	}
 
@@ -555,11 +569,35 @@ func parseSimpleType(el *Element) (*SimpleType, error) {
 			}
 		case "list":
 			itemType, _ := child.Attr("itemType")
-			st.List = &SimpleType{Base: itemType}
+			inline, err := parseInlineSimpleType(child)
+			if err != nil {
+				return nil, err
+			}
+			switch {
+			case inline != nil:
+				st.List = inline
+			case itemType != "":
+				st.List = &SimpleType{Base: itemType}
+			default:
+				return nil, fmt.Errorf("xs:list requires an itemType attribute or an inline xs:simpleType")
+			}
 		case "union":
 			memberTypes, _ := child.Attr("memberTypes")
 			for _, mt := range strings.Fields(memberTypes) {
 				st.Union = append(st.Union, &SimpleType{Base: mt})
+			}
+			for _, member := range child.ChildElements() {
+				if member.Namespace != xsdNS || member.Local != "simpleType" {
+					continue
+				}
+				m, err := parseSimpleType(member)
+				if err != nil {
+					return nil, err
+				}
+				st.Union = append(st.Union, m)
+			}
+			if len(st.Union) == 0 {
+				return nil, fmt.Errorf("xs:union requires a memberTypes attribute or inline xs:simpleType members")
 			}
 		case "annotation":
 			// skip
@@ -567,6 +605,17 @@ func parseSimpleType(el *Element) (*SimpleType, error) {
 	}
 
 	return st, nil
+}
+
+// parseInlineSimpleType returns the xs:simpleType written inside an xs:list or
+// an xs:union member, or nil when the type is named by an attribute instead.
+func parseInlineSimpleType(el *Element) (*SimpleType, error) {
+	for _, child := range el.ChildElements() {
+		if child.Namespace == xsdNS && child.Local == "simpleType" {
+			return parseSimpleType(child)
+		}
+	}
+	return nil, nil
 }
 
 func parseGroup(el *Element) (*Group, error) {

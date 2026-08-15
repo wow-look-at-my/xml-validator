@@ -20,8 +20,12 @@ func ValidateSchema(doc *Document, schema *Schema) error {
 }
 
 func (sv *schemaValidator) addError(el *Element, format string, args ...any) {
+	sv.addErrorAt(el.Line, el.Col, format, args...)
+}
+
+func (sv *schemaValidator) addErrorAt(line, col int, format string, args ...any) {
 	msg := fmt.Sprintf(format, args...)
-	sv.errors = append(sv.errors, &Error{Line: el.Line, Col: el.Col, Message: msg})
+	sv.errors = append(sv.errors, &Error{Line: line, Col: col, Message: msg})
 }
 
 func (sv *schemaValidator) validateRoot(el *Element) {
@@ -51,73 +55,22 @@ func (sv *schemaValidator) validateElement(el *Element, decl *ElementDecl) {
 	}
 
 	switch t := typ.(type) {
-	case *BuiltinType:
-		sv.validateSimpleElement(el, t.name, nil)
-	case *SimpleType:
-		sv.validateSimpleTypeValue(el, t)
+	case *BuiltinType, *SimpleType:
+		sv.validateSimpleElement(el, t)
 	case *ComplexType:
 		sv.validateComplexElement(el, t)
 	}
 }
 
-func (sv *schemaValidator) validateSimpleElement(el *Element, typeName string, facets []Facet) {
+func (sv *schemaValidator) validateSimpleElement(el *Element, t Type) {
 	children := el.ChildElements()
 	if len(children) > 0 {
-		sv.addError(el, "element %q has simple type %q but contains child elements", el.Local, typeName)
+		sv.addError(el, "element %q has simple type %q but contains child elements", el.Local, simpleTypeLabel(t))
 		return
 	}
-	value := el.TextContent()
-	if err := validateBuiltinValue(typeName, value); err != nil {
+	if err := validateSimpleValue(el.TextContent(), t); err != nil {
 		sv.addError(el, "element %q: %v", el.Local, err)
-		return
 	}
-	if len(facets) > 0 {
-		if err := validateEnumerationFacets(value, facets); err != nil {
-			sv.addError(el, "element %q: %v", el.Local, err)
-			return
-		}
-		if err := validateFacets(value, typeName, facets); err != nil {
-			sv.addError(el, "element %q: %v", el.Local, err)
-		}
-	}
-}
-
-func (sv *schemaValidator) validateSimpleTypeValue(el *Element, st *SimpleType) {
-	baseName := resolveSimpleTypeBaseName(st)
-	if st.List != nil {
-		sv.validateListType(el, st.List)
-		return
-	}
-	if len(st.Union) > 0 {
-		sv.validateUnionType(el, st.Union)
-		return
-	}
-	sv.validateSimpleElement(el, baseName, st.Facets)
-}
-
-func (sv *schemaValidator) validateListType(el *Element, itemType *SimpleType) {
-	value := strings.TrimSpace(el.TextContent())
-	if value == "" {
-		return
-	}
-	baseName := resolveSimpleTypeBaseName(itemType)
-	for _, item := range strings.Fields(value) {
-		if err := validateBuiltinValue(baseName, item); err != nil {
-			sv.addError(el, "element %q list item: %v", el.Local, err)
-			return
-		}
-	}
-}
-
-func (sv *schemaValidator) validateUnionType(el *Element, members []*SimpleType) {
-	value := el.TextContent()
-	for _, m := range members {
-		baseName := resolveSimpleTypeBaseName(m)
-		if err := validateBuiltinValue(baseName, value); err == nil {
-			return
-		}
-	}
-	sv.addError(el, "element %q: value %q does not match any member type of union", el.Local, value)
 }
 
 func (sv *schemaValidator) validateComplexElement(el *Element, ct *ComplexType) {
@@ -159,26 +112,8 @@ func (sv *schemaValidator) validateSimpleText(el *Element, textType Type) {
 		sv.addError(el, "element %q has simpleContent but contains child elements", el.Local)
 		return
 	}
-	value := el.TextContent()
-
-	switch t := textType.(type) {
-	case *BuiltinType:
-		if err := t.validate(value); err != nil {
-			sv.addError(el, "element %q: %v", el.Local, err)
-		}
-	case *SimpleType:
-		baseName := resolveSimpleTypeBaseName(t)
-		if err := validateBuiltinValue(baseName, value); err != nil {
-			sv.addError(el, "element %q: %v", el.Local, err)
-			return
-		}
-		if err := validateEnumerationFacets(value, t.Facets); err != nil {
-			sv.addError(el, "element %q: %v", el.Local, err)
-			return
-		}
-		if err := validateFacets(value, baseName, t.Facets); err != nil {
-			sv.addError(el, "element %q: %v", el.Local, err)
-		}
+	if err := validateSimpleValue(el.TextContent(), textType); err != nil {
+		sv.addError(el, "element %q: %v", el.Local, err)
 	}
 }
 
@@ -207,11 +142,11 @@ func (sv *schemaValidator) validateAttributes(el *Element, decls []*AttrDecl, an
 			if anyAttr != nil && sv.wildcardMatchesNS(anyAttr.Namespace, attr.Namespace) {
 				continue
 			}
-			sv.addError(el, "unexpected attribute %q on element %q", qualifiedName(attr.Namespace, attr.Local), el.Local)
+			sv.addErrorAt(attr.Line, attr.Col, "unexpected attribute %q on element %q", qualifiedName(attr.Namespace, attr.Local), el.Local)
 			continue
 		}
 		if ad.Fixed != "" && attr.Value != ad.Fixed {
-			sv.addError(el, "attribute %q on element %q must have fixed value %q", attr.Local, el.Local, ad.Fixed)
+			sv.addErrorAt(attr.Line, attr.Col, "attribute %q on element %q must have fixed value %q", attr.Local, el.Local, ad.Fixed)
 			continue
 		}
 		sv.validateAttrValue(el, attr, ad)
@@ -244,24 +179,15 @@ func qualifiedName(ns, local string) string {
 	return "{" + ns + "}" + local
 }
 
+// validateAttrValue checks an attribute against its declared type through the
+// same path element text takes, and reports a violation at the attribute's own
+// position rather than the element's.
 func (sv *schemaValidator) validateAttrValue(el *Element, attr Attr, ad *AttrDecl) {
 	if ad.Type == nil {
 		return
 	}
-	switch t := ad.Type.(type) {
-	case *BuiltinType:
-		if err := t.validate(attr.Value); err != nil {
-			sv.addError(el, "attribute %q on element %q: %v", attr.Local, el.Local, err)
-		}
-	case *SimpleType:
-		baseName := resolveSimpleTypeBaseName(t)
-		if err := validateBuiltinValue(baseName, attr.Value); err != nil {
-			sv.addError(el, "attribute %q on element %q: %v", attr.Local, el.Local, err)
-			return
-		}
-		if err := validateEnumerationFacets(attr.Value, t.Facets); err != nil {
-			sv.addError(el, "attribute %q on element %q: %v", attr.Local, el.Local, err)
-		}
+	if err := validateSimpleValue(attr.Value, ad.Type); err != nil {
+		sv.addErrorAt(attr.Line, attr.Col, "attribute %q on element %q: %v", attr.Local, el.Local, err)
 	}
 }
 
