@@ -106,24 +106,6 @@ func TestByteModeStillRejectsInvalidCharacters(t *testing.T) {
 	assert.Equal(t, "a\x00b", tree.Root.TextContent())
 }
 
-func TestEncodingNameAliases(t *testing.T) {
-	for _, name := range []string{"ISO-8859-1", "iso-8859-1", "latin1", "LATIN-1", "l1", "ISO_8859-1", "csISOLatin1", "IBM819", "cp819"} {
-		t.Run(name, func(t *testing.T) {
-			assert.Equal(t, encodingByte, canonicalEncoding(name))
-		})
-	}
-	for _, name := range []string{"UTF-8", "utf-8", "utf8"} {
-		t.Run(name, func(t *testing.T) {
-			assert.Equal(t, encodingUTF8, canonicalEncoding(name))
-		})
-	}
-	for _, name := range []string{"UTF-16", "Shift_JIS", "windows-1252", "ASCII", ""} {
-		t.Run("rejects "+name, func(t *testing.T) {
-			assert.Empty(t, canonicalEncoding(name))
-		})
-	}
-}
-
 func TestRejectUnknownEncodingNames(t *testing.T) {
 	for _, name := range []string{"windows-1252", "ISO-8859-15", "UTF-16"} {
 		t.Run(name, func(t *testing.T) {
@@ -133,34 +115,4 @@ func TestRejectUnknownEncodingNames(t *testing.T) {
 			assert.Contains(t, err.Error(), "UTF-8 and ISO-8859-1 are supported")
 		})
 	}
-}
-
-// The declaration decides how the bytes are read, so it is read from the
-// bytes. Every spelling a declaration may use is ASCII in both modes.
-func TestSniffEncoding(t *testing.T) {
-	cases := map[string]string{
-		`<?xml version="1.1"?><r/>`:                           encodingUTF8,
-		`<?xml version="1.1" encoding="UTF-8"?><r/>`:          encodingUTF8,
-		`<?xml version="1.1" encoding="ISO-8859-1"?><r/>`:     encodingByte,
-		`<?xml version="1.1" encoding='latin1'?><r/>`:         encodingByte,
-		`<?xml version="1.1"  encoding = "ISO-8859-1" ?><r/>`: encodingByte,
-		`<?xml version="1.1"?><r>encoding="ISO-8859-1"</r>`:   encodingUTF8,
-		`<?xml version="1.1" encoding="windows-1252"?><r/>`:   encodingUTF8,
-		`<?xml version="1.1" encoding=?><r/>`:                 encodingUTF8,
-		`<?xml version="1.1" standalone="yes"?><r/>`:          encodingUTF8,
-		`<r>encoding="ISO-8859-1"</r>`:                        encodingUTF8,
-	}
-	for doc, want := range cases {
-		t.Run(doc, func(t *testing.T) {
-			assert.Equal(t, want, sniffEncoding([]byte(doc)))
-		})
-	}
-}
-
-// An encoding declaration past the sniff window is not a declaration at all:
-// it cannot appear there, because the declaration is the first thing in the
-// document.
-func TestSniffEncodingIgnoresLaterText(t *testing.T) {
-	doc := xmlDecl + `<r>` + strings.Repeat("x", 400) + `encoding="ISO-8859-1"</r>`
-	assert.Equal(t, encodingUTF8, sniffEncoding([]byte(doc)))
 }

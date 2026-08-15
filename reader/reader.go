@@ -1,11 +1,14 @@
-package validator
+package reader
 
 import (
 	"fmt"
 	"io"
 )
 
-func readInput(r io.Reader) ([]rune, error) {
+// Decode reads a document and returns its characters, choosing the decoder
+// from the encoding declaration and normalizing line endings. It is what a
+// parser starts from.
+func Decode(r io.Reader) ([]rune, error) {
 	raw, err := io.ReadAll(r)
 	if err != nil {
 		return nil, fmt.Errorf("reading input: %w", err)

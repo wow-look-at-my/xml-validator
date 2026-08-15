@@ -1,4 +1,4 @@
-package validator
+package reader
 
 import (
 	"fmt"
@@ -8,7 +8,7 @@ import (
 )
 
 func ParseTree(r io.Reader) (*Document, error) {
-	runes, err := readInput(r)
+	runes, err := Decode(r)
 	if err != nil {
 		return nil, err
 	}
@@ -414,24 +414,13 @@ func (tp *treeParser) parseRef() (rune, error) {
 		}
 		return rune(val), nil
 	}
-	// Matched where it sits, for the same reason as parseEntityRef in
-	// elements.go: the name is only a string on the error path.
+	// Matched where it sits: the name is only a string on the error path.
 	name := tp.nameRunes()
 	if !tp.eof() && tp.peek() == ';' {
 		tp.advance()
 	}
-	switch {
-	case runesAre(name, "amp"):
-		return '&', nil
-	case runesAre(name, "lt"):
-		return '<', nil
-	case runesAre(name, "gt"):
-		return '>', nil
-	case runesAre(name, "apos"):
-		return '\'', nil
-	case runesAre(name, "quot"):
-		return '"', nil
-	default:
-		return 0, tp.errorf("unknown entity &%s;", string(name))
+	if r, ok := PredefinedEntity(name); ok {
+		return r, nil
 	}
+	return 0, tp.errorf("unknown entity &%s;", string(name))
 }

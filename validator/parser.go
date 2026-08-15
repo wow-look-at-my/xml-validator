@@ -2,6 +2,7 @@ package validator
 
 import (
 	"fmt"
+	"github.com/wow-look-at-my/xml-validator/reader"
 	"strings"
 )
 
@@ -230,7 +231,7 @@ func (p *parser) validateEncName(name string) error {
 }
 
 func (p *parser) validateEncodingMatch(declared string) error {
-	if canonicalEncoding(declared) == "" {
+	if reader.CanonicalEncoding(declared) == "" {
 		return p.errorf("unsupported encoding %q (UTF-8 and ISO-8859-1 are supported)", declared)
 	}
 	return nil

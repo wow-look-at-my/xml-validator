@@ -2,9 +2,25 @@
 
 Strict XML 1.1 validator with XSD schema validation. Anything unsupported is a hard error.
 
-Ships as **both** a CLI and a Go library that share the same engine. Keep both
-working when making changes -- the `validator` package is the public library
-surface, and `cmd/` + `main.go` are the CLI shell over it.
+## Four modules, imported separately
+
+The repository root carries no `go.mod`. Each module is its own, so a program
+takes only the part it needs, and `go-toolchain` gates all four.
+
+| module | import path | depends on |
+|---|---|---|
+| reader | `github.com/wow-look-at-my/xml-validator/reader` | nothing |
+| writer | `github.com/wow-look-at-my/xml-validator/writer` | reader |
+| validator | `github.com/wow-look-at-my/xml-validator/validator` | reader |
+| cli | `github.com/wow-look-at-my/xml-validator/cli` | validator |
+
+`reader` turns bytes into a tree: decoding, the character classes, the tree
+model, the tree parser. `writer` turns a tree back into bytes. `validator` is
+well-formedness and XSD, built on reader. `cli` is the cobra shell, and its
+`dats/` suites drive the built binary.
+
+Each module `replace`s its siblings to the directory they are in, so a build
+uses the tree it is in rather than a published version of itself.
 
 ## Build & Test
 
@@ -12,7 +28,9 @@ surface, and `cmd/` + `main.go` are the CLI shell over it.
 go-toolchain
 ```
 
-This handles `go mod tidy`, `go vet`, tests with coverage, and builds the binary to `build/xml-validator`.
+Run it at the repository root and it walks every module: tidy, vet, tests with
+coverage, the build, and the dats suites in `cli/`. The CLI binary lands at
+`cli/build/xml-validator`.
 
 ## CLI usage
 
@@ -131,19 +149,23 @@ different places.
 
 ## Project Structure
 
-- `cmd/root.go` -- CLI (cobra)
+- `reader/chars.go` -- XML 1.1 character class predicates
+- `reader/reader.go` -- `Decode`: decoder selection, BOM/UTF-16 reject, line normalization
+- `reader/encoding.go` -- the two modes, the alias table, declaration sniffing, both decoders
+- `reader/entities.go` -- the five predefined entities, matched without allocating
+- `reader/error.go` -- error type with line/column position
+- `reader/document.go` -- document tree model (Element, Attr, CharData)
+- `reader/tree.go` -- version-agnostic XML tree parser
+- `writer/writer.go` -- emits a tree as XML; base64 by default for a byte payload
+- `cli/cmd/root.go` -- CLI (cobra); `cli/cmd/xml-validator/main.go` is the binary
+- `cli/dats/*.dats` -- CLI suites, run after the cli module's build
+- `validator/reader_types.go` -- aliases that keep the reader's types spelled `validator.Document`
 - `validator/doc.go` -- package-level godoc
 - `validator/validator.go` -- public `Validate`, `ValidateWithSchema`, and `ValidateWithSchemaBytes` entry points
 - `validator/example_test.go` -- runnable godoc examples
 - `validator/parser.go` -- recursive descent parser core, XML declaration, comments, PIs
 - `validator/elements.go` -- element, attribute, content, CDATA, reference parsing
 - `validator/namespace.go` -- QName validation, namespace scope management
-- `validator/chars.go` -- XML 1.1 character class predicates
-- `validator/reader.go` -- decoder selection, BOM/UTF-16 detection-and-reject, line normalization
-- `validator/encoding.go` -- the two modes, the alias table, declaration sniffing, both decoders
-- `validator/error.go` -- error type with line/column position
-- `validator/document.go` -- document tree model (Element, Attr, CharData)
-- `validator/tree.go` -- version-agnostic XML tree parser
 - `validator/schema_model.go` -- XSD schema model types
 - `validator/schema_builtin.go` -- 35+ built-in XSD types with validation
 - `validator/schema_facets.go` -- facet checking (lengths, patterns, ranges, digits)
@@ -158,7 +180,7 @@ different places.
   and for a payload carrying every byte value 0..255
 - `validator/roundtrip_binary_test.go` -- the same payload through
   `xs:base64Binary` and `xs:hexBinary`, with the size of each wire form
-- `dats/nul-char-ref.dats` -- CLI suite for `&#0;`, run by `go-toolchain` after
+- `cli/dats/nul-char-ref.dats` -- CLI suite for `&#0;`, run after
   every build
 - `docs/nul-char-ref.md` -- what `&#0;` is, what it is not, and how to check
 - `action.yml` -- composite GitHub Action (build with caching + run). The

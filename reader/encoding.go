@@ -1,7 +1,8 @@
-package validator
+package reader
 
 import (
 	"fmt"
+	"github.com/wow-look-at-my/go-containers/set"
 	"strings"
 	"unicode/utf8"
 )
@@ -22,26 +23,29 @@ const (
 // byteEncodingNames are the spellings that select byte mode. IANA registers
 // the first as the name and the rest as aliases of one 8-bit coded character
 // set, and a document may write any of them.
-var byteEncodingNames = map[string]bool{
-	"ISO-8859-1":  true,
-	"ISO8859-1":   true,
-	"ISO_8859-1":  true,
-	"LATIN1":      true,
-	"LATIN-1":     true,
-	"L1":          true,
-	"IBM819":      true,
-	"CP819":       true,
-	"CSISOLATIN1": true,
-}
+var byteEncodingNames = set.Of(
+	"ISO-8859-1",
+	"ISO8859-1",
+	"ISO_8859-1",
+	"LATIN1",
+	"LATIN-1",
+	"L1",
+	"IBM819",
+	"CP819",
+	"CSISOLATIN1",
+)
 
 // canonicalEncoding maps a declared name to the mode it selects. The empty
 // string means the name is neither, which the declaration parser reports.
-func canonicalEncoding(declared string) string {
+// CanonicalEncoding maps a declared encoding name to the mode it selects. The
+// empty string means the name selects neither, which the declaration parser
+// reports.
+func CanonicalEncoding(declared string) string {
 	upper := strings.ToUpper(declared)
 	switch {
 	case upper == "UTF-8" || upper == "UTF8":
 		return encodingUTF8
-	case byteEncodingNames[upper]:
+	case byteEncodingNames.Contains(upper):
 		return encodingByte
 	default:
 		return ""
@@ -90,7 +94,7 @@ func sniffEncoding(raw []byte) string {
 	if closing < 0 {
 		return encodingUTF8
 	}
-	if name := canonicalEncoding(rest[1 : 1+closing]); name != "" {
+	if name := CanonicalEncoding(rest[1 : 1+closing]); name != "" {
 		return name
 	}
 	return encodingUTF8

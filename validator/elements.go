@@ -2,6 +2,8 @@ package validator
 
 import (
 	"fmt"
+	"github.com/wow-look-at-my/go-containers/set"
+	"github.com/wow-look-at-my/xml-validator/reader"
 	"strings"
 )
 
@@ -91,7 +93,7 @@ func (p *parser) parseElement() error {
 func (p *parser) parseAttributes() ([]attribute, map[string]string, error) {
 	var attrs []attribute
 	nsDecls := make(map[string]string)
-	seen := make(map[string]bool)
+	seen := set.New[string]()
 
 	for {
 		if !p.skipWhitespace() {
@@ -109,11 +111,11 @@ func (p *parser) parseAttributes() ([]attribute, map[string]string, error) {
 		if err := p.validateQName(aname); err != nil {
 			return nil, nil, err
 		}
-		if seen[aname] {
+		if seen.Contains(aname) {
 			return nil, nil, &Error{Line: attrLine, Col: attrCol,
 				Message: fmt.Sprintf("duplicate attribute %q", aname)}
 		}
-		seen[aname] = true
+		seen.Add(aname)
 
 		if err := p.parseEq(); err != nil {
 			return nil, nil, err
@@ -395,33 +397,8 @@ func (p *parser) parseEntityRef() (rune, error) {
 	}
 	p.advance()
 
-	switch {
-	case runesAre(name, "amp"):
-		return '&', nil
-	case runesAre(name, "lt"):
-		return '<', nil
-	case runesAre(name, "gt"):
-		return '>', nil
-	case runesAre(name, "apos"):
-		return '\'', nil
-	case runesAre(name, "quot"):
-		return '"', nil
-	default:
-		return 0, p.errorf("unsupported: general entity reference &%s; (only &amp; &lt; &gt; &apos; &quot; are supported without a DTD)", string(name))
+	if r, ok := reader.PredefinedEntity(name); ok {
+		return r, nil
 	}
-}
-
-// runesAre reports whether runes spells the given ASCII word. Comparing
-// against a string directly would convert one of them first, which is the
-// allocation this avoids.
-func runesAre(runes []rune, word string) bool {
-	if len(runes) != len(word) {
-		return false
-	}
-	for i, r := range runes {
-		if r != rune(word[i]) {
-			return false
-		}
-	}
-	return true
+	return 0, p.errorf("unsupported: general entity reference &%s; (only &amp; &lt; &gt; &apos; &quot; are supported without a DTD)", string(name))
 }

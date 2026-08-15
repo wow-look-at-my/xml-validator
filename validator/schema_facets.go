@@ -12,7 +12,6 @@ import (
 	"unicode/utf8"
 )
 
-
 // validateLengthFacet applies minLength, maxLength and length.
 //
 // The unit is characters for a string type and octets for the binary types --

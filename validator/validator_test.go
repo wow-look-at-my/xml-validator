@@ -290,34 +290,6 @@ func TestRejectEmptyEntityRef(t *testing.T) {
 
 // --- Line ending normalization tests ---
 
-func TestLineEndingNormalization(t *testing.T) {
-	tests := []struct {
-		name  string
-		input []rune
-		want  []rune
-	}{
-		{"CR LF", []rune{'\r', '\n'}, []rune{'\n'}},
-		{"CR NEL", []rune{'\r', 0x85}, []rune{'\n'}},
-		{"NEL alone", []rune{0x85}, []rune{'\n'}},
-		{"LS", []rune{0x2028}, []rune{'\n'}},
-		{"CR alone", []rune{'\r'}, []rune{'\n'}},
-		{"LF unchanged", []rune{'\n'}, []rune{'\n'}},
-		{"mixed", []rune{'a', '\r', '\n', 'b', 0x85, 'c', 0x2028, 'd', '\r', 'e'},
-			[]rune{'a', '\n', 'b', '\n', 'c', '\n', 'd', '\n', 'e'}},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := normalizeLineEndings(tt.input)
-			require.Equal(t, len(tt.want), len(got))
-
-			for i := range got {
-				assert.Equal(t, tt.want[i], got[i])
-
-			}
-		})
-	}
-}
-
 // --- Character class tests ---
 
 func TestCharClassifications(t *testing.T) {

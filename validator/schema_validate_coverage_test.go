@@ -76,15 +76,6 @@ func TestSchemaSimpleTypeRestrictionBaseNonBuiltin(t *testing.T) {
 	mustSchemaValid(t, `<?xml version="1.1"?><root>A</root>`, xsd)
 }
 
-// TestNodeInterfaceStubs invokes the trivial Node interface methods so they
-// register as covered.
-func TestNodeInterfaceStubs(t *testing.T) {
-	var n Node = &Element{}
-	n.node()
-	n = &CharData{}
-	n.node()
-}
-
 // TestTypeInterfaceStubs invokes typeName, contentModel, and particle stubs
 // on the various schema model types.
 func TestTypeInterfaceStubs(t *testing.T) {

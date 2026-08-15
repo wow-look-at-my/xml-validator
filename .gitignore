@@ -1,3 +1,5 @@
-
 /build/
 corpus/samples/
+
+# Every module builds into its own build/.
+*/build/

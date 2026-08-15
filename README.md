@@ -4,21 +4,30 @@ Strict XML 1.1 validator with optional XSD schema validation. Anything the
 validator does not understand is a hard error -- there is no fallback to XML
 1.0, no DTD support, no permissive mode.
 
-Ships as **both** a command-line tool and a Go library that share the same
-parser and validation engine.
+Ships as a command-line tool and as four Go modules, so a program takes only
+the part it needs.
+
+| module | what it is | depends on |
+|---|---|---|
+| `.../reader` | bytes to a tree: decoding, character classes, the tree parser | nothing |
+| `.../writer` | a tree back to bytes; base64 by default for a byte payload | reader |
+| `.../validator` | well-formedness and XSD, on top of reader | reader |
+| `.../cli` | the `xml-validator` command | validator |
 
 ## Install
 
 ### CLI
 
 ```bash
-go install github.com/wow-look-at-my/xml-validator@latest
+go install github.com/wow-look-at-my/xml-validator/cli/cmd/xml-validator@latest
 ```
 
 ### Library
 
 ```bash
-go get github.com/wow-look-at-my/xml-validator/validator
+go get github.com/wow-look-at-my/xml-validator/validator   # validate
+go get github.com/wow-look-at-my/xml-validator/reader      # just read
+go get github.com/wow-look-at-my/xml-validator/writer      # just write
 ```
 
 ## CLI usage
@@ -177,5 +186,6 @@ Point `schema` at an XSD to validate every file against it:
 go-toolchain
 ```
 
-That runs `go mod tidy`, `go vet`, tests with coverage, and produces the
-binary at `build/xml-validator`.
+Run it at the repository root and it walks all four modules: tidy, vet, tests
+with coverage, the build, and the CLI suites under `cli/dats/`. The binary
+lands at `cli/build/xml-validator`.

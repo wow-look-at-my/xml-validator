@@ -39,9 +39,9 @@ Anything unsupported is a hard error:
 	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if schemaFile != "" {
-			return runWithSchema(args)
+			return runWithSchema(cmd, args)
 		}
-		return runWellFormedness(args)
+		return runWellFormedness(cmd, args)
 	},
 }
 
@@ -55,11 +55,12 @@ func Execute() {
 	}
 }
 
-func runWellFormedness(args []string) error {
-	var input *os.File
-	if len(args) == 0 {
-		input = os.Stdin
-	} else {
+// A run reports a problem by returning it, and cobra turns that into the exit
+// status. Exiting from in here instead would leave these functions unreachable
+// from a test, which is how the CLI ended up covered only by its dats suites.
+func runWellFormedness(cmd *cobra.Command, args []string) error {
+	input := cmd.InOrStdin()
+	if len(args) > 0 {
 		f, err := os.Open(args[0])
 		if err != nil {
 			return fmt.Errorf("cannot open file: %w", err)
@@ -69,22 +70,20 @@ func runWellFormedness(args []string) error {
 	}
 
 	if err := validator.Validate(input); err != nil {
-		fmt.Fprintf(os.Stderr, "error: %s\n", err)
-		os.Exit(1)
+		return err
 	}
-	fmt.Println("valid XML 1.1 document")
+	fmt.Fprintln(cmd.OutOrStdout(), "valid XML 1.1 document")
 	return nil
 }
 
-func runWithSchema(args []string) error {
+func runWithSchema(cmd *cobra.Command, args []string) error {
 	if len(args) == 0 {
 		return fmt.Errorf("--schema requires an XML file argument (stdin not supported with schema validation)")
 	}
 
 	if err := validator.ValidateWithSchemaFile(args[0], schemaFile); err != nil {
-		fmt.Fprintf(os.Stderr, "error: %s\n", err)
-		os.Exit(1)
+		return err
 	}
-	fmt.Println("valid XML 1.1 document (schema validated)")
+	fmt.Fprintln(cmd.OutOrStdout(), "valid XML 1.1 document (schema validated)")
 	return nil
 }
