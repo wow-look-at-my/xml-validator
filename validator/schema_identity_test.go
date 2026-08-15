@@ -176,11 +176,6 @@ const identityNSXSD = `<?xml version="1.0"?>
 </xs:schema>`
 
 func TestSchemaIdentityAcrossNamespacedPath(t *testing.T) {
-	const doc = `<?xml version="1.1"?>
-<slh xmlns="https://slh.dev/xsd/config/1">
-  <providers><provider id="openrouter"/>%s</providers>
-  <roles><role provider="%s"/></roles>
-</slh>`
 	mustSchemaValid(t, `<?xml version="1.1"?>
 <slh xmlns="https://slh.dev/xsd/config/1">
   <providers><provider id="openrouter"/><provider id="anthropic"/></providers>
@@ -195,7 +190,6 @@ func TestSchemaIdentityAcrossNamespacedPath(t *testing.T) {
   <providers><provider id="openrouter"/></providers>
   <roles><role provider="nope"/></roles>
 </slh>`, identityNSXSD, "does not declare")
-	_ = doc
 }
 
 func TestSchemaKeyrefResolvesAgainstAncestorScope(t *testing.T) {
