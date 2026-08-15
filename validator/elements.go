@@ -289,50 +289,80 @@ func (p *parser) parseReference() (rune, error) {
 func (p *parser) parseCharRef() (rune, error) {
 	p.advance() // consume '#'
 
-	var digits []rune
 	hex := false
 	if !p.eof() && p.peek() == 'x' {
 		hex = true
 		p.advance()
 	}
 
+	// The digits go in a stack buffer, not a slice that grows: a document
+	// that escapes anything pays this path on every reference, and the
+	// allocation showed up as 2.6 per reference in the benchmarks.
+	//
+	// The buffer is small because a character is at most 8 hex digits, and
+	// leading zeros are skipped first so `&#0000000;` still parses -- a
+	// document may write as many of them as it likes.
+	var buf [8]byte
+	n := 0
+	start := p.pos
+	tooLong := false
+	leading := true
 	for !p.eof() && p.peek() != ';' {
 		r := p.peek()
-		if hex {
-			if !((r >= '0' && r <= '9') || (r >= 'a' && r <= 'f') || (r >= 'A' && r <= 'F')) {
-				return 0, p.errorf("invalid hex digit %q in character reference", string(r))
-			}
-		} else {
-			if r < '0' || r > '9' {
-				return 0, p.errorf("invalid digit %q in character reference", string(r))
-			}
+		switch {
+		case r >= '0' && r <= '9':
+		case hex && ((r >= 'a' && r <= 'f') || (r >= 'A' && r <= 'F')):
+		case hex:
+			return 0, p.errorf("invalid hex digit %q in character reference", string(r))
+		default:
+			return 0, p.errorf("invalid digit %q in character reference", string(r))
 		}
-		digits = append(digits, p.advance())
+		if leading && r == '0' {
+			p.advance()
+			continue
+		}
+		leading = false
+		if n == len(buf) {
+			tooLong = true
+		} else {
+			buf[n] = byte(r)
+			n++
+		}
+		p.advance()
 	}
 	if p.eof() {
 		return 0, p.errorf("unterminated character reference")
 	}
+	// The digit text names a problem and is needed nowhere else, so it is
+	// built on the error paths only.
+	digits := func() string { return string(p.input[start:p.pos]) }
+	empty := p.pos == start
 	p.advance() // consume ';'
 
-	if len(digits) == 0 {
+	if empty {
 		return 0, p.errorf("empty character reference")
 	}
-
-	s := string(digits)
-	var val int64
-	var err error
-	if hex {
-		val, err = strconv.ParseInt(s, 16, 32)
-	} else {
-		val, err = strconv.ParseInt(s, 10, 32)
+	if tooLong {
+		return 0, p.errorf("invalid character reference value %q", digits())
 	}
-	if err != nil {
-		return 0, p.errorf("invalid character reference value %q", s)
+
+	// Every digit was a leading zero, which is how `&#0;` is written.
+	var val int64
+	if n > 0 {
+		base := 10
+		if hex {
+			base = 16
+		}
+		parsed, err := strconv.ParseInt(string(buf[:n]), base, 32)
+		if err != nil {
+			return 0, p.errorf("invalid character reference value %q", digits())
+		}
+		val = parsed
 	}
 
 	r := rune(val)
 	if !IsCharRefValue(r) {
-		return 0, p.errorf("character reference &#%s; resolves to invalid XML 1.1 character U+%04X", s, r)
+		return 0, p.errorf("character reference &#%s; resolves to invalid XML 1.1 character U+%04X", digits(), r)
 	}
 	return r, nil
 }

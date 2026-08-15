@@ -369,21 +369,40 @@ func (tp *treeParser) parseRef() (rune, error) {
 			hex = true
 			tp.advance()
 		}
-		var digits []rune
+		// A stack buffer, and leading zeros skipped so an arbitrarily padded
+		// reference still parses. Growing a slice here allocated on every
+		// reference in the document. See parseCharRef in elements.go.
+		var buf [8]byte
+		n := 0
+		leading := true
+		tooLong := false
 		for !tp.eof() && tp.peek() != ';' {
-			digits = append(digits, tp.advance())
+			r := tp.advance()
+			if leading && r == '0' {
+				continue
+			}
+			leading = false
+			if n == len(buf) {
+				tooLong = true
+				continue
+			}
+			buf[n] = byte(r)
+			n++
 		}
 		if !tp.eof() {
 			tp.advance()
 		}
-		s := string(digits)
-		var val int64
-		var err error
-		if hex {
-			val, err = strconv.ParseInt(s, 16, 32)
-		} else {
-			val, err = strconv.ParseInt(s, 10, 32)
+		if tooLong {
+			return 0, tp.errorf("invalid character reference")
 		}
+		if n == 0 {
+			return 0, nil // every digit was a leading zero
+		}
+		base := 10
+		if hex {
+			base = 16
+		}
+		val, err := strconv.ParseInt(string(buf[:n]), base, 32)
 		if err != nil {
 			return 0, tp.errorf("invalid character reference")
 		}

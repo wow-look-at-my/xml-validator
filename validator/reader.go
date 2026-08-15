@@ -66,21 +66,25 @@ func rejectUnsupportedEncoding(data []byte) error {
 //	#x85     -> #xA
 //	#x2028   -> #xA
 //	#xD      -> #xA (when not followed by #xA or #x85)
+// It rewrites input in place. Every rule either replaces one rune with one
+// rune or two with one, so the write index never overtakes the read index,
+// and the alternative is a second copy of the whole document per parse.
 func normalizeLineEndings(input []rune) []rune {
-	out := make([]rune, 0, len(input))
+	w := 0
 	for i := 0; i < len(input); i++ {
 		r := input[i]
 		switch {
 		case r == 0xD:
-			out = append(out, 0xA)
+			input[w] = 0xA
 			if i+1 < len(input) && (input[i+1] == 0xA || input[i+1] == 0x85) {
 				i++
 			}
 		case r == 0x85, r == 0x2028:
-			out = append(out, 0xA)
+			input[w] = 0xA
 		default:
-			out = append(out, r)
+			input[w] = r
 		}
+		w++
 	}
-	return out
+	return input[:w]
 }
