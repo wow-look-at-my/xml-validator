@@ -347,3 +347,54 @@ func identityValueKey(value string, t Type) string {
 	}
 	return "s:" + v
 }
+
+// parseIdentityConstraint reads an xs:key, xs:keyref, or xs:unique. The XPaths
+// are kept as written and compiled during resolution, where the schema's own
+// prefix declarations are available.
+func parseIdentityConstraint(el *Element) (*IdentityConstraint, error) {
+	ic := &IdentityConstraint{Kind: el.Local}
+	ic.Name, _ = el.Attr("name")
+	if ic.Name == "" {
+		return nil, fmt.Errorf("xs:%s requires a name attribute", el.Local)
+	}
+	if ic.Kind == "keyref" {
+		ic.Refer, _ = el.Attr("refer")
+		if ic.Refer == "" {
+			return nil, fmt.Errorf("xs:keyref %q requires a refer attribute", ic.Name)
+		}
+	}
+
+	for _, child := range el.ChildElements() {
+		if child.Namespace != xsdNS {
+			continue
+		}
+		switch child.Local {
+		case "selector":
+			xpath, ok := child.Attr("xpath")
+			if !ok {
+				return nil, fmt.Errorf("xs:selector in %q requires an xpath attribute", ic.Name)
+			}
+			ic.selectorXPath = xpath
+		case "field":
+			xpath, ok := child.Attr("xpath")
+			if !ok {
+				return nil, fmt.Errorf("xs:field in %q requires an xpath attribute", ic.Name)
+			}
+			ic.fieldXPaths = append(ic.fieldXPaths, xpath)
+		case "annotation":
+			// skip
+		default:
+			return nil, fmt.Errorf("unsupported schema element xs:%s inside xs:%s %q", child.Local, ic.Kind, ic.Name)
+		}
+	}
+
+	if ic.selectorXPath == "" {
+		return nil, fmt.Errorf("xs:%s %q requires an xs:selector", ic.Kind, ic.Name)
+	}
+	if len(ic.fieldXPaths) == 0 {
+		return nil, fmt.Errorf("xs:%s %q requires at least one xs:field", ic.Kind, ic.Name)
+	}
+	return ic, nil
+}
+
+// parseInlineSimpleType returns the xs:simpleType written inside an xs:list or
