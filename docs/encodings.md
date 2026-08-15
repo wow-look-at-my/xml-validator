@@ -94,6 +94,41 @@ The declaration itself costs 22 bytes more than the UTF-8 one, so a short
 document with a few high characters is still smaller in UTF-8; a document pays
 that back at its 22nd such character.
 
+## What each form costs to read and write
+
+Size is half the choice. `validator/encoding_bench_test.go` measures the other
+half over a 64 KiB payload, and `go-toolchain` runs it in the benchmark phase.
+Throughput is per payload byte, so the columns compare directly:
+
+| form | validate (binary) | validate (text, 0.2% NUL) | encode | parse + recover |
+|---|---:|---:|---:|---:|
+| base64Binary | **47.0 MB/s** | 46.9 MB/s | **380 MB/s** | **7.7 MB/s** |
+| hexBinary | 29.5 MB/s | 28.9 MB/s | 270 MB/s | 4.9 MB/s |
+| byte mode | 13.1 MB/s | **82.1 MB/s** | 19.6 MB/s | 6.4 MB/s |
+| UTF-8 | 10.9 MB/s | 64.1 MB/s | 22.3 MB/s | 6.1 MB/s |
+| all references | 3.0 MB/s | 3.6 MB/s | 9.4 MB/s | 3.0 MB/s |
+
+The shape follows the reference count, which is what drives the sizes too. A
+literal character is a pointer bump; a reference is a parse, a bounds check
+and an allocation. Validating the binary payload allocates 42,000 times in
+byte mode and 35 times in base64.
+
+The two cases separate cleanly:
+
+- **Arbitrary bytes: base64Binary wins on every axis.** 1.33x against byte
+  mode's 2.15x, 3.6x faster to validate, 19x faster to encode.
+- **Text with occasional NULs: escaping wins on every axis.** At one NUL per
+  512 bytes, byte mode validates at 82 MB/s against base64's 47, and costs
+  1.03x against 1.33x. Base64 there is bigger, slower, and opaque to every
+  tool that reads text.
+
+Escaping every character is the worst of both, and its 3 MB/s is what a
+document that survives a byte-mangling transport costs.
+
+These are this validator's numbers, not universal ones: the parser is
+recursive descent over runes and allocates per reference. The ordering should
+hold for any parser that resolves references one at a time.
+
 ## Where it lives
 
 - `validator/encoding.go` -- the mode constants, the alias table,
