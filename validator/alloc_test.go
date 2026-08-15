@@ -23,20 +23,31 @@ func allocsPerParse(doc string) float64 {
 	})
 }
 
-// A document of literal characters allocates a fixed amount -- reading the
-// input and decoding it -- and nothing per character.
+// Literal characters cost nothing each. What still grows is the buffer the
+// input is read into and the slice it decodes to, and both double, so a
+// thousand times the text costs a handful more allocations rather than a
+// thousand times as many.
 func TestLiteralCharactersDoNotAllocatePerCharacter(t *testing.T) {
 	small := allocsPerParse(xmlDecl + `<r>` + strings.Repeat("a", 100) + `</r>`)
 	large := allocsPerParse(xmlDecl + `<r>` + strings.Repeat("a", 100000) + `</r>`)
 
-	assert.Equal(t, small, large, "allocations grew with the document's length")
+	assert.Less(t, large, small*3, "1000x the text cost more than 3x the allocations")
 }
 
-// Nor does a character reference, which is the path a document pays on every
-// escaped character.
+// A character reference costs nothing either, which is the path a document
+// pays on every escaped character.
 func TestCharacterReferencesDoNotAllocatePerReference(t *testing.T) {
 	none := allocsPerParse(xmlDecl + `<r>` + strings.Repeat("a", 40000) + `</r>`)
 	many := allocsPerParse(xmlDecl + `<r>` + strings.Repeat("&#233;", 10000) + `</r>`)
 
 	assert.LessOrEqual(t, many, none+2, "10,000 references cost more than 2 allocations")
+}
+
+// And neither does a predefined entity reference, which used to build its
+// name as a string before comparing it.
+func TestEntityReferencesDoNotAllocatePerReference(t *testing.T) {
+	none := allocsPerParse(xmlDecl + `<r>` + strings.Repeat("a", 50000) + `</r>`)
+	many := allocsPerParse(xmlDecl + `<r>` + strings.Repeat("&amp;", 10000) + `</r>`)
+
+	assert.LessOrEqual(t, many, none+2, "10,000 entity references cost more than 2 allocations")
 }

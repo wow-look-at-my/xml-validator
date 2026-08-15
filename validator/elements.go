@@ -368,28 +368,53 @@ func (p *parser) parseCharRef() (rune, error) {
 	return r, nil
 }
 
+// The five predefined entities are matched against the input where they sit.
+// Building the name as a string first cost two allocations on every `&amp;`
+// in the document, which is the whole cost of escaping text that is mostly
+// ampersands.
 func (p *parser) parseEntityRef() (rune, error) {
-	name, err := p.parseName()
-	if err != nil {
+	if p.eof() || !IsNameStartChar(p.peek()) {
 		return 0, p.errorf("expected entity name")
 	}
+	start := p.pos
+	p.advance()
+	for !p.eof() && IsNameChar(p.peek()) {
+		p.advance()
+	}
+	name := p.input[start:p.pos]
+
 	if p.eof() || p.peek() != ';' {
-		return 0, p.errorf("expected ';' after entity name %q", name)
+		return 0, p.errorf("expected ';' after entity name %q", string(name))
 	}
 	p.advance()
 
-	switch name {
-	case "amp":
+	switch {
+	case runesAre(name, "amp"):
 		return '&', nil
-	case "lt":
+	case runesAre(name, "lt"):
 		return '<', nil
-	case "gt":
+	case runesAre(name, "gt"):
 		return '>', nil
-	case "apos":
+	case runesAre(name, "apos"):
 		return '\'', nil
-	case "quot":
+	case runesAre(name, "quot"):
 		return '"', nil
 	default:
-		return 0, p.errorf("unsupported: general entity reference &%s; (only &amp; &lt; &gt; &apos; &quot; are supported without a DTD)", name)
+		return 0, p.errorf("unsupported: general entity reference &%s; (only &amp; &lt; &gt; &apos; &quot; are supported without a DTD)", string(name))
 	}
+}
+
+// runesAre reports whether runes spells the given ASCII word. Comparing
+// against a string directly would convert one of them first, which is the
+// allocation this avoids.
+func runesAre(runes []rune, word string) bool {
+	if len(runes) != len(word) {
+		return false
+	}
+	for i, r := range runes {
+		if r != rune(word[i]) {
+			return false
+		}
+	}
+	return true
 }

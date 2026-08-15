@@ -350,10 +350,12 @@ func (p *parser) parseName() (string, error) {
 	if !IsNameStartChar(r) {
 		return "", p.errorf("invalid name start character %q (U+%04X)", string(r), r)
 	}
-	var name []rune
-	name = append(name, p.advance())
+	// Slice the name out of the input instead of growing a rune slice and
+	// converting that: the caller wants one string, so one allocation.
+	start := p.pos
+	p.advance()
 	for !p.eof() && IsNameChar(p.peek()) {
-		name = append(name, p.advance())
+		p.advance()
 	}
-	return string(name), nil
+	return string(p.input[start:p.pos]), nil
 }
