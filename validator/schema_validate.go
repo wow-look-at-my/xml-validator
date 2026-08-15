@@ -73,7 +73,9 @@ func (sv *schemaValidator) validateElement(el *Element, decl *ElementDecl) {
 		return
 	}
 
-	typ := decl.Type
+	// An xs:alternative can hand this instance a different type than the
+	// declared one, decided by its own attributes.
+	typ := chooseType(el, decl)
 	if typ == nil {
 		return
 	}

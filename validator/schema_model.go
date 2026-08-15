@@ -64,6 +64,9 @@ type ElementDecl struct {
 	// substitutes are the declarations that may appear where a reference to
 	// this element does, transitively. A member of a member substitutes too.
 	substitutes []*ElementDecl
+	// Alternatives are the xs:alternative type choices, in schema order. The
+	// first whose test holds gives the instance its type.
+	Alternatives []*TypeAlternative
 	// Constraints are the xs:key, xs:keyref, and xs:unique declarations on this
 	// element. They are evaluated over the element's own subtree.
 	Constraints []*IdentityConstraint

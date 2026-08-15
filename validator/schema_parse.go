@@ -203,6 +203,12 @@ func parseElementDecl(el *Element) (*ElementDecl, error) {
 			ed.Type = st
 		case "annotation":
 			// skip
+		case "alternative":
+			alt, err := parseTypeAlternative(child)
+			if err != nil {
+				return nil, fmt.Errorf("element %q: %w", ed.Name, err)
+			}
+			ed.Alternatives = append(ed.Alternatives, alt)
 		case "key", "keyref", "unique":
 			ic, err := parseIdentityConstraint(child)
 			if err != nil {

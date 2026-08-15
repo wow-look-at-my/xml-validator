@@ -101,6 +101,9 @@ func resolveElementType(ed *ElementDecl, s *Schema, seen resolving) error {
 	if err := compileElementConstraints(ed, s); err != nil {
 		return err
 	}
+	if err := resolveAlternatives(ed, s); err != nil {
+		return err
+	}
 	if ed.Type != nil {
 		if ct, ok := ed.Type.(*ComplexType); ok {
 			return resolveComplexTypeRefs(ct, s, seen)
@@ -191,6 +194,7 @@ func resolveContentModel(cm ContentModel, s *Schema, seen resolving) error {
 				p.Type = ref.Type
 				p.Constraints = ref.Constraints
 				p.Abstract = ref.Abstract
+				p.Alternatives = ref.Alternatives
 			}
 			err = resolveElementType(p, s, seen)
 		case *Sequence:
