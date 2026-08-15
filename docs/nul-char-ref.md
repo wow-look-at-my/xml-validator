@@ -53,6 +53,24 @@ trees must match:
 - An `xs:length` facet of 3 accepts `a&#0;b`, and a facet of 1 rejects it with
   "value length 3". A terminator would leave a value of length 1.
 
+Three more take a real binary payload -- one of every byte value, 0 through
+255, carried as the characters U+0000 through U+00FF:
+
+- Written with a reference only where one is needed, the payload survives the
+  roundtrip through both character data and an attribute value, and decodes
+  back to the same 256 bytes.
+- Written as nothing but references, the document is printable ASCII end to
+  end, which is a wire form that survives a transport with opinions about high
+  bytes and NUL.
+- A payload with three NUL bytes in the middle keeps its tail.
+
+Encoding the payload takes more than the restricted characters. CR, NEL
+(U+0085) and LINE SEPARATOR (U+2028) all normalize to LF when they appear as
+literal characters, and a tab or newline inside an attribute value is
+whitespace a conforming reader folds to a space. Normalization runs over the
+input before any reference resolves, so writing those as references is what
+carries them through.
+
 `serializeDoc` is a test helper, not library API. It emits no namespace
 declarations, so every document in that file declares none.
 
@@ -70,8 +88,27 @@ answer the terminator claim directly:
   see line 3 and would report the file valid. The validator exits 1 and names
   line 3.
 
+One more runs the whole binary roundtrip through the shell, so nothing in it
+depends on Go at all: 256 raw bytes are written with `printf`, `od` turns each
+one into a character reference, the validator accepts the document, `grep` and
+`printf` turn the references back into bytes, and the two SHA-256 digests must
+match. The expected digest is pinned in the suite --
+`40aff2e9...bf944880` is the SHA-256 of the bytes 0x00..0xFF in order -- so the
+comparison does not rest on the generator alone. The encoded document is 1454
+bytes, all of them printable ASCII.
+
 The rest cover the spellings, stdin, the well-formed tail, the literal NUL
-byte in character data and in CDATA, and the same `xs:length` pair as above.
+byte in character data and in CDATA, and `xs:length` at 3, at 1 and at 256.
+
+## Facet lengths are characters, not bytes
+
+Measuring the 256-character payload turned up a real defect: the `length`,
+`minLength` and `maxLength` facets counted the bytes of the UTF-8 encoding, so
+the payload reported as 384. XSD defines the unit as characters for a string
+type and octets for `xs:hexBinary` and `xs:base64Binary`.
+`validator/schema_facets.go` now counts each of those, and a facet value that
+is not a non-negative integer is an error in the schema rather than a silent
+length of 0. `validator/schema_facet_length_test.go` covers all four.
 
 ## Reproducing it by hand
 

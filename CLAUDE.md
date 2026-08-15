@@ -85,7 +85,10 @@ different places.
     restriction states its own content model but still inherits the base's
     attributes where it does not restate them
   - 35+ built-in XSD types (string, integer, boolean, decimal, date, etc.)
-  - Facets: enumeration, pattern, minLength, maxLength, length, min/maxInclusive, min/maxExclusive, totalDigits, fractionDigits
+  - Facets: enumeration, pattern, minLength, maxLength, length, min/maxInclusive, min/maxExclusive, totalDigits, fractionDigits.
+    A length facet counts characters, and octets for `xs:hexBinary` and
+    `xs:base64Binary` -- never the bytes of the UTF-8 encoding. A facet value
+    that is not a non-negative integer is an error, not a length of 0
   - minOccurs/maxOccurs enforcement
   - xs:any wildcard particles
   - xs:anyAttribute wildcard attributes
@@ -128,6 +131,7 @@ different places.
 - `validator/tree.go` -- version-agnostic XML tree parser
 - `validator/schema_model.go` -- XSD schema model types
 - `validator/schema_builtin.go` -- 35+ built-in XSD types with validation
+- `validator/schema_facets.go` -- facet checking (lengths, patterns, ranges, digits)
 - `validator/schema_parse.go` -- XSD file parser (document tree to schema model)
 - `validator/schema_import.go` -- `SchemaResolver` and `xs:import` handling
 - `validator/schema_qname.go` -- namespace-keyed lookup of global declarations
@@ -135,6 +139,7 @@ different places.
 - `validator/schema_derive.go` -- group-ref expansion and complexContent derivation
 - `validator/schema_validate.go` -- schema validation engine
 - `validator/roundtrip_nul_test.go` -- parse/emit/reparse roundtrips for `&#0;`
+  and for a payload carrying every byte value 0..255
 - `dats/nul-char-ref.dats` -- CLI suite for `&#0;`, run by `go-toolchain` after
   every build
 - `docs/nul-char-ref.md` -- what `&#0;` is, what it is not, and how to check

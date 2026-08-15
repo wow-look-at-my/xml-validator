@@ -63,6 +63,17 @@ func escapeXML(s string, inAttr bool) string {
 			b.WriteString("&quot;")
 		case r == 0 || IsRestrictedChar(r):
 			fmt.Fprintf(&b, "&#%d;", r)
+		// CR, NEL and LINE SEPARATOR all normalize to LF when they are literal
+		// characters, so a payload that carries one has to write a reference.
+		// Normalization runs over the input bytes, before any reference
+		// resolves, which is why the reference survives it.
+		case r == '\r' || r == 0x85 || r == 0x2028:
+			fmt.Fprintf(&b, "&#%d;", r)
+		// Tab and newline are legal in an attribute value here, but a
+		// conforming reader folds both to a space. A reference is the spelling
+		// that means the character itself.
+		case inAttr && (r == '\t' || r == '\n'):
+			fmt.Fprintf(&b, "&#%d;", r)
 		default:
 			b.WriteRune(r)
 		}
@@ -222,6 +233,92 @@ func TestRejectLiteralNulInEveryContext(t *testing.T) {
 			assert.Contains(t, err.Error(), "U+0000")
 		})
 	}
+}
+
+// allBytes is a binary payload holding one of every byte value, 0 through 255,
+// in order. Byte b is carried as the character U+00XX with the same value, the
+// Latin-1 mapping, so the payload survives as 256 distinct characters.
+func allBytes() []byte {
+	p := make([]byte, 256)
+	for i := range p {
+		p[i] = byte(i)
+	}
+	return p
+}
+
+func encodeBytes(p []byte) string {
+	var b strings.Builder
+	for _, c := range p {
+		b.WriteRune(rune(c))
+	}
+	return b.String()
+}
+
+// decodeBytes is the inverse: every character must be inside Latin-1, and it
+// becomes the byte it stands for.
+func decodeBytes(t *testing.T, s string) []byte {
+	t.Helper()
+	out := make([]byte, 0, len(s))
+	for _, r := range s {
+		require.Less(t, r, rune(256), "character U+%04X is outside the payload's range", r)
+		out = append(out, byte(r))
+	}
+	return out
+}
+
+// The whole point, on real binary data: 256 bytes go in, an XML document comes
+// out, and the same 256 bytes come back. U+0000 is one of them, and it is no
+// more special than U+0041.
+func TestRoundtripEveryByteValue(t *testing.T) {
+	payload := allBytes()
+	text := encodeBytes(payload)
+	src := xmlDecl + `<r a="` + escapeXML(text, true) + `">` + escapeXML(text, false) + `</r>`
+
+	doc, out := roundtrip(t, src)
+
+	assert.Equal(t, payload, decodeBytes(t, doc.Root.TextContent()), "text content lost bytes")
+	v, ok := doc.Root.Attr("a")
+	require.True(t, ok)
+	assert.Equal(t, payload, decodeBytes(t, v), "attribute value lost bytes")
+
+	assert.NotContains(t, out, "\x00", "the emitted document carries a NUL byte")
+	assert.Contains(t, out, "&#0;", "U+0000 is carried as a reference")
+	assert.Contains(t, out, "&#127;", "U+007F is carried as a reference")
+}
+
+// The same payload written as nothing but references. Every byte becomes
+// `&#N;`, so the document is printable ASCII end to end -- a wire form that
+// survives a transport with opinions about high bytes and NUL.
+func TestRoundtripEveryByteValueAsReferences(t *testing.T) {
+	payload := allBytes()
+
+	var refs strings.Builder
+	for _, c := range payload {
+		fmt.Fprintf(&refs, "&#%d;", c)
+	}
+	src := xmlDecl + `<r>` + refs.String() + `</r>`
+
+	for i, c := range []byte(src) {
+		require.Truef(t, c >= 0x20 && c < 0x7F, "byte %d of the document is %#02x, not printable ASCII", i, c)
+	}
+
+	doc, out := roundtrip(t, src)
+	assert.Equal(t, payload, decodeBytes(t, doc.Root.TextContent()))
+	assert.NotContains(t, out, "\x00")
+}
+
+// Byte 0 is not the end of the payload, and neither is any run of them: the
+// bytes after the NULs are still there, in order.
+func TestRoundtripBinaryPayloadWithEmbeddedNuls(t *testing.T) {
+	payload := append(allBytes(), 0, 0, 0, 'e', 'n', 'd')
+	src := xmlDecl + `<r>` + escapeXML(encodeBytes(payload), false) + `</r>`
+
+	doc, _ := roundtrip(t, src)
+
+	got := decodeBytes(t, doc.Root.TextContent())
+	assert.Equal(t, payload, got)
+	assert.Len(t, got, 262)
+	assert.Equal(t, []byte("end"), got[len(got)-3:], "the tail after three NUL bytes survived")
 }
 
 const lengthSchema = `<?xml version="1.1"?>
