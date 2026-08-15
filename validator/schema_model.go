@@ -52,12 +52,18 @@ type Type interface {
 }
 
 type ComplexType struct {
-	Name          string
-	Mixed         bool
-	Content       ContentModel
-	Attributes    []*AttrDecl
-	AnyAttribute  *AnyAttrDecl
-	SimpleText    Type // non-nil for simpleContent
+	Name         string
+	Mixed        bool
+	Content      ContentModel
+	Attributes   []*AttrDecl
+	AnyAttribute *AnyAttrDecl
+	SimpleText   Type // non-nil for simpleContent
+	// baseName and derivation record an xs:complexContent derivation until the
+	// base type is resolvable. A derived type OWNS what it inherits: dropping
+	// the base's content model and attributes would validate documents against
+	// half a declaration and call them conforming.
+	baseName      string
+	derivation    string // "extension" or "restriction"
 	attrGroupRefs []string
 }
 
@@ -107,6 +113,16 @@ func (*Sequence) particle()    {}
 func (*Choice) particle()      {}
 func (*All) particle()         {}
 func (*AnyParticle) particle() {}
+func (*GroupRef) particle()    {}
+
+// GroupRef is an xs:group ref particle. It stands in for the named group's
+// content model until resolution replaces it with a copy of that model,
+// carrying the occurrence counts stated at the reference.
+type GroupRef struct {
+	Ref       string
+	MinOccurs int
+	MaxOccurs int
+}
 
 // AnyParticle is an xs:any wildcard. processContents is always "strict";
 // the schema parser rejects any other value because this validator does not

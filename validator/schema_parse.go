@@ -232,6 +232,12 @@ func parseComplexType(el *Element) (*ComplexType, error) {
 				return nil, err
 			}
 			ct.Content = a
+		case "group":
+			gr, err := parseGroupRef(child)
+			if err != nil {
+				return nil, err
+			}
+			ct.Content = &Sequence{Items: []Particle{gr}, MinOccurs: 1, MaxOccurs: 1}
 		case "attribute":
 			ad, err := parseAttrDecl(child)
 			if err != nil {
@@ -339,6 +345,8 @@ func parseComplexContent(el *Element, ct *ComplexType) error {
 		}
 		switch child.Local {
 		case "extension", "restriction":
+			ct.baseName, _ = child.Attr("base")
+			ct.derivation = child.Local
 			for _, inner := range child.ChildElements() {
 				if inner.Namespace != xsdNS {
 					continue
@@ -362,6 +370,12 @@ func parseComplexContent(el *Element, ct *ComplexType) error {
 						return err
 					}
 					ct.Content = a
+				case "group":
+					gr, err := parseGroupRef(inner)
+					if err != nil {
+						return err
+					}
+					ct.Content = &Sequence{Items: []Particle{gr}, MinOccurs: 1, MaxOccurs: 1}
 				case "attribute":
 					ad, err := parseAttrDecl(inner)
 					if err != nil {
@@ -414,8 +428,29 @@ func parseAll(el *Element) (*All, error) {
 	if err != nil {
 		return nil, err
 	}
+	// Order-free matching is defined over individual children, so an all-group
+	// holds element declarations and wildcards. A nested compositor -- a group
+	// reference expands to one -- would be matched by no branch at all, which
+	// reads as "this content is allowed".
+	for _, item := range items {
+		switch item.(type) {
+		case *ElementDecl, *AnyParticle:
+		default:
+			return nil, fmt.Errorf("xs:all may only contain element declarations and xs:any wildcards")
+		}
+	}
 	a.Items = items
 	return a, nil
+}
+
+func parseGroupRef(el *Element) (*GroupRef, error) {
+	ref, ok := el.Attr("ref")
+	if !ok {
+		return nil, fmt.Errorf("xs:group inside a content model requires a ref attribute")
+	}
+	gr := &GroupRef{Ref: ref, MinOccurs: 1, MaxOccurs: 1}
+	parseOccurs(el, &gr.MinOccurs, &gr.MaxOccurs)
+	return gr, nil
 }
 
 func parseParticles(el *Element) ([]Particle, error) {
@@ -444,13 +479,17 @@ func parseParticles(el *Element) ([]Particle, error) {
 			}
 			items = append(items, c)
 		case "all":
-			a, err := parseAll(child)
+			// An all-group matches its members in any order, which only has a
+			// meaning when it covers a whole element. Nested, it would have to
+			// share the child list with its siblings positionally, so XSD
+			// forbids it -- and matching quietly ignored it, which is worse.
+			return nil, fmt.Errorf("xs:all must be the entire content model of a complex type, not a particle inside xs:%s", el.Local)
+		case "group":
+			gr, err := parseGroupRef(child)
 			if err != nil {
 				return nil, err
 			}
-			items = append(items, a)
-		case "group":
-			// group reference, will be resolved
+			items = append(items, gr)
 		case "any":
 			ap := &AnyParticle{MinOccurs: 1, MaxOccurs: 1}
 			parseOccurs(child, &ap.MinOccurs, &ap.MaxOccurs)

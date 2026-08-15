@@ -49,8 +49,6 @@ func TestSchemaGroupAllContent(t *testing.T) {
 }
 
 func TestSchemaParticlesGroupRef(t *testing.T) {
-	// parseParticles "group" ref branch is a no-op placeholder; just make sure
-	// it doesn't break parsing.
 	xsd := `<?xml version="1.0"?>
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
   <xs:group name="pair">
@@ -68,7 +66,54 @@ func TestSchemaParticlesGroupRef(t *testing.T) {
     </xs:complexType>
   </xs:element>
 </xs:schema>`
-	mustSchemaValid(t, `<?xml version="1.1"?><root><extra>v</extra></root>`, xsd)
+	mustSchemaValid(t, `<?xml version="1.1"?><root><key>k</key><value>v</value><extra>v</extra></root>`, xsd)
+	// The group is what the reference stands for, so its members are required
+	// exactly as if they had been written out at the reference.
+	mustSchemaReject(t, `<?xml version="1.1"?><root><extra>v</extra></root>`, xsd, `occurrence(s) of "key"`)
+}
+
+func TestSchemaGroupRefOccursAndCycle(t *testing.T) {
+	xsd := `<?xml version="1.0"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:group name="pair">
+    <xs:sequence>
+      <xs:element name="key" type="xs:string"/>
+    </xs:sequence>
+  </xs:group>
+  <xs:element name="root">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:group ref="pair" minOccurs="0" maxOccurs="unbounded"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>`
+	// The occurrence counts stated at the reference are the ones that apply.
+	mustSchemaValid(t, `<?xml version="1.1"?><root/>`, xsd)
+	mustSchemaValid(t, `<?xml version="1.1"?><root><key>a</key><key>b</key></root>`, xsd)
+
+	missing := `<?xml version="1.0"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:element name="root">
+    <xs:complexType>
+      <xs:sequence><xs:group ref="nope"/></xs:sequence>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>`
+	mustSchemaReject(t, `<?xml version="1.1"?><root/>`, missing, `group ref "nope"`)
+
+	cyclic := `<?xml version="1.0"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:group name="loop">
+    <xs:sequence><xs:group ref="loop"/></xs:sequence>
+  </xs:group>
+  <xs:element name="root">
+    <xs:complexType>
+      <xs:sequence><xs:group ref="loop"/></xs:sequence>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>`
+	mustSchemaReject(t, `<?xml version="1.1"?><root/>`, cyclic, "refers to itself")
 }
 
 func TestSchemaParticlesNestedGroups(t *testing.T) {
@@ -135,7 +180,9 @@ func TestSchemaComplexContentRestrictionWithAttr(t *testing.T) {
 	mustSchemaValid(t, `<?xml version="1.1"?><root kind="x"><a>val</a></root>`, xsd)
 }
 
-func TestSchemaComplexContentExtensionAll(t *testing.T) {
+// An all-group matches in any order over a whole element, so it cannot be one
+// half of an extension: the base's own content has to go somewhere.
+func TestSchemaComplexContentExtensionAllIsRejected(t *testing.T) {
 	xsd := `<?xml version="1.0"?>
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
   <xs:complexType name="baseType">
@@ -156,7 +203,21 @@ func TestSchemaComplexContentExtensionAll(t *testing.T) {
     </xs:complexType>
   </xs:element>
 </xs:schema>`
-	mustSchemaValid(t, `<?xml version="1.1"?><root><b>v1</b><c>v2</c></root>`, xsd)
+	mustSchemaReject(t, `<?xml version="1.1"?><root><a>v0</a><b>v1</b><c>v2</c></root>`, xsd,
+		"xs:all content model cannot be combined")
+
+	nested := `<?xml version="1.0"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:element name="root">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:all><xs:element name="a" type="xs:string"/></xs:all>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>`
+	mustSchemaReject(t, `<?xml version="1.1"?><root><a>v</a></root>`, nested,
+		"xs:all must be the entire content model")
 }
 
 func TestSchemaComplexContentExtensionAttrGroup(t *testing.T) {

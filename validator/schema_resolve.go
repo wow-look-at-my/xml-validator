@@ -49,6 +49,14 @@ func resolveComplexTypeRefs(ct *ComplexType, s *Schema, seen resolving) error {
 		return nil
 	}
 	seen[ct] = true
+	if err := resolveDerivation(ct, s, seen); err != nil {
+		return err
+	}
+	if ct.Content != nil {
+		if err := expandGroupRefs(ct.Content, s, map[string]bool{}); err != nil {
+			return err
+		}
+	}
 	for _, ref := range ct.attrGroupRefs {
 		if ag, ok := s.AttrGroups[ref]; ok {
 			ct.Attributes = append(ct.Attributes, ag.Attributes...)

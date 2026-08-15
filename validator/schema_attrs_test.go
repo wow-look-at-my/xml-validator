@@ -159,3 +159,72 @@ func TestSchemaRefResolvesThroughDeclaredPrefix(t *testing.T) {
 	bad := `<?xml version="1.1"?><root xmlns="http://t"><leaf>x</leaf></root>`
 	require.Error(t, ValidateWithSchemaBytes([]byte(bad), []byte(xsd)))
 }
+
+func TestSchemaAllRejectsNestedCompositor(t *testing.T) {
+	xsd := `<?xml version="1.0"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:group name="g"><xs:sequence><xs:element name="a" type="xs:string"/></xs:sequence></xs:group>
+  <xs:element name="root">
+    <xs:complexType>
+      <xs:all><xs:group ref="g"/></xs:all>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>`
+	err := ValidateWithSchemaBytes([]byte(`<?xml version="1.1"?><root><a>v</a></root>`), []byte(xsd))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "xs:all may only contain")
+}
+
+// A restriction states its content model in full, and keeps the base's
+// attributes unless it restates them.
+func TestSchemaComplexContentRestrictionInheritsAttributes(t *testing.T) {
+	xsd := `<?xml version="1.0"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:complexType name="baseType">
+    <xs:sequence>
+      <xs:element name="a" type="xs:string" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:attribute name="id" type="xs:int" use="required"/>
+  </xs:complexType>
+  <xs:element name="root">
+    <xs:complexType>
+      <xs:complexContent>
+        <xs:restriction base="baseType">
+          <xs:sequence>
+            <xs:element name="a" type="xs:string"/>
+          </xs:sequence>
+        </xs:restriction>
+      </xs:complexContent>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>`
+	require.NoError(t, ValidateWithSchemaBytes(
+		[]byte(`<?xml version="1.1"?><root id="1"><a>v</a></root>`), []byte(xsd)))
+
+	err := ValidateWithSchemaBytes([]byte(`<?xml version="1.1"?><root><a>v</a></root>`), []byte(xsd))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "id")
+
+	// The restriction's own model is the one that applies, not the base's.
+	err = ValidateWithSchemaBytes(
+		[]byte(`<?xml version="1.1"?><root id="1"><a>v</a><a>w</a></root>`), []byte(xsd))
+	require.Error(t, err)
+}
+
+func TestSchemaComplexContentUnknownBase(t *testing.T) {
+	xsd := `<?xml version="1.0"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:element name="root">
+    <xs:complexType>
+      <xs:complexContent>
+        <xs:extension base="nope">
+          <xs:sequence><xs:element name="a" type="xs:string"/></xs:sequence>
+        </xs:extension>
+      </xs:complexContent>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>`
+	err := ValidateWithSchemaBytes([]byte(`<?xml version="1.1"?><root><a>v</a></root>`), []byte(xsd))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), `base "nope"`)
+}

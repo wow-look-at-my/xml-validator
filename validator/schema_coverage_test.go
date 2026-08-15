@@ -324,7 +324,10 @@ func TestSchemaComplexContentExtension(t *testing.T) {
     </xs:complexType>
   </xs:element>
 </xs:schema>`
-	mustSchemaValid(t, `<?xml version="1.1"?><root id="1"><b>val</b></root>`, xsd)
+	// An extension ADDS to its base: the base's own content is still required,
+	// and it comes first.
+	mustSchemaValid(t, `<?xml version="1.1"?><root id="1"><a>base</a><b>val</b></root>`, xsd)
+	mustSchemaReject(t, `<?xml version="1.1"?><root id="1"><b>val</b></root>`, xsd, `occurrence(s) of "a"`)
 }
 
 func TestSchemaListType(t *testing.T) {
