@@ -37,6 +37,7 @@ func parseSchemaDoc(doc *Document, resolver SchemaResolver, visited map[importKe
 		Types:      make(map[string]Type),
 		Groups:     make(map[string]*Group),
 		AttrGroups: make(map[string]*AttrGroup),
+		Attributes: make(map[string]*AttrDecl),
 	}
 
 	s.TargetNamespace, _ = root.Attr("targetNamespace")
@@ -62,6 +63,15 @@ func parseSchemaDoc(doc *Document, resolver SchemaResolver, visited map[importKe
 			if ed.Name != "" {
 				ed.Namespace = s.TargetNamespace
 				s.Elements[ed.Name] = ed
+			}
+		case "attribute":
+			ad, err := parseAttrDecl(child)
+			if err != nil {
+				return nil, fmt.Errorf("parsing attribute declaration: %w", err)
+			}
+			if ad.Name != "" {
+				ad.Namespace = s.TargetNamespace
+				s.Attributes[ad.Name] = ad
 			}
 		case "complexType":
 			ct, err := parseComplexType(child)

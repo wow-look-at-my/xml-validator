@@ -11,7 +11,12 @@ type Schema struct {
 	Types                map[string]Type
 	Groups               map[string]*Group
 	AttrGroups           map[string]*AttrGroup
-	Imports              []*Import
+	// Attributes are the global xs:attribute declarations, keyed by local name
+	// like Elements. A qualified attribute in an instance document is validated
+	// against the declaration here whose Namespace matches its own; without one
+	// there is nothing to validate against, so the attribute is an error.
+	Attributes map[string]*AttrDecl
+	Imports    []*Import
 }
 
 // Import is an xs:import directive recorded on the schema. The Namespace is
@@ -112,13 +117,17 @@ type AnyAttrDecl struct {
 }
 
 type AttrDecl struct {
-	Name     string
-	TypeName string
-	Type     Type
-	Use      string // required, optional, prohibited
-	Default  string
-	Fixed    string
-	Ref      string
+	Name string
+	// Namespace is the target namespace of the schema declaring this global
+	// attribute. It is empty on a local declaration, which is unqualified
+	// unless the schema says otherwise.
+	Namespace string
+	TypeName  string
+	Type      Type
+	Use       string // required, optional, prohibited
+	Default   string
+	Fixed     string
+	Ref       string
 }
 
 type Facet struct {

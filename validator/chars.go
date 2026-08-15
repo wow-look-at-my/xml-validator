@@ -8,6 +8,15 @@ func IsChar(r rune) bool {
 		(r >= 0x10000 && r <= 0x10FFFF)
 }
 
+// IsCharRefValue returns true if r may be produced by a character reference.
+// It is IsChar plus U+0000, which the Char production excludes: `&#0;` is four
+// ASCII bytes, so a document carrying one contains no NUL byte and nothing that
+// reads it has to survive one. A literal NUL is still rejected, as is a lone
+// surrogate, which is not a character in any encoding.
+func IsCharRefValue(r rune) bool {
+	return r == 0 || IsChar(r)
+}
+
 // IsRestrictedChar returns true if r is a restricted character in XML 1.1.
 // [2a] RestrictedChar ::= [#x1-#x8] | [#xB-#xC] | [#xE-#x1F] | [#x7F-#x84] | [#x86-#x9F]
 func IsRestrictedChar(r rune) bool {

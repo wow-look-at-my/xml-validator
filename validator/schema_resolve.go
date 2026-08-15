@@ -42,6 +42,7 @@ func resolveComplexTypeRefs(ct *ComplexType, s *Schema) {
 		resolveContentModel(ct.Content, s)
 	}
 	for _, ad := range ct.Attributes {
+		resolveAttrRef(ad, s)
 		resolveAttrType(ad, s)
 	}
 	if ct.SimpleText != nil {
@@ -82,6 +83,31 @@ func resolveContentModel(cm ContentModel, s *Schema) {
 		case *All:
 			resolveContentModel(p, s)
 		}
+	}
+}
+
+// resolveAttrRef fills a use="..." reference from the global attribute it names.
+// The reference contributes only whether the attribute is required: the name,
+// namespace, and type are the global declaration's, which is what makes a
+// qualified attribute in an instance document resolvable at all.
+func resolveAttrRef(ad *AttrDecl, s *Schema) {
+	if ad.Ref == "" {
+		return
+	}
+	g, ok := s.Attributes[stripPrefix(ad.Ref)]
+	if !ok {
+		return
+	}
+	ad.Name = g.Name
+	ad.Namespace = g.Namespace
+	if ad.TypeName == "" {
+		ad.TypeName = g.TypeName
+	}
+	if ad.Type == nil {
+		ad.Type = g.Type
+	}
+	if ad.Fixed == "" {
+		ad.Fixed = g.Fixed
 	}
 }
 

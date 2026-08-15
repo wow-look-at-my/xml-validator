@@ -222,7 +222,7 @@ func (p *parser) parseContent() error {
 			if err != nil {
 				return err
 			}
-			if !IsChar(r) {
+			if !IsCharRefValue(r) {
 				return p.errorf("character reference resolves to invalid character U+%04X", r)
 			}
 		} else {
@@ -331,7 +331,7 @@ func (p *parser) parseCharRef() (rune, error) {
 	}
 
 	r := rune(val)
-	if !IsChar(r) {
+	if !IsCharRefValue(r) {
 		return 0, p.errorf("character reference &#%s; resolves to invalid XML 1.1 character U+%04X", s, r)
 	}
 	return r, nil

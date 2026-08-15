@@ -134,6 +134,12 @@ func mergeImportedSchema(dst, src *Schema) error {
 		}
 		dst.AttrGroups[name] = ag
 	}
+	for name, ad := range src.Attributes {
+		if _, exists := dst.Attributes[name]; exists {
+			return fmt.Errorf("xs:import: attribute %q is defined more than once across schemas", name)
+		}
+		dst.Attributes[name] = ad
+	}
 	dst.Imports = append(dst.Imports, src.Imports...)
 	return nil
 }
