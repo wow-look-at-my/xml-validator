@@ -119,6 +119,26 @@ func BenchmarkValidateSparseNulText(b *testing.B) {
 	}
 }
 
+// The same payload with no references at all: every byte is one that can
+// stand for itself. This separates "base64 is fast" from "references are
+// slow" -- if byte mode overtakes base64 here, the cost was never the form.
+func BenchmarkValidateNoReferences(b *testing.B) {
+	payload := make([]byte, benchPayloadSize)
+	for i := range payload {
+		// 0xA0..0xFF: literal in byte mode, and none of them is markup.
+		payload[i] = byte(0xA0 + i%0x60)
+	}
+	for name, doc := range benchForms(payload) {
+		b.Run(name, func(b *testing.B) {
+			b.SetBytes(int64(benchPayloadSize))
+			b.ReportMetric(float64(len(doc))/float64(benchPayloadSize), "x-size")
+			for b.Loop() {
+				require.NoError(b, Validate(bytes.NewReader(doc)))
+			}
+		})
+	}
+}
+
 // Building the document from a payload: the producer's side of the same
 // choice. The escaping forms walk the payload character by character; base64
 // and hex are table-driven passes over bytes.
