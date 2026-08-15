@@ -95,6 +95,7 @@ func resolveDerivation(ct *ComplexType, s *Schema, seen resolving) error {
 		}
 		return fmt.Errorf("complexContent %s base %q does not name a known type", derivation, baseName)
 	}
+	ct.baseType = t
 	base, ok := t.(*ComplexType)
 	if !ok {
 		return nil

@@ -28,6 +28,9 @@ func resolveSchemaRefs(s *Schema) error {
 			}
 		}
 	}
+	if err := resolveSubstitutionGroups(s); err != nil {
+		return err
+	}
 	return resolveIdentityRefs(s)
 }
 
@@ -187,6 +190,7 @@ func resolveContentModel(cm ContentModel, s *Schema, seen resolving) error {
 				p.TypeName = ref.TypeName
 				p.Type = ref.Type
 				p.Constraints = ref.Constraints
+				p.Abstract = ref.Abstract
 			}
 			err = resolveElementType(p, s, seen)
 		case *Sequence:

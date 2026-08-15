@@ -59,6 +59,10 @@ func (sv *schemaValidator) validateRoot(el *Element) {
 		sv.addError(el, "schema: %v", err)
 		return
 	}
+	if decl.Abstract {
+		sv.addError(el, "element %q is abstract: only an element that substitutes for it may appear here", rootName)
+		return
+	}
 	sv.validateElement(el, decl)
 }
 
@@ -307,8 +311,8 @@ func (sv *schemaValidator) validateAll(el *Element, children []*Element, all *Al
 	anyCount := make(map[*AnyParticle]int)
 
 	for _, child := range children {
-		decl, ok := declMap[child.Local]
-		if !ok {
+		slot, decl := sv.allSlotFor(child, all.Items, declMap)
+		if slot == nil {
 			matched := false
 			for _, ap := range anyParticles {
 				if sv.anyMatchesElement(ap, child) {
@@ -330,12 +334,18 @@ func (sv *schemaValidator) validateAll(el *Element, children []*Element, all *Al
 			}
 			continue
 		}
-		seen[child.Local]++
-		maxOccurs := decl.MaxOccurs
+		if decl.Abstract {
+			sv.addError(child, "element %q is abstract: only an element that substitutes for it may appear here", child.Local)
+			continue
+		}
+		// A substitute fills the slot of the element it stands in for, so the
+		// occurrence counts are the particle's, not the member's.
+		seen[slot.Name]++
+		maxOccurs := slot.MaxOccurs
 		if maxOccurs < 0 {
 			maxOccurs = len(children)
 		}
-		if seen[child.Local] > maxOccurs {
+		if seen[slot.Name] > maxOccurs {
 			sv.addError(child, "element %q appears too many times (max %d)", child.Local, maxOccurs)
 			continue
 		}
@@ -381,10 +391,15 @@ func (sv *schemaValidator) matchElement(parent *Element, children []*Element, de
 
 	for count < len(children) && count < maxOccurs {
 		child := children[count]
-		if child.Local != decl.Name {
+		match := sv.substituteFor(child, decl)
+		if match == nil {
 			break
 		}
-		sv.validateElement(child, decl)
+		if match.Abstract {
+			sv.addError(child, "element %q is abstract: only an element that substitutes for it may appear here", child.Local)
+			return count + 1, nil
+		}
+		sv.validateElement(child, match)
 		count++
 	}
 
