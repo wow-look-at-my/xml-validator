@@ -61,11 +61,20 @@ different places.
 - XML 1.1 line ending normalization (`#x85`, `#x2028`)
 - XML 1.1 character and name character classes
 - Restricted character enforcement (must use character references)
+- `&#0;` -- one deliberate deviation from the XML 1.1 `Char` production, which
+  starts at `#x1`. A reference resolving to U+0000 is accepted and carried
+  through to the parsed value; a literal NUL byte and a lone surrogate are still
+  rejected. See `IsCharRefValue` in `validator/chars.go`.
 - XSD schema validation (`--schema`):
   - Element declarations (global, local, refs)
   - Complex types (sequence, choice, all content models)
   - Simple types (restriction with facets, list, union)
   - Attributes (required/optional/prohibited, type checking, fixed values)
+  - Global `xs:attribute` declarations and `xs:attribute ref=`, matched by
+    namespace AND local name -- a qualified attribute resolves to the global
+    declaration in its own namespace, so an imported vocabulary's attributes are
+    type-checked and an undeclared one is an error rather than something a
+    wildcard waves through
   - Named types, groups, attribute groups
   - simpleContent and complexContent (extension/restriction)
   - 35+ built-in XSD types (string, integer, boolean, decimal, date, etc.)
