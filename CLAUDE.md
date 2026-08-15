@@ -57,7 +57,10 @@ different places.
 - Elements, attributes, text, CDATA sections, comments, PIs
 - Character references (`&#N;`, `&#xN;`) and predefined entity references (`&amp;` `&lt;` `&gt;` `&apos;` `&quot;`)
 - Namespace validation (Namespaces in XML 1.1)
-- UTF-8 only, no BOM (per utf8everywhere)
+- Two input modes, picked by the encoding declaration: UTF-8 (the default) and
+  an 8-bit byte mode (`ISO-8859-1` and its aliases) where byte b is the
+  character U+00XX and anything above U+00FF needs a character reference.
+  Neither takes a BOM (per utf8everywhere). See `docs/encodings.md`
 - XML 1.1 line ending normalization (`#x85`, `#x2028`)
 - XML 1.1 character and name character classes
 - Restricted character enforcement (must use character references)
@@ -109,7 +112,7 @@ different places.
 - General entity references (beyond the 5 predefined)
 - XML 1.0 documents
 - Missing XML declaration
-- Encodings other than UTF-8 (UTF-16 inputs and UTF-8 BOMs are rejected; any encoding declaration other than UTF-8 is rejected)
+- Encodings other than UTF-8 and ISO-8859-1 (UTF-16 inputs and BOMs are rejected; any other encoding declaration is rejected by name)
 - xs:redefine, xs:override
 - xs:notation
 - Identity constraints (xs:key, xs:keyref, xs:unique)
@@ -125,7 +128,8 @@ different places.
 - `validator/elements.go` -- element, attribute, content, CDATA, reference parsing
 - `validator/namespace.go` -- QName validation, namespace scope management
 - `validator/chars.go` -- XML 1.1 character class predicates
-- `validator/reader.go` -- UTF-8 decoding, BOM/UTF-16 detection-and-reject, line normalization
+- `validator/reader.go` -- decoder selection, BOM/UTF-16 detection-and-reject, line normalization
+- `validator/encoding.go` -- the two modes, the alias table, declaration sniffing, both decoders
 - `validator/error.go` -- error type with line/column position
 - `validator/document.go` -- document tree model (Element, Attr, CharData)
 - `validator/tree.go` -- version-agnostic XML tree parser

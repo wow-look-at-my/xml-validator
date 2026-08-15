@@ -3,7 +3,6 @@ package validator
 import (
 	"fmt"
 	"io"
-	"unicode/utf8"
 )
 
 func readInput(r io.Reader) ([]rune, error) {
@@ -15,55 +14,49 @@ func readInput(r io.Reader) ([]rune, error) {
 		return nil, fmt.Errorf("empty input")
 	}
 
-	if err := rejectNonUTF8(raw); err != nil {
+	if err := rejectUnsupportedEncoding(raw); err != nil {
 		return nil, err
 	}
 
-	runes, err := decodeUTF8(raw)
-	if err != nil {
-		return nil, err
+	var runes []rune
+	if sniffEncoding(raw) == encodingByte {
+		runes = decodeByteMode(raw)
+	} else {
+		runes, err = decodeUTF8(raw)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return normalizeLineEndings(runes), nil
 }
 
-// rejectNonUTF8 rejects any input that begins with a byte-order mark or that
-// matches the UTF-16 leading-NUL heuristic from XML 1.1 appendix F. The
-// validator requires raw UTF-8 with no BOM (per the utf8everywhere
-// recommendation); the BOM is meaningless for UTF-8 and is interpreted by
-// some downstream tools as a literal U+FEFF.
-func rejectNonUTF8(data []byte) error {
+// rejectUnsupportedEncoding rejects any input that begins with a byte-order
+// mark or that matches the UTF-16 leading-NUL heuristic from XML 1.1 appendix
+// F. Neither mode this validator reads takes a BOM: it is meaningless for
+// UTF-8 (per the utf8everywhere recommendation) and some downstream tools read
+// it as a literal U+FEFF, and byte mode has no character above U+00FF to spell
+// one with. A document declaring byte mode still starts with `<?xml` in ASCII,
+// so this check runs before the declaration is read and applies to both.
+func rejectUnsupportedEncoding(data []byte) error {
 	if len(data) >= 3 && data[0] == 0xEF && data[1] == 0xBB && data[2] == 0xBF {
 		return fmt.Errorf("unsupported encoding: input begins with a UTF-8 BOM (raw UTF-8 only)")
 	}
 	if len(data) >= 2 {
 		if data[0] == 0xFE && data[1] == 0xFF {
-			return fmt.Errorf("unsupported encoding: UTF-16 BE (only UTF-8 is supported)")
+			return fmt.Errorf("unsupported encoding: UTF-16 BE (only UTF-8 and ISO-8859-1 are supported)")
 		}
 		if data[0] == 0xFF && data[1] == 0xFE {
-			return fmt.Errorf("unsupported encoding: UTF-16 LE (only UTF-8 is supported)")
+			return fmt.Errorf("unsupported encoding: UTF-16 LE (only UTF-8 and ISO-8859-1 are supported)")
 		}
 		if data[0] == 0x00 && data[1] == 0x3C {
-			return fmt.Errorf("unsupported encoding: input looks like UTF-16 BE (only UTF-8 is supported)")
+			return fmt.Errorf("unsupported encoding: input looks like UTF-16 BE (only UTF-8 and ISO-8859-1 are supported)")
 		}
 		if data[0] == 0x3C && data[1] == 0x00 {
-			return fmt.Errorf("unsupported encoding: input looks like UTF-16 LE (only UTF-8 is supported)")
+			return fmt.Errorf("unsupported encoding: input looks like UTF-16 LE (only UTF-8 and ISO-8859-1 are supported)")
 		}
 	}
 	return nil
-}
-
-func decodeUTF8(data []byte) ([]rune, error) {
-	runes := make([]rune, 0, len(data))
-	for len(data) > 0 {
-		r, size := utf8.DecodeRune(data)
-		if r == utf8.RuneError && size <= 1 {
-			return nil, fmt.Errorf("invalid UTF-8 byte sequence")
-		}
-		runes = append(runes, r)
-		data = data[size:]
-	}
-	return runes, nil
 }
 
 // normalizeLineEndings applies XML 1.1 line ending normalization:

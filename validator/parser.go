@@ -230,8 +230,8 @@ func (p *parser) validateEncName(name string) error {
 }
 
 func (p *parser) validateEncodingMatch(declared string) error {
-	if strings.ToUpper(declared) != "UTF-8" {
-		return p.errorf("unsupported encoding %q (only UTF-8 is supported)", declared)
+	if canonicalEncoding(declared) == "" {
+		return p.errorf("unsupported encoding %q (UTF-8 and ISO-8859-1 are supported)", declared)
 	}
 	return nil
 }

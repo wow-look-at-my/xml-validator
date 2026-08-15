@@ -93,7 +93,10 @@ err = validator.ValidateSchema(xmlDoc, schema)
   `&#0;` is accepted, one deliberate deviation from XML 1.1 -- a literal NUL
   byte and a lone surrogate are still rejected
 - Namespaces in XML 1.1
-- UTF-8 only, no BOM (per [utf8everywhere](https://utf8everywhere.org/))
+- Two input modes: UTF-8 (the default) and an 8-bit byte mode selected by
+  `encoding="ISO-8859-1"`, where one byte is one character and anything above
+  U+00FF takes a character reference. No BOM in either
+  (per [utf8everywhere](https://utf8everywhere.org/))
 - XML 1.1 line-ending normalization (`#x85`, `#x2028`)
 - XSD schema validation: complex/simple types, facets, sequence/choice/all,
   attribute groups, simpleContent/complexContent, `xs:any`, and 35+ built-in
@@ -113,7 +116,7 @@ err = validator.ValidateSchema(xmlDoc, schema)
 - General entity references beyond the five predefined ones
 - XML 1.0 documents (the declaration must say `version="1.1"`)
 - Missing XML declaration
-- Encodings other than UTF-8 (UTF-16 inputs and UTF-8 BOMs are rejected)
+- Encodings other than UTF-8 and ISO-8859-1 (UTF-16 inputs and BOMs are rejected)
 - XSD: `xs:redefine`, `xs:override`, `xs:notation`,
   identity constraints (`xs:key` / `xs:keyref` / `xs:unique`), and
   `substitutionGroup`

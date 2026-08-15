@@ -217,8 +217,13 @@ func TestRejectBadEncodingName(t *testing.T) {
 	mustReject(t, `<?xml version="1.1" encoding="123bad"?><r/>`, "encoding name must start with a letter")
 }
 
-func TestRejectEncodingMismatch(t *testing.T) {
-	mustReject(t, `<?xml version="1.1" encoding="ISO-8859-1"?><r/>`, "only UTF-8 is supported")
+func TestAcceptDeclaredEncodings(t *testing.T) {
+	mustValidate(t, `<?xml version="1.1" encoding="UTF-8"?><r/>`)
+	mustValidate(t, `<?xml version="1.1" encoding="ISO-8859-1"?><r/>`)
+}
+
+func TestRejectUnsupportedEncoding(t *testing.T) {
+	mustReject(t, `<?xml version="1.1" encoding="Shift_JIS"?><r/>`, "UTF-8 and ISO-8859-1 are supported")
 }
 
 func TestRejectStandaloneBad(t *testing.T) {
