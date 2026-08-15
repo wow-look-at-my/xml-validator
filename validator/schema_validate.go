@@ -26,12 +26,16 @@ func (sv *schemaValidator) addError(el *Element, format string, args ...any) {
 
 func (sv *schemaValidator) validateRoot(el *Element) {
 	rootName := el.Local
-	decl, ok := sv.schema.Elements[rootName]
+	decl, ok := sv.schema.Elements[qnameKey(el.Namespace, rootName)]
+	if !ok {
+		decl = findByLocal(sv.schema.Elements, rootName)
+		ok = decl != nil
+	}
 	if !ok {
 		sv.addError(el, "element %q is not declared as a global element in the schema", rootName)
 		return
 	}
-	resolveElementType(decl, sv.schema)
+	resolveElementType(decl, sv.schema, resolving{})
 	sv.validateElement(el, decl)
 }
 
@@ -179,12 +183,12 @@ func (sv *schemaValidator) validateSimpleText(el *Element, textType Type) {
 }
 
 func (sv *schemaValidator) validateAttributes(el *Element, decls []*AttrDecl, anyAttr *AnyAttrDecl) {
-	declared := make(map[string]*AttrDecl)
+	declared := make(map[attrKey]*AttrDecl)
 	for _, ad := range decls {
 		if ad.Use == "prohibited" {
 			continue
 		}
-		declared[ad.Name] = ad
+		declared[attrKey{ns: ad.Namespace, local: ad.Name}] = ad
 	}
 
 	for _, attr := range el.Attrs {
@@ -197,12 +201,13 @@ func (sv *schemaValidator) validateAttributes(el *Element, decls []*AttrDecl, an
 		if attr.Namespace == xsiNS {
 			continue
 		}
-		ad, ok := declared[attr.Local]
-		if !ok || attr.Namespace != "" {
+		key := attrKey{ns: attr.Namespace, local: attr.Local}
+		ad, ok := declared[key]
+		if !ok {
 			if anyAttr != nil && sv.wildcardMatchesNS(anyAttr.Namespace, attr.Namespace) {
 				continue
 			}
-			sv.addError(el, "unexpected attribute %q on element %q", attr.Local, el.Local)
+			sv.addError(el, "unexpected attribute %q on element %q", qualifiedName(attr.Namespace, attr.Local), el.Local)
 			continue
 		}
 		if ad.Fixed != "" && attr.Value != ad.Fixed {
@@ -210,14 +215,33 @@ func (sv *schemaValidator) validateAttributes(el *Element, decls []*AttrDecl, an
 			continue
 		}
 		sv.validateAttrValue(el, attr, ad)
-		delete(declared, attr.Local)
+		delete(declared, key)
 	}
 
-	for name, ad := range declared {
+	for key, ad := range declared {
 		if ad.Use == "required" {
-			sv.addError(el, "required attribute %q is missing on element %q", name, el.Local)
+			sv.addError(el, "required attribute %q is missing on element %q", qualifiedName(key.ns, key.local), el.Local)
 		}
 	}
+}
+
+// attrKey identifies an attribute declaration the way an instance document
+// does: by namespace and local name together. Local declarations carry an empty
+// namespace, so an unqualified attribute never matches a global one that a
+// dialect declared under its own namespace.
+type attrKey struct {
+	ns    string
+	local string
+}
+
+// qualifiedName renders an attribute for an error message, showing the
+// namespace when there is one -- "top-k" alone does not say which vocabulary it
+// came from when several are in play.
+func qualifiedName(ns, local string) string {
+	if ns == "" {
+		return local
+	}
+	return "{" + ns + "}" + local
 }
 
 func (sv *schemaValidator) validateAttrValue(el *Element, attr Attr, ad *AttrDecl) {
@@ -540,14 +564,10 @@ func (sv *schemaValidator) processWildcardElement(_ *AnyParticle, el *Element) {
 // names across namespaces); we use the Namespace field recorded at parse time
 // to disambiguate.
 func (sv *schemaValidator) lookupGlobalElement(local, ns string) *ElementDecl {
-	decl, ok := sv.schema.Elements[local]
-	if !ok {
-		return nil
+	if decl, ok := sv.schema.Elements[qnameKey(ns, local)]; ok {
+		return decl
 	}
-	if decl.Namespace != ns {
-		return nil
-	}
-	return decl
+	return nil
 }
 
 func (sv *schemaValidator) wildcardMatchesNS(constraint, ns string) bool {

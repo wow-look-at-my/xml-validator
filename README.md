@@ -89,13 +89,18 @@ err = validator.ValidateSchema(xmlDoc, schema)
 
 - XML 1.1 declaration (required)
 - Elements, attributes, text content, CDATA sections, comments, PIs
-- Character references (`&#N;`, `&#xN;`) and the five predefined entities
+- Character references (`&#N;`, `&#xN;`) and the five predefined entities.
+  `&#0;` is accepted, one deliberate deviation from XML 1.1 -- a literal NUL
+  byte and a lone surrogate are still rejected
 - Namespaces in XML 1.1
 - UTF-8 only, no BOM (per [utf8everywhere](https://utf8everywhere.org/))
 - XML 1.1 line-ending normalization (`#x85`, `#x2028`)
 - XSD schema validation: complex/simple types, facets, sequence/choice/all,
   attribute groups, simpleContent/complexContent, `xs:any`, and 35+ built-in
   types
+- Global `xs:attribute` declarations and `xs:attribute ref=`. Attributes match
+  on namespace and local name together, so a qualified attribute from an
+  imported vocabulary is type-checked rather than assumed valid
 - `xs:import` (with optional `schemaLocation`). The CLI and
   `ValidateWithSchemaFile` resolve hints relative to the importing schema's
   directory; library callers can supply a custom `SchemaResolver`

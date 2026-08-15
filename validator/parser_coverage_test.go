@@ -145,7 +145,7 @@ func TestParseElementMarkupInContent(t *testing.T) {
 }
 
 func TestParseElementInvalidCharRefInAttr(t *testing.T) {
-	err := Validate(strings.NewReader(`<?xml version="1.1"?><r a="&#0;"/>`))
+	err := Validate(strings.NewReader(`<?xml version="1.1"?><r a="&#xFFFF;"/>`))
 	require.Error(t, err)
 }
 

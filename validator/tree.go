@@ -221,10 +221,11 @@ func (tp *treeParser) parseElement(parentNS map[string]string) (*Element, error)
 	}
 
 	elem := &Element{
-		Name:  name,
-		Attrs: attrs,
-		Line:  line,
-		Col:   col,
+		Name:       name,
+		Attrs:      attrs,
+		Namespaces: nsScope,
+		Line:       line,
+		Col:        col,
 	}
 	if idx := strings.Index(name, ":"); idx >= 0 {
 		elem.Prefix = name[:idx]
@@ -249,10 +250,20 @@ func (tp *treeParser) parseElement(parentNS map[string]string) (*Element, error)
 	}
 	elem.Children = children
 
-	tp.expect("</")
-	tp.parseName()
+	// A truncated document ends here, with content already parsed. Reporting it
+	// as a document would hand a caller a partial answer that reads as a whole
+	// one -- a stream cut mid-element is exactly the case that has to be told
+	// apart from a stream that finished.
+	if err := tp.expect("</"); err != nil {
+		return nil, tp.errorf("element %q is never closed", name)
+	}
+	if closing := tp.parseName(); closing != name {
+		return nil, tp.errorf("element %q is closed by </%s>", name, closing)
+	}
 	tp.skipWS()
-	tp.expect(">")
+	if err := tp.expect(">"); err != nil {
+		return nil, err
+	}
 	return elem, nil
 }
 
@@ -283,13 +294,22 @@ func (tp *treeParser) parseContent(nsScope map[string]string) ([]Node, error) {
 			continue
 		}
 		if tp.lookingAt("<![CDATA[") {
-			tp.expect("<![CDATA[")
+			if err := tp.expect("<![CDATA["); err != nil {
+				return nil, err
+			}
+			closed := false
 			for !tp.eof() {
 				if tp.lookingAt("]]>") {
-					tp.expect("]]>")
+					if err := tp.expect("]]>"); err != nil {
+						return nil, err
+					}
+					closed = true
 					break
 				}
 				text = append(text, tp.advance())
+			}
+			if !closed {
+				return nil, tp.errorf("CDATA section is never closed")
 			}
 			continue
 		}

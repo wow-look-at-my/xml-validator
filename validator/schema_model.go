@@ -11,7 +11,19 @@ type Schema struct {
 	Types                map[string]Type
 	Groups               map[string]*Group
 	AttrGroups           map[string]*AttrGroup
-	Imports              []*Import
+	// Attributes are the global xs:attribute declarations. A qualified
+	// attribute in an instance document is validated against the declaration
+	// here whose namespace matches its own; without one there is nothing to
+	// validate against, so the attribute is an error.
+	//
+	// Elements and Attributes are keyed by qnameKey(namespace, local): two
+	// imported vocabularies may each declare a <params>, and keying by local
+	// name alone would call that a collision.
+	Attributes map[string]*AttrDecl
+	Imports    []*Import
+	// prefixes are the namespace declarations this schema document made, so a
+	// QName in a ref resolves to the namespace its author meant.
+	prefixes map[string]string
 }
 
 // Import is an xs:import directive recorded on the schema. The Namespace is
@@ -40,12 +52,18 @@ type Type interface {
 }
 
 type ComplexType struct {
-	Name          string
-	Mixed         bool
-	Content       ContentModel
-	Attributes    []*AttrDecl
-	AnyAttribute  *AnyAttrDecl
-	SimpleText    Type // non-nil for simpleContent
+	Name         string
+	Mixed        bool
+	Content      ContentModel
+	Attributes   []*AttrDecl
+	AnyAttribute *AnyAttrDecl
+	SimpleText   Type // non-nil for simpleContent
+	// baseName and derivation record an xs:complexContent derivation until the
+	// base type is resolvable. A derived type OWNS what it inherits: dropping
+	// the base's content model and attributes would validate documents against
+	// half a declaration and call them conforming.
+	baseName      string
+	derivation    string // "extension" or "restriction"
 	attrGroupRefs []string
 }
 
@@ -95,6 +113,16 @@ func (*Sequence) particle()    {}
 func (*Choice) particle()      {}
 func (*All) particle()         {}
 func (*AnyParticle) particle() {}
+func (*GroupRef) particle()    {}
+
+// GroupRef is an xs:group ref particle. It stands in for the named group's
+// content model until resolution replaces it with a copy of that model,
+// carrying the occurrence counts stated at the reference.
+type GroupRef struct {
+	Ref       string
+	MinOccurs int
+	MaxOccurs int
+}
 
 // AnyParticle is an xs:any wildcard. processContents is always "strict";
 // the schema parser rejects any other value because this validator does not
@@ -112,13 +140,17 @@ type AnyAttrDecl struct {
 }
 
 type AttrDecl struct {
-	Name     string
-	TypeName string
-	Type     Type
-	Use      string // required, optional, prohibited
-	Default  string
-	Fixed    string
-	Ref      string
+	Name string
+	// Namespace is the target namespace of the schema declaring this global
+	// attribute. It is empty on a local declaration, which is unqualified
+	// unless the schema says otherwise.
+	Namespace string
+	TypeName  string
+	Type      Type
+	Use       string // required, optional, prohibited
+	Default   string
+	Fixed     string
+	Ref       string
 }
 
 type Facet struct {

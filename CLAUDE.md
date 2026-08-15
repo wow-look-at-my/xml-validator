@@ -61,13 +61,27 @@ different places.
 - XML 1.1 line ending normalization (`#x85`, `#x2028`)
 - XML 1.1 character and name character classes
 - Restricted character enforcement (must use character references)
+- `&#0;` -- one deliberate deviation from the XML 1.1 `Char` production, which
+  starts at `#x1`. A reference resolving to U+0000 is accepted and carried
+  through to the parsed value; a literal NUL byte and a lone surrogate are still
+  rejected. See `IsCharRefValue` in `validator/chars.go`.
 - XSD schema validation (`--schema`):
   - Element declarations (global, local, refs)
   - Complex types (sequence, choice, all content models)
   - Simple types (restriction with facets, list, union)
   - Attributes (required/optional/prohibited, type checking, fixed values)
-  - Named types, groups, attribute groups
-  - simpleContent and complexContent (extension/restriction)
+  - Global `xs:attribute` declarations and `xs:attribute ref=`, matched by
+    namespace AND local name -- a qualified attribute resolves to the global
+    declaration in its own namespace, so an imported vocabulary's attributes are
+    type-checked and an undeclared one is an error rather than something a
+    wildcard waves through
+  - Named types, groups, attribute groups. An `xs:group ref` is replaced by a
+    copy of the group's content model, carrying the occurrence counts stated at
+    the reference
+  - simpleContent and complexContent (extension/restriction). An extension's
+    content follows its base's and its attributes add to the base's; a
+    restriction states its own content model but still inherits the base's
+    attributes where it does not restate them
   - 35+ built-in XSD types (string, integer, boolean, decimal, date, etc.)
   - Facets: enumeration, pattern, minLength, maxLength, length, min/maxInclusive, min/maxExclusive, totalDigits, fractionDigits
   - minOccurs/maxOccurs enforcement
@@ -79,6 +93,12 @@ different places.
 
 ## Hard Errors (Unsupported)
 
+- `xs:all` anywhere but as a whole complex type's content model, and anything
+  but element declarations and `xs:any` inside one -- order-free matching is
+  defined over a whole element, so a nested one matched nothing at all
+- An `xs:element`/`xs:attribute`/`xs:group` `ref`, or a `complexContent` base,
+  that names nothing -- an unresolvable reference used to leave a hole in the
+  content model and report itself as a missing instance element
 - `processContents="skip"` and `processContents="lax"` on `xs:any` / `xs:anyAttribute` -- only `strict` (the default) is allowed; this validator does not offer a no- or partial-validation mode
 - DOCTYPE declarations
 - General entity references (beyond the 5 predefined)
@@ -108,6 +128,9 @@ different places.
 - `validator/schema_builtin.go` -- 35+ built-in XSD types with validation
 - `validator/schema_parse.go` -- XSD file parser (document tree to schema model)
 - `validator/schema_import.go` -- `SchemaResolver` and `xs:import` handling
+- `validator/schema_qname.go` -- namespace-keyed lookup of global declarations
+- `validator/schema_resolve.go` -- ref and type resolution over a parsed schema
+- `validator/schema_derive.go` -- group-ref expansion and complexContent derivation
 - `validator/schema_validate.go` -- schema validation engine
 - `action.yml` -- composite GitHub Action (build with caching + run). The
   cache-key, build, and validation steps run as TypeScript (tsc-checked, Node)

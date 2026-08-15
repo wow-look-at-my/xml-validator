@@ -241,8 +241,26 @@ func TestRejectUnterminatedAttrValue(t *testing.T) {
 	mustReject(t, `<?xml version="1.1"?><r a="unterminated`, "unterminated attribute value")
 }
 
-func TestRejectInvalidCharRef(t *testing.T) {
-	mustReject(t, `<?xml version="1.1"?><r>&#0;</r>`, "invalid XML 1.1 character")
+func TestAcceptNulCharRef(t *testing.T) {
+	mustValidate(t, `<?xml version="1.1"?><r>&#0;</r>`)
+	mustValidate(t, `<?xml version="1.1"?><r a="&#x0;"/>`)
+}
+
+func TestNulCharRefParsesToNulRune(t *testing.T) {
+	doc, err := ParseTree(strings.NewReader(`<?xml version="1.1"?><r a="&#0;">x&#0;y</r>`))
+	require.NoError(t, err)
+	v, ok := doc.Root.Attr("a")
+	require.True(t, ok)
+	assert.Equal(t, "\x00", v)
+	assert.Equal(t, "x\x00y", doc.Root.TextContent())
+}
+
+func TestRejectLiteralNul(t *testing.T) {
+	mustReject(t, "<?xml version=\"1.1\"?><r>\x00</r>", "invalid character")
+}
+
+func TestRejectSurrogateCharRef(t *testing.T) {
+	mustReject(t, `<?xml version="1.1"?><r>&#xD800;</r>`, "invalid XML 1.1 character")
 }
 
 func TestRejectInvalidHexCharRef(t *testing.T) {
