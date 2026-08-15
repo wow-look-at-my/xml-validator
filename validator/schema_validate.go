@@ -3,6 +3,8 @@ package validator
 import (
 	"fmt"
 	"strings"
+
+	"github.com/wow-look-at-my/go-containers/set"
 )
 
 type schemaValidator struct {
@@ -39,7 +41,7 @@ func (sv *schemaValidator) validateRoot(el *Element) {
 		sv.addError(el, "element %q is not declared as a global element in the schema", rootName)
 		return
 	}
-	resolveElementType(decl, sv.schema, resolving{})
+	resolveElementType(decl, sv.schema, set.New[*ComplexType]())
 	sv.validateElement(el, decl)
 }
 

@@ -170,6 +170,8 @@ different places.
 - `validator/schema_builtin.go` -- 35+ built-in XSD types with validation
 - `validator/schema_facets.go` -- facet checking (lengths, patterns, ranges, digits)
 - `validator/schema_parse.go` -- XSD file parser (document tree to schema model)
+- `validator/schema_parse_particles.go` -- the content-model particles: sequence,
+  choice, all, group ref, and the wildcard
 - `validator/schema_import.go` -- `SchemaResolver` and `xs:import` handling
 - `validator/schema_qname.go` -- namespace-keyed lookup of global declarations
 - `validator/schema_resolve.go` -- ref and type resolution over a parsed schema
