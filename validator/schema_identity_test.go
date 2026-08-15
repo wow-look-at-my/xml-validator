@@ -228,6 +228,35 @@ func TestSchemaKeyrefResolvesAgainstAncestorScope(t *testing.T) {
 		"does not declare")
 }
 
+func TestSchemaKeyScopesToEachElementInstance(t *testing.T) {
+	xsd := `<?xml version="1.0"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:element name="doc">
+    <xs:complexType><xs:sequence>
+      <xs:element ref="box" maxOccurs="unbounded"/>
+    </xs:sequence></xs:complexType>
+  </xs:element>
+  <xs:element name="box">
+    <xs:complexType><xs:sequence>
+      <xs:element name="item" maxOccurs="unbounded">
+        <xs:complexType><xs:attribute name="id" type="xs:string"/></xs:complexType>
+      </xs:element>
+    </xs:sequence></xs:complexType>
+    <xs:key name="itemId">
+      <xs:selector xpath="item"/>
+      <xs:field xpath="@id"/>
+    </xs:key>
+  </xs:element>
+</xs:schema>`
+	// The key is declared on box, so each box is its own scope: two boxes may
+	// each hold an item with the same id. A ref particle carries the
+	// constraints of the declaration it names, which is what makes this run.
+	mustSchemaValid(t, `<?xml version="1.1"?><doc>`+
+		`<box><item id="a"/></box><box><item id="a"/></box></doc>`, xsd)
+	mustSchemaReject(t, `<?xml version="1.1"?><doc>`+
+		`<box><item id="a"/><item id="a"/></box></doc>`, xsd, "repeats a value")
+}
+
 func TestSchemaIdentityDescendantSelector(t *testing.T) {
 	xsd := `<?xml version="1.0"?>
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
