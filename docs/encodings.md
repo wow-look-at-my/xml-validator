@@ -108,10 +108,37 @@ Throughput is per payload byte, so the columns compare directly:
 | UTF-8 | 10.9 MB/s | 64.1 MB/s | 22.3 MB/s | 6.1 MB/s |
 | all references | 3.0 MB/s | 3.6 MB/s | 9.4 MB/s | 3.0 MB/s |
 
-The shape follows the reference count, which is what drives the sizes too. A
-literal character is a pointer bump; a reference is a parse, a bounds check
-and an allocation. Validating the binary payload allocates 42,000 times in
-byte mode and 35 times in base64.
+base64 is not fast; references are slow. `BenchmarkValidateNoReferences`
+separates the two by handing every form a payload that byte mode can write
+without a single reference:
+
+| form | throughput | allocations | size |
+|---|---:|---:|---:|
+| byte mode | **72.9 MB/s** | 36 | 1.00x |
+| base64Binary | 44.8 MB/s | 35 | 1.33x |
+| UTF-8 | 36.4 MB/s | 35 | 2.00x |
+| hexBinary | 28.5 MB/s | 37 | 2.00x |
+| all references | 2.9 MB/s | 196,650 | 5.6x |
+
+Byte mode goes from 12.2 MB/s on the binary payload to 72.9 MB/s here, on the
+same parser and the same payload size, and its allocation count falls from
+42,537 to 36. What changed is the number of references, and nothing else.
+
+Two costs make that up. A literal character is a pointer bump and a range
+check. A reference is a scan, a `strconv.ParseInt`, a validity check and an
+append -- about 2.6 allocations each, so the ~16,000 references in the binary
+payload are the whole difference.
+
+With references out of the way, what remains is document size: throughput per
+payload byte tracks the expansion ratio, byte mode at 1.00x reading 72.9 MB/s
+against UTF-8 at 2.00x reading 36.4 MB/s. The parser walks at a near-constant
+rate per DOCUMENT byte, so a form that doubles the document halves the
+throughput.
+
+base64 wins on binary for both reasons at once: it removes every reference,
+and it is the smallest form that does. Give it a payload that needed no
+references anyway and it loses to byte mode by 1.6x, because being 33% larger
+is all it has left.
 
 The two cases separate cleanly:
 
