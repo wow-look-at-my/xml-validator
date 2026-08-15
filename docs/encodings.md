@@ -20,6 +20,18 @@ Byte b is the character U+00XX with the same value. A document is exactly as
 many bytes as it has characters, and every byte decodes, so byte mode has no
 equivalent of `invalid UTF-8 byte sequence`.
 
+**It is one byte per CHARACTER, not per payload byte.** Byte mode is not a
+byte-transparent transport, and XML does not have one: of the 256 values, 191
+may appear literally and cost one byte each, while 65 may not appear literally
+in any XML document in any encoding -- U+0000, the restricted C0 and C1
+controls, and CR and NEL, which line-ending normalization would rewrite.
+Those cost a reference, 4 to 6 bytes each.
+
+So a payload of representable characters really is 1.00x, and a payload of
+arbitrary bytes is about 2.1x, because a quarter of it is characters XML will
+not carry literally. That is what `xs:base64Binary` and `xs:hexBinary` are
+for, and why the table below measures byte mode twice.
+
 What byte mode does not have is a byte for anything above U+00FF. Those take a
 character reference, which is ASCII and works in either mode:
 
