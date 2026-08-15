@@ -2,7 +2,6 @@ package validator
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 )
 
@@ -347,18 +346,26 @@ func (p *parser) parseCharRef() (rune, error) {
 		return 0, p.errorf("invalid character reference value %q", string(p.input[start:end]))
 	}
 
-	// Every digit was a leading zero, which is how `&#0;` is written.
+	// Folded here rather than handed to strconv: the digits were already
+	// scanned and checked above, and the call cost more than the arithmetic
+	// on a path that runs once per escaped character. Zero digits is how
+	// `&#0;` is written, and folds to zero on its own.
 	var val int64
-	if n > 0 {
-		base := 10
+	for _, c := range buf[:n] {
+		var d int64
+		switch {
+		case c >= '0' && c <= '9':
+			d = int64(c - '0')
+		case c >= 'a' && c <= 'f':
+			d = int64(c-'a') + 10
+		default:
+			d = int64(c-'A') + 10
+		}
 		if hex {
-			base = 16
+			val = val*16 + d
+		} else {
+			val = val*10 + d
 		}
-		parsed, err := strconv.ParseInt(string(buf[:n]), base, 32)
-		if err != nil {
-			return 0, p.errorf("invalid character reference value %q", string(p.input[start:end]))
-		}
-		val = parsed
 	}
 
 	r := rune(val)
