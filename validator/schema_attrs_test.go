@@ -2,6 +2,7 @@ package validator
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -227,4 +228,24 @@ func TestSchemaComplexContentUnknownBase(t *testing.T) {
 	err := ValidateWithSchemaBytes([]byte(`<?xml version="1.1"?><root><a>v</a></root>`), []byte(xsd))
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), `base "nope"`)
+}
+
+// ParseTree is what a consumer reads a document with, so it has to be able to
+// tell a whole document from a cut one.
+func TestParseTreeRejectsUnclosedInput(t *testing.T) {
+	_, err := ParseTree(strings.NewReader(`<?xml version="1.1"?><root><text>half`))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "never closed")
+
+	_, err = ParseTree(strings.NewReader(`<?xml version="1.1"?><root><a>v</b></root>`))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "closed by </b>")
+
+	_, err = ParseTree(strings.NewReader(`<?xml version="1.1"?><root><![CDATA[unfinished</root>`))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "CDATA")
+
+	doc, err := ParseTree(strings.NewReader(`<?xml version="1.1"?><root><a>v</a></root>`))
+	require.NoError(t, err)
+	require.NotNil(t, doc.Root)
 }
