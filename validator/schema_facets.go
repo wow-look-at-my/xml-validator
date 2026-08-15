@@ -12,14 +12,6 @@ import (
 	"unicode/utf8"
 )
 
-func validateFacets(value string, baseTypeName string, facets []Facet) error {
-	for _, f := range facets {
-		if err := validateFacet(value, baseTypeName, f); err != nil {
-			return err
-		}
-	}
-	return nil
-}
 
 // validateLengthFacet applies minLength, maxLength and length.
 //
