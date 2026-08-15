@@ -109,6 +109,9 @@ err = validator.ValidateSchema(xmlDoc, schema)
   directory; library callers can supply a custom `SchemaResolver`
 - `xs:include` (with `schemaLocation`). Uses the same resolver mechanism as
   `xs:import`
+- Identity constraints (`xs:key`, `xs:keyref`, `xs:unique`) over the XPath
+  subset XSD defines for a selector and a field. Anything outside that subset
+  is rejected, so a constraint either runs or says it cannot
 
 ## What is rejected as unsupported
 
@@ -117,9 +120,9 @@ err = validator.ValidateSchema(xmlDoc, schema)
 - XML 1.0 documents (the declaration must say `version="1.1"`)
 - Missing XML declaration
 - Encodings other than UTF-8 (UTF-16 inputs and UTF-8 BOMs are rejected)
-- XSD: `xs:redefine`, `xs:override`, `xs:notation`,
-  identity constraints (`xs:key` / `xs:keyref` / `xs:unique`), and
-  `substitutionGroup`
+- XSD: `xs:redefine`, `xs:override`, `xs:notation`, and `substitutionGroup`
+- A selector or field XPath outside the supported subset -- a predicate, a
+  function, an axis, or `..`
 - `processContents="skip"` and `processContents="lax"` on `xs:any` /
   `xs:anyAttribute` -- only `strict` (the default) is allowed. This tool
   always validates: every element matched by a wildcard must have a global

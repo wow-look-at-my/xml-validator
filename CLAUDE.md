@@ -96,6 +96,9 @@ different places.
   - xs:import with optional schemaLocation (loaded via a `SchemaResolver`;
     the CLI and `ValidateWithSchemaFile` wire a filesystem-backed one)
   - xs:include with schemaLocation (same resolver mechanism as xs:import)
+  - Identity constraints: `xs:key`, `xs:keyref`, `xs:unique`. See
+    `docs/identity-constraints.md` for the XPath subset, the two deliberate
+    deviations, and how a keyref finds its key
 
 ## Hard Errors (Unsupported)
 
@@ -113,9 +116,8 @@ different places.
 - Encodings other than UTF-8 (UTF-16 inputs and UTF-8 BOMs are rejected; any encoding declaration other than UTF-8 is rejected)
 - xs:redefine, xs:override
 - xs:notation
-- Identity constraints (xs:key, xs:keyref, xs:unique), and any other
-  unrecognized child of an `xs:element` -- an ignored constraint reported
-  "schema validated" on a document with duplicate keys and dangling references
+- Any unrecognized child of an `xs:element`, and any selector or field XPath
+  outside the supported subset -- a constraint either runs or says it cannot
 - Type substitution (substitutionGroup)
 - An `xs:list` with no item type and an `xs:union` with no members -- both used
   to accept every value
@@ -142,6 +144,8 @@ different places.
 - `validator/schema_qname.go` -- namespace-keyed lookup of global declarations
 - `validator/schema_resolve.go` -- ref and type resolution over a parsed schema
 - `validator/schema_derive.go` -- group-ref expansion and complexContent derivation
+- `validator/schema_parse_simple.go` -- xs:simpleType parsing (restriction facets, list, union)
+- `validator/schema_identity.go` -- xs:key/xs:keyref/xs:unique: XPath subset, selection, evaluation
 - `validator/schema_value.go` -- simple-value validation (facets, list, union) shared by element text and attribute values
 - `validator/schema_validate.go` -- schema validation engine
 - `action.yml` -- composite GitHub Action (build with caching + run). The
