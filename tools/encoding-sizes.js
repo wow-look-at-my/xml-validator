@@ -26,9 +26,23 @@ function argValue(flag, fallback) {
 // in it is a sample -- the layout tools/fetch-corpus.js writes.
 function corpusCategories(root) {
 	const out = {};
+	// Images come from the corpus/images submodule, which references the
+	// Hugging Face documentation-images dataset instead of copying it.
+	const images = path.join(__dirname, '..', 'corpus', 'images', 'transformers', 'model_doc');
+	if (fs.existsSync(images)) {
+		for (const file of fs.readdirSync(images)) {
+			const full = path.join(images, file);
+			// An LFS pointer is a few hundred bytes of text. Skip what the
+			// checkout has not fetched instead of measuring the pointer.
+			if (fs.statSync(full).size < 1024) continue;
+			const ext = path.extname(file).toLowerCase();
+			const category = ext === '.png' ? 'image-png' : (ext === '.jpg' || ext === '.jpeg') ? 'image-jpeg' : null;
+			if (category) (out[category] ??= []).push(full);
+		}
+	}
 	for (const entry of fs.readdirSync(root, { withFileTypes: true })) {
 		if (!entry.isDirectory()) continue;
-		if (entry.name.startsWith('.')) continue;
+		if (entry.name.startsWith('.') || entry.name === 'images') continue;
 		const files = fs.readdirSync(path.join(root, entry.name))
 			.map((f) => path.join(root, entry.name, f))
 			.filter((f) => fs.statSync(f).isFile() && !f.endsWith('CREDITS.json'));

@@ -1,0 +1,30 @@
+; The measurement corpus: three Hugging Face datasets, referenced rather than
+; copied. Each is a shallow clone, and every large file in all three is Git
+; LFS, so `git submodule update --init` fetches pointers and costs little. The
+; blobs are fetched per path, by whoever wants to run the measurement:
+;
+;	git -C corpus/wikipedia    lfs pull --include="20231101.is/*,20231101.am/*"
+;	git -C corpus/rosetta-code lfs pull --include="data/*"
+;	git -C corpus/images       lfs pull --include="transformers/model_doc/*"
+;
+; Narrow the checkout first with sparse-checkout, or wikipedia alone lists
+; every language. See docs/encodings.md and tools/extract-corpus.js.
+;
+; `--filter=blob:none` does NOT work against huggingface.co: the promisor
+; fetch fails with "expected 'packfile'". Shallow plus sparse is the recipe
+; that works.
+
+[submodule "corpus/images"]
+	path = corpus/images
+	url = https://huggingface.co/datasets/huggingface/documentation-images
+	shallow = true
+
+[submodule "corpus/rosetta-code"]
+	path = corpus/rosetta-code
+	url = https://huggingface.co/datasets/christopher/rosetta-code
+	shallow = true
+
+[submodule "corpus/wikipedia"]
+	path = corpus/wikipedia
+	url = https://huggingface.co/datasets/wikimedia/wikipedia
+	shallow = true
