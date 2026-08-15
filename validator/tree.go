@@ -144,14 +144,20 @@ func (tp *treeParser) skipDoctype() {
 }
 
 func (tp *treeParser) parseName() string {
-	var name []rune
+	return string(tp.nameRunes())
+}
+
+// nameRunes is parseName without the string: it slices the name out of the
+// input, so a caller that only compares the name allocates nothing.
+func (tp *treeParser) nameRunes() []rune {
+	start := tp.pos
 	if !tp.eof() && IsNameStartChar(tp.peek()) {
-		name = append(name, tp.advance())
+		tp.advance()
 	}
 	for !tp.eof() && IsNameChar(tp.peek()) {
-		name = append(name, tp.advance())
+		tp.advance()
 	}
-	return string(name)
+	return tp.input[start:tp.pos]
 }
 
 func (tp *treeParser) parseElement(parentNS map[string]string) (*Element, error) {
@@ -408,22 +414,24 @@ func (tp *treeParser) parseRef() (rune, error) {
 		}
 		return rune(val), nil
 	}
-	name := tp.parseName()
+	// Matched where it sits, for the same reason as parseEntityRef in
+	// elements.go: the name is only a string on the error path.
+	name := tp.nameRunes()
 	if !tp.eof() && tp.peek() == ';' {
 		tp.advance()
 	}
-	switch name {
-	case "amp":
+	switch {
+	case runesAre(name, "amp"):
 		return '&', nil
-	case "lt":
+	case runesAre(name, "lt"):
 		return '<', nil
-	case "gt":
+	case runesAre(name, "gt"):
 		return '>', nil
-	case "apos":
+	case runesAre(name, "apos"):
 		return '\'', nil
-	case "quot":
+	case runesAre(name, "quot"):
 		return '"', nil
 	default:
-		return 0, tp.errorf("unknown entity &%s;", name)
+		return 0, tp.errorf("unknown entity &%s;", string(name))
 	}
 }
