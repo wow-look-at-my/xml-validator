@@ -135,8 +135,7 @@ func TestSchemaValidateNoTypeElement(t *testing.T) {
 }
 
 func TestSchemaValidateListEmpty(t *testing.T) {
-	// validateListType returns early for empty values; coverage for the early
-	// return.
+	// A list with no items and no facets constraining the item count.
 	xsd := `<?xml version="1.0"?>
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
   <xs:simpleType name="intList">
@@ -150,9 +149,7 @@ func TestSchemaValidateListEmpty(t *testing.T) {
 
 func TestSchemaSimpleTextSimpleTypeError(t *testing.T) {
 	// simpleContent extension over a SimpleType whose base builtin rejects
-	// non-numeric text. Exercises the SimpleType branch of validateSimpleText
-	// without depending on facet inheritance (which this validator does not
-	// implement).
+	// non-numeric text. Exercises the SimpleType branch of validateSimpleText.
 	xsd := `<?xml version="1.0"?>
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
   <xs:simpleType name="codeType">
