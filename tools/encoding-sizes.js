@@ -23,7 +23,7 @@ function argValue(flag, fallback) {
 }
 
 // With --corpus DIR, every subdirectory of DIR is a category and every file
-// in it is a sample -- the layout tools/fetch-corpus.js writes.
+// in it is a sample -- the layout tools/extract-corpus.js writes.
 function corpusCategories(root) {
 	const out = {};
 	// Images come from the corpus/images submodule, which references the

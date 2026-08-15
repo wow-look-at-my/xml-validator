@@ -41,11 +41,10 @@ writes `&#133;`.
 
 ## What it costs and what it saves
 
-Measured, not estimated: 499 samples over 5.7 MiB, and every one of the 2894
-documents below was checked with the built binary.
-`tools/fetch-corpus.js` builds the corpus (Wikipedia prose in ten scripts,
-Rosetta Code in eight languages, PNG and JPEG files), and
-`tools/encoding-sizes.js --validate` produces the table:
+Measured, not estimated: 350 samples over 14.8 MiB, drawn from the corpus
+submodules, and every one of the 2000 documents below was checked with the
+built binary. `tools/extract-corpus.js` pulls the samples out and
+`tools/encoding-sizes.js --corpus corpus/samples --validate` produces this:
 
 | corpus | files | median | byte mode (text) | byte mode (bytes) | UTF-8 | base64 | hex | all refs |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
@@ -57,18 +56,12 @@ Rosetta Code in eight languages, PNG and JPEG files), and
 | code-python | 25 | 1441 B | 1.04x | 1.05x | 1.04x | 1.36x | 2.02x | 5.45x |
 | code-ruby | 25 | 864 B | 1.06x | 1.07x | 1.04x | 1.37x | 2.04x | 5.47x |
 | code-rust | 25 | 1779 B | 1.06x | 1.07x | 1.06x | 1.35x | 2.02x | 5.43x |
-| image-jpeg | 25 | 7155 B | n/a | 2.18x | n/a | 1.34x | 2.00x | 5.53x |
-| image-png | 25 | 9625 B | n/a | 2.18x | n/a | 1.34x | 2.00x | 5.52x |
-| prose-arabic | 24 | 20876 B | 3.21x | 2.06x | 1.00x | 1.34x | 2.00x | 5.89x |
-| prose-chinese | 25 | 22378 B | 2.56x | 2.68x | 1.00x | 1.33x | 2.00x | 5.97x |
-| prose-english | 25 | 13817 B | 1.01x | 1.01x | 1.00x | 1.34x | 2.00x | 5.66x |
-| prose-french | 25 | 16398 B | 0.98x | 1.02x | 1.00x | 1.34x | 2.00x | 5.68x |
-| prose-german | 25 | 9353 B | 1.07x | 1.19x | 1.00x | 1.34x | 2.00x | 5.46x |
-| prose-greek | 25 | 23707 B | 2.76x | 1.80x | 1.00x | 1.33x | 2.00x | 5.89x |
-| prose-hindi | 25 | 22498 B | 2.21x | 1.61x | 1.00x | 1.33x | 2.00x | 5.91x |
-| prose-japanese | 25 | 21941 B | 2.60x | 3.09x | 1.00x | 1.33x | 2.00x | 5.97x |
-| prose-russian | 25 | 33445 B | 3.23x | 1.70x | 1.00x | 1.33x | 2.00x | 5.91x |
-| prose-vietnamese | 25 | 19370 B | 1.37x | 1.28x | 1.00x | 1.34x | 2.00x | 5.70x |
+| image-jpeg | 25 | 319737 B | n/a | 2.14x | n/a | 1.33x | 2.00x | 5.55x |
+| image-png | 25 | 247688 B | n/a | 2.15x | n/a | 1.33x | 2.00x | 5.55x |
+| prose-icelandic | 25 | 8687 B | **0.92x** | 1.04x | 1.00x | 1.34x | 2.00x | 5.72x |
+| prose-amharic | 25 | 11171 B | 2.20x | 3.16x | 1.00x | 1.34x | 2.00x | 5.90x |
+| prose-nepali | 25 | 15263 B | 2.24x | 1.58x | 1.00x | 1.34x | 2.00x | 5.93x |
+| prose-yiddish | 25 | 6097 B | 3.20x | 2.42x | 1.01x | 1.34x | 2.01x | 5.89x |
 
 Ratios are document bytes per payload byte. The two byte-mode columns are the
 two questions you can ask of the mode: **text** decodes the payload and writes
@@ -77,12 +70,14 @@ payload's bytes as they are.
 
 What the numbers say:
 
-- **Byte mode wins on Latin-1 text, and only there.** French prose comes out
-  at 0.98x -- smaller than the UTF-8 payload itself, because each accented
-  character is two bytes there and one here. German is 1.07x, English 1.01x.
-- **It loses badly outside Latin-1.** Russian 3.23x, Greek 2.76x, Japanese
-  2.60x: every character has to be a reference, which costs 6 to 8 bytes where
+- **Byte mode wins on Latin-1 text, and only there.** Icelandic prose comes
+  out at 0.92x -- smaller than the UTF-8 payload itself, because every
+  accented character is two bytes there and one here.
+- **It loses badly outside Latin-1.** Yiddish 3.20x, Nepali 2.24x, Amharic
+  2.20x: every character has to be a reference, which costs 6 to 8 bytes where
   UTF-8 spends 2 or 3.
+- **Code is 1.03x to 1.09x in every mode**, because it is mostly ASCII. The
+  mode barely matters there.
 - **UTF-8 is 1.00x on anything already UTF-8**, and cannot carry anything
   else. Every image row is `n/a` for it.
 - **base64 is 1.33x to 1.37x on everything**, flat, which is what makes it the
@@ -102,11 +97,11 @@ Throughput is per payload byte, so the columns compare directly:
 
 | form | validate (binary) | validate (text, 0.2% NUL) | encode | parse + recover |
 |---|---:|---:|---:|---:|
-| base64Binary | **47.0 MB/s** | 46.9 MB/s | **380 MB/s** | **7.7 MB/s** |
-| hexBinary | 29.5 MB/s | 28.9 MB/s | 270 MB/s | 4.9 MB/s |
-| byte mode | 13.1 MB/s | **82.1 MB/s** | 19.6 MB/s | 6.4 MB/s |
-| UTF-8 | 10.9 MB/s | 64.1 MB/s | 22.3 MB/s | 6.1 MB/s |
-| all references | 3.0 MB/s | 3.6 MB/s | 9.4 MB/s | 3.0 MB/s |
+| base64Binary | **54.9 MB/s** | 60.9 MB/s | **450 MB/s** | **7.8 MB/s** |
+| hexBinary | 35.8 MB/s | 35.9 MB/s | 289 MB/s | 4.8 MB/s |
+| byte mode | 20.8 MB/s | **120.3 MB/s** | 21.1 MB/s | 7.6 MB/s |
+| UTF-8 | 17.2 MB/s | 77.5 MB/s | 23.0 MB/s | 7.2 MB/s |
+| all references | 5.9 MB/s | 5.4 MB/s | 9.5 MB/s | 5.2 MB/s |
 
 base64 is not fast; references are slow. `BenchmarkValidateNoReferences`
 separates the two by handing every form a payload that byte mode can write
@@ -114,30 +109,37 @@ without a single reference:
 
 | form | throughput | allocations | size |
 |---|---:|---:|---:|
-| byte mode | **72.9 MB/s** | 36 | 1.00x |
-| base64Binary | 44.8 MB/s | 35 | 1.33x |
-| UTF-8 | 36.4 MB/s | 35 | 2.00x |
-| hexBinary | 28.5 MB/s | 37 | 2.00x |
-| all references | 2.9 MB/s | 196,650 | 5.6x |
+| byte mode | **117.4 MB/s** | 33 | 1.00x |
+| base64Binary | 54.2 MB/s | 29 | 1.33x |
+| UTF-8 | 48.8 MB/s | 32 | 2.00x |
+| hexBinary | 35.1 MB/s | 32 | 2.00x |
+| all references | 5.7 MB/s | 37 | 5.6x |
 
-Byte mode goes from 12.2 MB/s on the binary payload to 72.9 MB/s here, on the
-same parser and the same payload size, and its allocation count falls from
-42,537 to 36. What changed is the number of references, and nothing else.
+Byte mode reads the binary payload at 20.8 MB/s and this one at 117.4 MB/s, on
+the same parser and the same payload size. What changed is the number of
+references, and nothing else.
 
-Two costs make that up. A literal character is a pointer bump and a range
-check. A reference is a scan, a `strconv.ParseInt`, a validity check and an
-append -- about 2.6 allocations each, so the ~16,000 references in the binary
-payload are the whole difference.
+The allocation column used to tell the same story louder -- 42,537 for the
+binary payload against 35 for base64 -- because a reference built a rune slice
+and a string before parsing its digits, and a predefined entity built its name
+as a string before comparing it. Neither does now: the digits go in a stack
+buffer, an entity name is matched where it sits, and the line-ending
+normalizer rewrites its input instead of copying it. Every column above is
+flat at a few dozen allocations per document, whatever the document holds, and
+`validator/alloc_test.go` fails if that stops being true.
+
+What is left is the work itself: a literal character is a pointer bump and a
+range check, a reference is a scan, a digit fold and a validity check.
 
 With references out of the way, what remains is document size: throughput per
-payload byte tracks the expansion ratio, byte mode at 1.00x reading 72.9 MB/s
-against UTF-8 at 2.00x reading 36.4 MB/s. The parser walks at a near-constant
-rate per DOCUMENT byte, so a form that doubles the document halves the
-throughput.
+payload byte tracks the expansion ratio, byte mode at 1.00x reading
+117.4 MB/s against UTF-8 at 2.00x reading 48.8 MB/s. The parser walks at a
+near-constant rate per DOCUMENT byte, so a form that doubles the document
+roughly halves the throughput.
 
 base64 wins on binary for both reasons at once: it removes every reference,
 and it is the smallest form that does. Give it a payload that needed no
-references anyway and it loses to byte mode by 1.6x, because being 33% larger
+references anyway and it loses to byte mode by 2.2x, because being 33% larger
 is all it has left.
 
 The two cases separate cleanly:
@@ -145,15 +147,15 @@ The two cases separate cleanly:
 - **Arbitrary bytes: base64Binary wins on every axis.** 1.33x against byte
   mode's 2.15x, 3.6x faster to validate, 19x faster to encode.
 - **Text with occasional NULs: escaping wins on every axis.** At one NUL per
-  512 bytes, byte mode validates at 82 MB/s against base64's 47, and costs
+  512 bytes, byte mode validates at 120 MB/s against base64's 61, and costs
   1.03x against 1.33x. Base64 there is bigger, slower, and opaque to every
   tool that reads text.
 
-Escaping every character is the worst of both, and its 3 MB/s is what a
+Escaping every character is the worst of both, and its 5.4 MB/s is what a
 document that survives a byte-mangling transport costs.
 
 These are this validator's numbers, not universal ones: the parser is
-recursive descent over runes and allocates per reference. The ordering should
+recursive descent over runes. The ordering should
 hold for any parser that resolves references one at a time.
 
 ## Where it lives
