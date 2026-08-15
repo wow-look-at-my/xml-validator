@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/wow-look-at-my/go-containers/set"
 )
 
 // Identity constraints -- xs:key, xs:keyref, xs:unique -- over the XPath subset
@@ -138,11 +140,10 @@ func unsupportedXPathStep(step, whole string) error {
 // order, each node once.
 func selectIDNodes(base *Element, paths []idPath) []*Element {
 	var out []*Element
-	seen := map[*Element]bool{}
+	seen := set.New[*Element]()
 	for _, p := range paths {
 		for _, n := range p.selectFrom(base) {
-			if !seen[n] {
-				seen[n] = true
+			if seen.Add(n) {
 				out = append(out, n)
 			}
 		}

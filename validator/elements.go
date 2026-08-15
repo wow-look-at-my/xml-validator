@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/wow-look-at-my/go-containers/set"
 )
 
 type attribute struct {
@@ -92,7 +94,7 @@ func (p *parser) parseElement() error {
 func (p *parser) parseAttributes() ([]attribute, map[string]string, error) {
 	var attrs []attribute
 	nsDecls := make(map[string]string)
-	seen := make(map[string]bool)
+	seen := set.New[string]()
 
 	for {
 		if !p.skipWhitespace() {
@@ -110,11 +112,10 @@ func (p *parser) parseAttributes() ([]attribute, map[string]string, error) {
 		if err := p.validateQName(aname); err != nil {
 			return nil, nil, err
 		}
-		if seen[aname] {
+		if !seen.Add(aname) {
 			return nil, nil, &Error{Line: attrLine, Col: attrCol,
 				Message: fmt.Sprintf("duplicate attribute %q", aname)}
 		}
-		seen[aname] = true
 
 		if err := p.parseEq(); err != nil {
 			return nil, nil, err
