@@ -1,20 +1,28 @@
 package validator
 
+// resolving tracks the complex types already visited in one resolution pass.
+// A recursive schema -- an element whose content refers back to itself, which
+// is how a schema describes an arbitrarily nested tree -- would otherwise walk
+// the same type forever. Resolution is idempotent per type, so visiting each
+// pointer once is both a termination guarantee and the correct result.
+type resolving map[*ComplexType]bool
+
 func resolveSchemaRefs(s *Schema) {
+	seen := resolving{}
 	for _, ed := range s.Elements {
-		resolveElementType(ed, s)
+		resolveElementType(ed, s, seen)
 	}
 	for _, t := range s.Types {
 		if ct, ok := t.(*ComplexType); ok {
-			resolveComplexTypeRefs(ct, s)
+			resolveComplexTypeRefs(ct, s, seen)
 		}
 	}
 }
 
-func resolveElementType(ed *ElementDecl, s *Schema) {
+func resolveElementType(ed *ElementDecl, s *Schema, seen resolving) {
 	if ed.Type != nil {
 		if ct, ok := ed.Type.(*ComplexType); ok {
-			resolveComplexTypeRefs(ct, s)
+			resolveComplexTypeRefs(ct, s, seen)
 		}
 		return
 	}
@@ -28,7 +36,11 @@ func resolveElementType(ed *ElementDecl, s *Schema) {
 	}
 }
 
-func resolveComplexTypeRefs(ct *ComplexType, s *Schema) {
+func resolveComplexTypeRefs(ct *ComplexType, s *Schema, seen resolving) {
+	if seen[ct] {
+		return
+	}
+	seen[ct] = true
 	for _, ref := range ct.attrGroupRefs {
 		if ag, ok := s.AttrGroups[ref]; ok {
 			ct.Attributes = append(ct.Attributes, ag.Attributes...)
@@ -39,7 +51,7 @@ func resolveComplexTypeRefs(ct *ComplexType, s *Schema) {
 	}
 	ct.attrGroupRefs = nil
 	if ct.Content != nil {
-		resolveContentModel(ct.Content, s)
+		resolveContentModel(ct.Content, s, seen)
 	}
 	for _, ad := range ct.Attributes {
 		resolveAttrRef(ad, s)
@@ -52,7 +64,7 @@ func resolveComplexTypeRefs(ct *ComplexType, s *Schema) {
 	}
 }
 
-func resolveContentModel(cm ContentModel, s *Schema) {
+func resolveContentModel(cm ContentModel, s *Schema, seen resolving) {
 	var items []Particle
 	switch c := cm.(type) {
 	case *Sequence:
@@ -71,17 +83,17 @@ func resolveContentModel(cm ContentModel, s *Schema) {
 					p.Name = ref.Name
 					p.TypeName = ref.TypeName
 					p.Type = ref.Type
-					resolveElementType(p, s)
+					resolveElementType(p, s, seen)
 				}
 			} else {
-				resolveElementType(p, s)
+				resolveElementType(p, s, seen)
 			}
 		case *Sequence:
-			resolveContentModel(p, s)
+			resolveContentModel(p, s, seen)
 		case *Choice:
-			resolveContentModel(p, s)
+			resolveContentModel(p, s, seen)
 		case *All:
-			resolveContentModel(p, s)
+			resolveContentModel(p, s, seen)
 		}
 	}
 }

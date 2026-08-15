@@ -31,7 +31,7 @@ func (sv *schemaValidator) validateRoot(el *Element) {
 		sv.addError(el, "element %q is not declared as a global element in the schema", rootName)
 		return
 	}
-	resolveElementType(decl, sv.schema)
+	resolveElementType(decl, sv.schema, resolving{})
 	sv.validateElement(el, decl)
 }
 
