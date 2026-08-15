@@ -61,9 +61,18 @@ func parseInclude(el *Element, parentNS string, resolver SchemaResolver, visited
 	// including schema's namespace. Re-stamp global element declarations so
 	// wildcard lookups can find them under the correct namespace.
 	if included.TargetNamespace == "" && parentNS != "" {
+		elements := make(map[string]*ElementDecl, len(included.Elements))
 		for _, ed := range included.Elements {
 			ed.Namespace = parentNS
+			elements[qnameKey(parentNS, ed.Name)] = ed
 		}
+		included.Elements = elements
+		attrs := make(map[string]*AttrDecl, len(included.Attributes))
+		for _, ad := range included.Attributes {
+			ad.Namespace = parentNS
+			attrs[qnameKey(parentNS, ad.Name)] = ad
+		}
+		included.Attributes = attrs
 		included.TargetNamespace = parentNS
 	}
 	return included, nil
@@ -112,7 +121,7 @@ func parseImport(el *Element, resolver SchemaResolver, visited map[importKey]boo
 func mergeImportedSchema(dst, src *Schema) error {
 	for name, ed := range src.Elements {
 		if _, exists := dst.Elements[name]; exists {
-			return fmt.Errorf("xs:import: element %q is defined more than once across schemas", name)
+			return fmt.Errorf("xs:import: element %q is defined more than once in the same namespace", name)
 		}
 		dst.Elements[name] = ed
 	}
@@ -136,7 +145,7 @@ func mergeImportedSchema(dst, src *Schema) error {
 	}
 	for name, ad := range src.Attributes {
 		if _, exists := dst.Attributes[name]; exists {
-			return fmt.Errorf("xs:import: attribute %q is defined more than once across schemas", name)
+			return fmt.Errorf("xs:import: attribute %q is defined more than once in the same namespace", name)
 		}
 		dst.Attributes[name] = ad
 	}

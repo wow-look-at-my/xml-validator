@@ -221,10 +221,11 @@ func (tp *treeParser) parseElement(parentNS map[string]string) (*Element, error)
 	}
 
 	elem := &Element{
-		Name:  name,
-		Attrs: attrs,
-		Line:  line,
-		Col:   col,
+		Name:       name,
+		Attrs:      attrs,
+		Namespaces: nsScope,
+		Line:       line,
+		Col:        col,
 	}
 	if idx := strings.Index(name, ":"); idx >= 0 {
 		elem.Prefix = name[:idx]

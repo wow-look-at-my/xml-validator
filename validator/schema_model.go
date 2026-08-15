@@ -11,12 +11,19 @@ type Schema struct {
 	Types                map[string]Type
 	Groups               map[string]*Group
 	AttrGroups           map[string]*AttrGroup
-	// Attributes are the global xs:attribute declarations, keyed by local name
-	// like Elements. A qualified attribute in an instance document is validated
-	// against the declaration here whose Namespace matches its own; without one
-	// there is nothing to validate against, so the attribute is an error.
+	// Attributes are the global xs:attribute declarations. A qualified
+	// attribute in an instance document is validated against the declaration
+	// here whose namespace matches its own; without one there is nothing to
+	// validate against, so the attribute is an error.
+	//
+	// Elements and Attributes are keyed by qnameKey(namespace, local): two
+	// imported vocabularies may each declare a <params>, and keying by local
+	// name alone would call that a collision.
 	Attributes map[string]*AttrDecl
 	Imports    []*Import
+	// prefixes are the namespace declarations this schema document made, so a
+	// QName in a ref resolves to the namespace its author meant.
+	prefixes map[string]string
 }
 
 // Import is an xs:import directive recorded on the schema. The Namespace is

@@ -418,12 +418,22 @@ func TestSchemaImportAttrGroupCollision(t *testing.T) {
 	assert.Contains(t, err.Error(), "more than once")
 }
 
-func TestSchemaImportElementCollision(t *testing.T) {
+// The same local name in two DIFFERENT namespaces is not a collision: one
+// <params> per imported vocabulary is what namespaces are for.
+func TestSchemaImportSameNameDifferentNamespaces(t *testing.T) {
 	mainXSD := `<?xml version="1.0"?>
-<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:a="http://a" xmlns:b="http://b">
   <xs:import namespace="http://a" schemaLocation="a.xsd"/>
   <xs:import namespace="http://b" schemaLocation="b.xsd"/>
-  <xs:element name="root" type="xs:string"/>
+  <xs:element name="root">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="a:dup"/>
+        <xs:element ref="b:dup"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
 </xs:schema>`
 	aXSD := `<?xml version="1.0"?>
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="http://a">
@@ -431,7 +441,7 @@ func TestSchemaImportElementCollision(t *testing.T) {
 </xs:schema>`
 	bXSD := `<?xml version="1.0"?>
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="http://b">
-  <xs:element name="dup" type="xs:string"/>
+  <xs:element name="dup" type="xs:int"/>
 </xs:schema>`
 	resolver := func(_, loc string) ([]byte, error) {
 		switch loc {
@@ -442,9 +452,45 @@ func TestSchemaImportElementCollision(t *testing.T) {
 		}
 		return nil, fmt.Errorf("unexpected %q", loc)
 	}
+	doc := `<?xml version="1.1"?><root xmlns:a="http://a" xmlns:b="http://b"><a:dup>text</a:dup><b:dup>7</b:dup></root>`
+	require.NoError(t, ValidateWithSchemaResolver([]byte(doc), []byte(mainXSD), resolver))
+
+	// Each ref resolved to its OWN namespace's declaration, so the types are
+	// not interchangeable.
+	bad := `<?xml version="1.1"?><root xmlns:a="http://a" xmlns:b="http://b"><a:dup>text</a:dup><b:dup>text</b:dup></root>`
+	err := ValidateWithSchemaResolver([]byte(bad), []byte(mainXSD), resolver)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "integer")
+}
+
+// The same name in the SAME namespace is still a collision.
+func TestSchemaImportElementCollision(t *testing.T) {
+	mainXSD := `<?xml version="1.0"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:import namespace="http://a" schemaLocation="a.xsd"/>
+  <xs:import namespace="http://a" schemaLocation="a2.xsd"/>
+  <xs:element name="root" type="xs:string"/>
+</xs:schema>`
+	aXSD := `<?xml version="1.0"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="http://a">
+  <xs:element name="dup" type="xs:string"/>
+</xs:schema>`
+	a2XSD := `<?xml version="1.0"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="http://a">
+  <xs:element name="dup" type="xs:int"/>
+</xs:schema>`
+	resolver := func(_, loc string) ([]byte, error) {
+		switch loc {
+		case "a.xsd":
+			return []byte(aXSD), nil
+		case "a2.xsd":
+			return []byte(a2XSD), nil
+		}
+		return nil, fmt.Errorf("unexpected %q", loc)
+	}
 	err := ValidateWithSchemaResolver([]byte(`<?xml version="1.1"?><root>v</root>`), []byte(mainXSD), resolver)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), `element "dup"`)
+	assert.Contains(t, err.Error(), "more than once")
 }
 
 func TestSchemaIncludeNilDataSkips(t *testing.T) {

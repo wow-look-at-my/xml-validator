@@ -102,3 +102,60 @@ func TestSchemaRecursiveElementRejectsUndeclaredChild(t *testing.T) {
 	mustSchemaReject(t, `<?xml version="1.1"?>`+
 		`<param name="a" type="object"><other/></param>`, recursiveXSD, "unexpected element")
 }
+
+// An unresolvable ref used to leave a particle with an empty name, which then
+// matched nothing and reported "requires at least 1 occurrence(s) of """ --
+// a schema bug wearing an instance-document error's clothes.
+func TestSchemaUnresolvedElementRefIsAnError(t *testing.T) {
+	xsd := `<?xml version="1.0"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:element name="root">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="nope"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>`
+	err := ValidateWithSchemaBytes([]byte(`<?xml version="1.1"?><root/>`), []byte(xsd))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), `element ref "nope"`)
+}
+
+func TestSchemaUnresolvedAttributeRefIsAnError(t *testing.T) {
+	xsd := `<?xml version="1.0"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:element name="root">
+    <xs:complexType>
+      <xs:attribute ref="nope"/>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>`
+	err := ValidateWithSchemaBytes([]byte(`<?xml version="1.1"?><root/>`), []byte(xsd))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), `attribute ref "nope"`)
+}
+
+// A prefix declared on the schema element is what a ref's QName is resolved
+// through; the tree parser keeps xmlns declarations out of Attrs, so the
+// in-scope map on the element is the only place that binding lives.
+func TestSchemaRefResolvesThroughDeclaredPrefix(t *testing.T) {
+	xsd := `<?xml version="1.0"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="http://t" targetNamespace="http://t"
+           elementFormDefault="qualified">
+  <xs:element name="leaf" type="xs:int"/>
+  <xs:element name="root">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="t:leaf"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>`
+	doc := `<?xml version="1.1"?><root xmlns="http://t"><leaf>4</leaf></root>`
+	require.NoError(t, ValidateWithSchemaBytes([]byte(doc), []byte(xsd)))
+
+	bad := `<?xml version="1.1"?><root xmlns="http://t"><leaf>x</leaf></root>`
+	require.Error(t, ValidateWithSchemaBytes([]byte(bad), []byte(xsd)))
+}

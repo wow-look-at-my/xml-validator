@@ -26,7 +26,11 @@ func (sv *schemaValidator) addError(el *Element, format string, args ...any) {
 
 func (sv *schemaValidator) validateRoot(el *Element) {
 	rootName := el.Local
-	decl, ok := sv.schema.Elements[rootName]
+	decl, ok := sv.schema.Elements[qnameKey(el.Namespace, rootName)]
+	if !ok {
+		decl = findByLocal(sv.schema.Elements, rootName)
+		ok = decl != nil
+	}
 	if !ok {
 		sv.addError(el, "element %q is not declared as a global element in the schema", rootName)
 		return
@@ -560,14 +564,10 @@ func (sv *schemaValidator) processWildcardElement(_ *AnyParticle, el *Element) {
 // names across namespaces); we use the Namespace field recorded at parse time
 // to disambiguate.
 func (sv *schemaValidator) lookupGlobalElement(local, ns string) *ElementDecl {
-	decl, ok := sv.schema.Elements[local]
-	if !ok {
-		return nil
+	if decl, ok := sv.schema.Elements[qnameKey(ns, local)]; ok {
+		return decl
 	}
-	if decl.Namespace != ns {
-		return nil
-	}
-	return decl
+	return nil
 }
 
 func (sv *schemaValidator) wildcardMatchesNS(constraint, ns string) bool {

@@ -40,6 +40,7 @@ func parseSchemaDoc(doc *Document, resolver SchemaResolver, visited map[importKe
 		Attributes: make(map[string]*AttrDecl),
 	}
 
+	s.prefixes = root.Namespaces
 	s.TargetNamespace, _ = root.Attr("targetNamespace")
 	s.ElementFormDefault, _ = root.Attr("elementFormDefault")
 	if s.ElementFormDefault == "" {
@@ -62,7 +63,7 @@ func parseSchemaDoc(doc *Document, resolver SchemaResolver, visited map[importKe
 			}
 			if ed.Name != "" {
 				ed.Namespace = s.TargetNamespace
-				s.Elements[ed.Name] = ed
+				s.Elements[qnameKey(s.TargetNamespace, ed.Name)] = ed
 			}
 		case "attribute":
 			ad, err := parseAttrDecl(child)
@@ -71,7 +72,7 @@ func parseSchemaDoc(doc *Document, resolver SchemaResolver, visited map[importKe
 			}
 			if ad.Name != "" {
 				ad.Namespace = s.TargetNamespace
-				s.Attributes[ad.Name] = ad
+				s.Attributes[qnameKey(s.TargetNamespace, ad.Name)] = ad
 			}
 		case "complexType":
 			ct, err := parseComplexType(child)
@@ -137,7 +138,9 @@ func parseSchemaDoc(doc *Document, resolver SchemaResolver, visited map[importKe
 		}
 	}
 
-	resolveSchemaRefs(s)
+	if err := resolveSchemaRefs(s); err != nil {
+		return nil, err
+	}
 	return s, nil
 }
 

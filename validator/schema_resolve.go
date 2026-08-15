@@ -1,5 +1,7 @@
 package validator
 
+import "fmt"
+
 // resolving tracks the complex types already visited in one resolution pass.
 // A recursive schema -- an element whose content refers back to itself, which
 // is how a schema describes an arbitrarily nested tree -- would otherwise walk
@@ -7,24 +9,29 @@ package validator
 // pointer once is both a termination guarantee and the correct result.
 type resolving map[*ComplexType]bool
 
-func resolveSchemaRefs(s *Schema) {
+func resolveSchemaRefs(s *Schema) error {
 	seen := resolving{}
 	for _, ed := range s.Elements {
-		resolveElementType(ed, s, seen)
+		if err := resolveElementType(ed, s, seen); err != nil {
+			return err
+		}
 	}
 	for _, t := range s.Types {
 		if ct, ok := t.(*ComplexType); ok {
-			resolveComplexTypeRefs(ct, s, seen)
+			if err := resolveComplexTypeRefs(ct, s, seen); err != nil {
+				return err
+			}
 		}
 	}
+	return nil
 }
 
-func resolveElementType(ed *ElementDecl, s *Schema, seen resolving) {
+func resolveElementType(ed *ElementDecl, s *Schema, seen resolving) error {
 	if ed.Type != nil {
 		if ct, ok := ed.Type.(*ComplexType); ok {
-			resolveComplexTypeRefs(ct, s, seen)
+			return resolveComplexTypeRefs(ct, s, seen)
 		}
-		return
+		return nil
 	}
 	if ed.TypeName != "" {
 		local := stripPrefix(ed.TypeName)
@@ -34,11 +41,12 @@ func resolveElementType(ed *ElementDecl, s *Schema, seen resolving) {
 			ed.Type = bt
 		}
 	}
+	return nil
 }
 
-func resolveComplexTypeRefs(ct *ComplexType, s *Schema, seen resolving) {
+func resolveComplexTypeRefs(ct *ComplexType, s *Schema, seen resolving) error {
 	if seen[ct] {
-		return
+		return nil
 	}
 	seen[ct] = true
 	for _, ref := range ct.attrGroupRefs {
@@ -51,10 +59,14 @@ func resolveComplexTypeRefs(ct *ComplexType, s *Schema, seen resolving) {
 	}
 	ct.attrGroupRefs = nil
 	if ct.Content != nil {
-		resolveContentModel(ct.Content, s, seen)
+		if err := resolveContentModel(ct.Content, s, seen); err != nil {
+			return err
+		}
 	}
 	for _, ad := range ct.Attributes {
-		resolveAttrRef(ad, s)
+		if err := resolveAttrRef(ad, s); err != nil {
+			return err
+		}
 		resolveAttrType(ad, s)
 	}
 	if ct.SimpleText != nil {
@@ -62,9 +74,10 @@ func resolveComplexTypeRefs(ct *ComplexType, s *Schema, seen resolving) {
 			resolveSimpleTypeBase(st, s)
 		}
 	}
+	return nil
 }
 
-func resolveContentModel(cm ContentModel, s *Schema, seen resolving) {
+func resolveContentModel(cm ContentModel, s *Schema, seen resolving) error {
 	var items []Particle
 	switch c := cm.(type) {
 	case *Sequence:
@@ -75,40 +88,45 @@ func resolveContentModel(cm ContentModel, s *Schema, seen resolving) {
 		items = c.Items
 	}
 	for _, item := range items {
+		var err error
 		switch p := item.(type) {
 		case *ElementDecl:
 			if p.Ref != "" {
-				local := stripPrefix(p.Ref)
-				if ref, ok := s.Elements[local]; ok {
-					p.Name = ref.Name
-					p.TypeName = ref.TypeName
-					p.Type = ref.Type
-					resolveElementType(p, s, seen)
+				ref := s.lookupElement(p.Ref)
+				if ref == nil {
+					return fmt.Errorf("element ref %q does not name a global element declaration", p.Ref)
 				}
-			} else {
-				resolveElementType(p, s, seen)
+				p.Name = ref.Name
+				p.Namespace = ref.Namespace
+				p.TypeName = ref.TypeName
+				p.Type = ref.Type
 			}
+			err = resolveElementType(p, s, seen)
 		case *Sequence:
-			resolveContentModel(p, s, seen)
+			err = resolveContentModel(p, s, seen)
 		case *Choice:
-			resolveContentModel(p, s, seen)
+			err = resolveContentModel(p, s, seen)
 		case *All:
-			resolveContentModel(p, s, seen)
+			err = resolveContentModel(p, s, seen)
+		}
+		if err != nil {
+			return err
 		}
 	}
+	return nil
 }
 
 // resolveAttrRef fills a use="..." reference from the global attribute it names.
 // The reference contributes only whether the attribute is required: the name,
 // namespace, and type are the global declaration's, which is what makes a
 // qualified attribute in an instance document resolvable at all.
-func resolveAttrRef(ad *AttrDecl, s *Schema) {
+func resolveAttrRef(ad *AttrDecl, s *Schema) error {
 	if ad.Ref == "" {
-		return
+		return nil
 	}
-	g, ok := s.Attributes[stripPrefix(ad.Ref)]
-	if !ok {
-		return
+	g := s.lookupAttribute(ad.Ref)
+	if g == nil {
+		return fmt.Errorf("attribute ref %q does not name a global attribute declaration", ad.Ref)
 	}
 	ad.Name = g.Name
 	ad.Namespace = g.Namespace
@@ -121,6 +139,7 @@ func resolveAttrRef(ad *AttrDecl, s *Schema) {
 	if ad.Fixed == "" {
 		ad.Fixed = g.Fixed
 	}
+	return nil
 }
 
 func resolveAttrType(ad *AttrDecl, s *Schema) {
