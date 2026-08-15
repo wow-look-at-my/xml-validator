@@ -100,6 +100,33 @@ bytes, all of them printable ASCII.
 The rest cover the spellings, stdin, the well-formed tail, the literal NUL
 byte in character data and in CDATA, and `xs:length` at 3, at 1 and at 256.
 
+## The three wire forms, and why the high half is not escaped
+
+The minimally-escaped form leaves U+0080 through U+00FF literal. They are two
+bytes each because the document is UTF-8, which is the only encoding this
+validator accepts: a raw Latin-1 byte fails with `invalid UTF-8 byte
+sequence`, and an `encoding="ISO-8859-1"` declaration does not change that.
+What still takes a reference above U+007F is U+007F to U+0084 and U+0086 to
+U+009F, which are restricted characters, and U+0085, which normalizes to LF.
+Neither rule is about the byte being high.
+
+For a payload that is genuinely bytes, XSD has `xs:base64Binary` and
+`xs:hexBinary`. Both are ASCII on the wire and both measure length in octets.
+The same 256-byte payload, all four ways:
+
+| form | document size | content |
+|---|---|---|
+| every character a reference | 1454 | printable ASCII |
+| reference only where needed | 666 | ASCII plus UTF-8 for the high half |
+| `xs:hexBinary` | 546 | printable ASCII, 512 digits |
+| `xs:base64Binary` | 378 | printable ASCII, 344 characters |
+
+`validator/roundtrip_binary_test.go` roundtrips the payload through both
+binary types and pins those sizes. The dats suite runs the same two through
+the shell -- `base64 -w0` and `od -tx1` on the way in, `base64 -d` and
+`printf` on the way out -- and compares SHA-256 digests, with the schema
+stating a length of 256 octets in each case.
+
 ## Facet lengths are characters, not bytes
 
 Measuring the 256-character payload turned up a real defect: the `length`,

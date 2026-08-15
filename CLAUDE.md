@@ -140,6 +140,8 @@ different places.
 - `validator/schema_validate.go` -- schema validation engine
 - `validator/roundtrip_nul_test.go` -- parse/emit/reparse roundtrips for `&#0;`
   and for a payload carrying every byte value 0..255
+- `validator/roundtrip_binary_test.go` -- the same payload through
+  `xs:base64Binary` and `xs:hexBinary`, with the size of each wire form
 - `dats/nul-char-ref.dats` -- CLI suite for `&#0;`, run by `go-toolchain` after
   every build
 - `docs/nul-char-ref.md` -- what `&#0;` is, what it is not, and how to check

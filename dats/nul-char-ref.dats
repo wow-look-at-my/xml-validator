@@ -164,6 +164,82 @@ tests:
 			- "decode 40aff2e9d2d8922e47afd4648e6967497158785fbd1da870e7110266bf944880"
 			- "roundtrip identical"
 
+	# XSD's own answer for arbitrary bytes. The payload rides an
+	# xs:base64Binary element, the schema states its length in octets, and
+	# base64 -d gives the same 256 bytes back.
+	- desc: a 256-byte payload roundtrips through xs:base64Binary
+	  cmd: |
+		set -e
+		w="$(mktemp -d)"
+		: > "$w/orig.bin"
+		for i in $(seq 0 255); do printf "\\$(printf '%03o' "$i")" >> "$w/orig.bin"; done
+		{ printf '<?xml version="1.1"?><blob>'; base64 -w0 < "$w/orig.bin"; printf '</blob>'; } > "$w/b64.xml"
+		"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema {inputs.b64-256.xsd} "$w/b64.xml"
+		sed -e 's|.*<blob>||' -e 's|</blob>.*||' "$w/b64.xml" | base64 -d > "$w/dec.bin"
+		echo "xml $(wc -c < "$w/b64.xml") bytes, decoded $(wc -c < "$w/dec.bin") bytes"
+		test "$(sha256sum < "$w/orig.bin")" = "$(sha256sum < "$w/dec.bin")"
+		echo base64 roundtrip identical
+	  inputs:
+		files:
+			b64-256.xsd: |
+				<?xml version="1.1"?>
+				<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+					<xs:element name="blob">
+						<xs:simpleType>
+							<xs:restriction base="xs:base64Binary">
+								<xs:length value="256"/>
+							</xs:restriction>
+						</xs:simpleType>
+					</xs:element>
+				</xs:schema>
+	  outputs:
+		stdout:
+			- "valid XML 1.1 document (schema validated)"
+			- "xml 378 bytes, decoded 256 bytes"
+			- "base64 roundtrip identical"
+
+	# The same payload as hexBinary: 512 digits, still 256 octets to the
+	# length facet.
+	- desc: a 256-byte payload roundtrips through xs:hexBinary
+	  cmd: |
+		set -e
+		w="$(mktemp -d)"
+		: > "$w/orig.bin"
+		for i in $(seq 0 255); do printf "\\$(printf '%03o' "$i")" >> "$w/orig.bin"; done
+		{ printf '<?xml version="1.1"?><blob>'; od -An -v -tx1 "$w/orig.bin" | tr -d ' \n' | tr 'a-f' 'A-F'; printf '</blob>'; } > "$w/hex.xml"
+		"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema {inputs.hex-256.xsd} "$w/hex.xml"
+		sed -e 's|.*<blob>||' -e 's|</blob>.*||' "$w/hex.xml" | tr -d '\n' | sed 's/../&\n/g' | grep . | while read -r h; do printf "\\$(printf '%03o' "$((16#$h))")"; done > "$w/dec.bin"
+		echo "xml $(wc -c < "$w/hex.xml") bytes, decoded $(wc -c < "$w/dec.bin") bytes"
+		test "$(sha256sum < "$w/orig.bin")" = "$(sha256sum < "$w/dec.bin")"
+		echo hex roundtrip identical
+	  inputs:
+		files:
+			hex-256.xsd: |
+				<?xml version="1.1"?>
+				<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+					<xs:element name="blob">
+						<xs:simpleType>
+							<xs:restriction base="xs:hexBinary">
+								<xs:length value="256"/>
+							</xs:restriction>
+						</xs:simpleType>
+					</xs:element>
+				</xs:schema>
+	  outputs:
+		stdout:
+			- "valid XML 1.1 document (schema validated)"
+			- "xml 546 bytes, decoded 256 bytes"
+			- "hex roundtrip identical"
+
+	# A raw high byte is not a document: UTF-8 is the only encoding, so a
+	# Latin-1 payload written one byte per character is rejected outright.
+	- desc: a raw Latin-1 byte is not valid UTF-8
+	  exit: 1
+	  cmd: 'printf %b "<?xml version=\"1.1\"?><r>\351</r>" > {outputs.latin1.xml}; "$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" {outputs.latin1.xml}'
+	  outputs:
+		stderr:
+			- "invalid UTF-8 byte sequence"
+
 	# The same 256 bytes, counted by the schema engine: 256 characters, not a
 	# 1-character value that stops at the first one.
 	- desc: the schema counts the binary payload as 256 characters
