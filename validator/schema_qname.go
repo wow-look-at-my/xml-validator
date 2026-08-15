@@ -50,6 +50,21 @@ func (s *Schema) lookupAttribute(name string) *AttrDecl {
 	return findByLocal(s.Attributes, local)
 }
 
+// lookupIdentityKey finds the map key of the sole xs:key or xs:unique with the
+// given local name. A schema that never mentions namespaces reaches its keys
+// this way, the same fallback lookupElement makes.
+func lookupIdentityKey(s *Schema, local string) (string, bool) {
+	found := ""
+	count := 0
+	for key := range s.identity {
+		if key[strings.IndexByte(key, ' ')+1:] == local {
+			found = key
+			count++
+		}
+	}
+	return found, count == 1
+}
+
 // findByLocal returns the sole declaration with the given local name, or nil
 // when there is none or more than one -- an ambiguous fallback would pick a
 // vocabulary at random, and answering "I do not know which" is the honest

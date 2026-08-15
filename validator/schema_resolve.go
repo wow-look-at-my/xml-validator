@@ -28,10 +28,76 @@ func resolveSchemaRefs(s *Schema) error {
 			}
 		}
 	}
+	return resolveIdentityRefs(s)
+}
+
+// compileElementConstraints compiles the identity-constraint XPaths on one
+// element declaration and registers its keys on the schema. A ref particle
+// shares these pointers with the declaration it names, so the work runs once.
+func compileElementConstraints(ed *ElementDecl, s *Schema) error {
+	if ed.compiled || len(ed.Constraints) == 0 {
+		return nil
+	}
+	ed.compiled = true
+	for _, c := range ed.Constraints {
+		sel, err := compileIDPaths(c.selectorXPath, s, false)
+		if err != nil {
+			return fmt.Errorf("xs:%s %q selector: %w", c.Kind, c.Name, err)
+		}
+		c.selector = sel
+		c.fields = nil
+		for _, fx := range c.fieldXPaths {
+			f, err := compileIDPaths(fx, s, true)
+			if err != nil {
+				return fmt.Errorf("xs:%s %q field: %w", c.Kind, c.Name, err)
+			}
+			c.fields = append(c.fields, f)
+		}
+		if err := registerIdentityConstraint(c, s); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func registerIdentityConstraint(c *IdentityConstraint, s *Schema) error {
+	name := qnameKey(s.TargetNamespace, c.Name)
+	if c.Kind == "keyref" {
+		ns, local := s.resolveQName(c.Refer)
+		c.referKey = qnameKey(ns, local)
+		s.identityRefs = append(s.identityRefs, c)
+		return nil
+	}
+	if s.identity == nil {
+		s.identity = map[string]*IdentityConstraint{}
+	}
+	if prev, ok := s.identity[name]; ok && prev != c {
+		return fmt.Errorf("identity constraint %q is declared twice; a constraint name is schema-wide", c.Name)
+	}
+	s.identity[name] = c
+	return nil
+}
+
+// resolveIdentityRefs checks that every xs:keyref names a key that exists. A
+// keyref pointing at nothing used to be a rule that could never fail.
+func resolveIdentityRefs(s *Schema) error {
+	for _, c := range s.identityRefs {
+		if _, ok := s.identity[c.referKey]; ok {
+			continue
+		}
+		if key, ok := lookupIdentityKey(s, stripPrefix(c.Refer)); ok {
+			c.referKey = key
+			continue
+		}
+		return fmt.Errorf("xs:keyref %q refers to %q, which names no xs:key or xs:unique in the schema", c.Name, c.Refer)
+	}
 	return nil
 }
 
 func resolveElementType(ed *ElementDecl, s *Schema, seen resolving) error {
+	if err := compileElementConstraints(ed, s); err != nil {
+		return err
+	}
 	if ed.Type != nil {
 		if ct, ok := ed.Type.(*ComplexType); ok {
 			return resolveComplexTypeRefs(ct, s, seen)
@@ -120,6 +186,7 @@ func resolveContentModel(cm ContentModel, s *Schema, seen resolving) error {
 				p.Namespace = ref.Namespace
 				p.TypeName = ref.TypeName
 				p.Type = ref.Type
+				p.Constraints = ref.Constraints
 			}
 			err = resolveElementType(p, s, seen)
 		case *Sequence:

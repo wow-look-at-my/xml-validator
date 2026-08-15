@@ -1,6 +1,10 @@
 package validator
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/wow-look-at-my/go-containers/set"
+)
 
 // A content model is written once and used from several places: a named group
 // is referenced by many types, and a derived type states only its own half of
@@ -123,13 +127,13 @@ func inheritAttrs(base, own []*AttrDecl) []*AttrDecl {
 	if len(base) == 0 {
 		return own
 	}
-	declared := make(map[attrKey]bool, len(own))
+	declared := set.New[attrKey](len(own))
 	for _, ad := range own {
-		declared[attrKey{ad.Namespace, ad.Name}] = true
+		declared.Add(attrKey{ad.Namespace, ad.Name})
 	}
 	out := make([]*AttrDecl, 0, len(base)+len(own))
 	for _, ad := range base {
-		if !declared[attrKey{ad.Namespace, ad.Name}] {
+		if !declared.Contains(attrKey{ad.Namespace, ad.Name}) {
 			out = append(out, ad)
 		}
 	}

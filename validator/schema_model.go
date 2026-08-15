@@ -21,6 +21,12 @@ type Schema struct {
 	// name alone would call that a collision.
 	Attributes map[string]*AttrDecl
 	Imports    []*Import
+	// identity holds every xs:key and xs:unique by resolved name, and
+	// identityRefs the xs:keyref declarations that must find one there. A
+	// constraint name is schema-wide in XSD, so both are kept on the schema
+	// rather than on the element that declares them.
+	identity     map[string]*IdentityConstraint
+	identityRefs []*IdentityConstraint
 	// prefixes are the namespace declarations this schema document made, so a
 	// QName in a ref resolves to the namespace its author meant.
 	prefixes map[string]string
@@ -45,6 +51,27 @@ type ElementDecl struct {
 	Fixed     string
 	Nillable  bool
 	Ref       string
+	// Constraints are the xs:key, xs:keyref, and xs:unique declarations on this
+	// element. They are evaluated over the element's own subtree.
+	Constraints []*IdentityConstraint
+	// compiled records that the constraint XPaths were compiled and registered
+	// on the schema. A ref particle shares its target's constraint pointers, so
+	// registration must not run twice for one declaration.
+	compiled bool
+}
+
+// IdentityConstraint is one xs:key, xs:keyref, or xs:unique. Selector and
+// Fields hold the compiled XPaths; a keyref also names the key it points at.
+type IdentityConstraint struct {
+	Kind  string // "key", "keyref", or "unique"
+	Name  string
+	Refer string
+
+	selectorXPath string
+	fieldXPaths   []string
+	selector      []idPath
+	fields        [][]idPath
+	referKey      string
 }
 
 type Type interface {

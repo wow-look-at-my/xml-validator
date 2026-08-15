@@ -8,11 +8,27 @@ import (
 type schemaValidator struct {
 	schema *Schema
 	errors []error
+	// elemDecls and attrDecls record which declaration matched each instance
+	// node. The identity pass needs the declared type of a field to compare
+	// values in the right value space.
+	elemDecls map[*Element]*ElementDecl
+	attrDecls map[*Element]map[attrKey]*AttrDecl
 }
 
 func ValidateSchema(doc *Document, schema *Schema) error {
-	sv := &schemaValidator{schema: schema}
+	sv := &schemaValidator{
+		schema:    schema,
+		elemDecls: map[*Element]*ElementDecl{},
+		attrDecls: map[*Element]map[attrKey]*AttrDecl{},
+	}
 	sv.validateRoot(doc.Root)
+	// Identity constraints run only over a document that already matches the
+	// schema. On a document with structural errors the fields point at nodes
+	// that never matched a declaration, so every constraint would report noise
+	// on top of the real failure.
+	if len(sv.errors) == 0 {
+		sv.checkIdentity(doc.Root, nil)
+	}
 	if len(sv.errors) > 0 {
 		return sv.errors[0]
 	}
@@ -39,11 +55,15 @@ func (sv *schemaValidator) validateRoot(el *Element) {
 		sv.addError(el, "element %q is not declared as a global element in the schema", rootName)
 		return
 	}
-	resolveElementType(decl, sv.schema, resolving{})
+	if err := resolveElementType(decl, sv.schema, resolving{}); err != nil {
+		sv.addError(el, "schema: %v", err)
+		return
+	}
 	sv.validateElement(el, decl)
 }
 
 func (sv *schemaValidator) validateElement(el *Element, decl *ElementDecl) {
+	sv.elemDecls[el] = decl
 	if decl.Fixed != "" && el.TextContent() != decl.Fixed {
 		sv.addError(el, "element %q has fixed value %q but got %q", el.Local, decl.Fixed, el.TextContent())
 		return
@@ -149,6 +169,10 @@ func (sv *schemaValidator) validateAttributes(el *Element, decls []*AttrDecl, an
 			sv.addErrorAt(attr.Line, attr.Col, "attribute %q on element %q must have fixed value %q", attr.Local, el.Local, ad.Fixed)
 			continue
 		}
+		if sv.attrDecls[el] == nil {
+			sv.attrDecls[el] = map[attrKey]*AttrDecl{}
+		}
+		sv.attrDecls[el][key] = ad
 		sv.validateAttrValue(el, attr, ad)
 		delete(declared, key)
 	}
