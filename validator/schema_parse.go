@@ -46,6 +46,7 @@ func parseSchemaDoc(doc *Document, resolver SchemaResolver, visited map[importKe
 	if s.ElementFormDefault == "" {
 		s.ElementFormDefault = "unqualified"
 	}
+	s.BlockDefault, _ = root.Attr("blockDefault")
 	s.AttributeFormDefault, _ = root.Attr("attributeFormDefault")
 	if s.AttributeFormDefault == "" {
 		s.AttributeFormDefault = "unqualified"
@@ -155,11 +156,10 @@ func parseElementDecl(el *Element) (*ElementDecl, error) {
 	ed.Default, _ = el.Attr("default")
 	ed.Fixed, _ = el.Attr("fixed")
 
-	// A substitution group lets another element stand in for this one. Nothing
-	// here implements that, and accepting the attribute validated the document
-	// against the declaration it names instead of the one that replaced it.
-	if head, ok := el.Attr("substitutionGroup"); ok {
-		return nil, fmt.Errorf("unsupported: substitutionGroup=%q on element %q is not supported", head, ed.Name)
+	ed.SubstitutionGroup, _ = el.Attr("substitutionGroup")
+	ed.Block, _ = el.Attr("block")
+	if v, ok := el.Attr("abstract"); ok && v == "true" {
+		ed.Abstract = true
 	}
 
 	if v, ok := el.Attr("nillable"); ok && v == "true" {
