@@ -64,7 +64,9 @@ different places.
 - `&#0;` -- one deliberate deviation from the XML 1.1 `Char` production, which
   starts at `#x1`. A reference resolving to U+0000 is accepted and carried
   through to the parsed value; a literal NUL byte and a lone surrogate are still
-  rejected. See `IsCharRefValue` in `validator/chars.go`.
+  rejected. See `IsCharRefValue` in `validator/chars.go`, and
+  `docs/nul-char-ref.md` -- the reference is not a NUL byte and not a document
+  terminator, proved at both the library and the CLI layer.
 - XSD schema validation (`--schema`):
   - Element declarations (global, local, refs)
   - Complex types (sequence, choice, all content models)
@@ -132,6 +134,10 @@ different places.
 - `validator/schema_resolve.go` -- ref and type resolution over a parsed schema
 - `validator/schema_derive.go` -- group-ref expansion and complexContent derivation
 - `validator/schema_validate.go` -- schema validation engine
+- `validator/roundtrip_nul_test.go` -- parse/emit/reparse roundtrips for `&#0;`
+- `dats/nul-char-ref.dats` -- CLI suite for `&#0;`, run by `go-toolchain` after
+  every build
+- `docs/nul-char-ref.md` -- what `&#0;` is, what it is not, and how to check
 - `action.yml` -- composite GitHub Action (build with caching + run). The
   cache-key, build, and validation steps run as TypeScript (tsc-checked, Node)
   via `wow-look-at-my/actions@typescript#latest` instead of inline shell, so the
