@@ -66,6 +66,7 @@ func rejectUnsupportedEncoding(data []byte) error {
 //	#x85     -> #xA
 //	#x2028   -> #xA
 //	#xD      -> #xA (when not followed by #xA or #x85)
+//
 // It rewrites input in place. Every rule either replaces one rune with one
 // rune or two with one, so the write index never overtakes the read index,
 // and the alternative is a second copy of the whole document per parse.

@@ -333,17 +333,18 @@ func (p *parser) parseCharRef() (rune, error) {
 	if p.eof() {
 		return 0, p.errorf("unterminated character reference")
 	}
-	// The digit text names a problem and is needed nowhere else, so it is
-	// built on the error paths only.
-	digits := func() string { return string(p.input[start:p.pos]) }
-	empty := p.pos == start
+	// The digit text names a problem and is needed nowhere else, so each
+	// error path slices it out itself. A closure capturing the parser would
+	// be neater and allocates on every reference, error or not.
+	end := p.pos
+	empty := end == start
 	p.advance() // consume ';'
 
 	if empty {
 		return 0, p.errorf("empty character reference")
 	}
 	if tooLong {
-		return 0, p.errorf("invalid character reference value %q", digits())
+		return 0, p.errorf("invalid character reference value %q", string(p.input[start:end]))
 	}
 
 	// Every digit was a leading zero, which is how `&#0;` is written.
@@ -355,14 +356,14 @@ func (p *parser) parseCharRef() (rune, error) {
 		}
 		parsed, err := strconv.ParseInt(string(buf[:n]), base, 32)
 		if err != nil {
-			return 0, p.errorf("invalid character reference value %q", digits())
+			return 0, p.errorf("invalid character reference value %q", string(p.input[start:end]))
 		}
 		val = parsed
 	}
 
 	r := rune(val)
 	if !IsCharRefValue(r) {
-		return 0, p.errorf("character reference &#%s; resolves to invalid XML 1.1 character U+%04X", digits(), r)
+		return 0, p.errorf("character reference &#%s; resolves to invalid XML 1.1 character U+%04X", string(p.input[start:end]), r)
 	}
 	return r, nil
 }
