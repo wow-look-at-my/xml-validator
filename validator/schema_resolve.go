@@ -1,16 +1,20 @@
 package validator
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/wow-look-at-my/go-containers/set"
+)
 
 // resolving tracks the complex types already visited in one resolution pass.
 // A recursive schema -- an element whose content refers back to itself, which
 // is how a schema describes an arbitrarily nested tree -- would otherwise walk
 // the same type forever. Resolution is idempotent per type, so visiting each
 // pointer once is both a termination guarantee and the correct result.
-type resolving map[*ComplexType]bool
+type resolving = set.Set[*ComplexType]
 
 func resolveSchemaRefs(s *Schema) error {
-	seen := resolving{}
+	seen := set.New[*ComplexType]()
 	for _, ed := range s.Elements {
 		if err := resolveElementType(ed, s, seen); err != nil {
 			return err
@@ -23,7 +27,7 @@ func resolveSchemaRefs(s *Schema) error {
 				return err
 			}
 		case *SimpleType:
-			if err := resolveSimpleTypeRefs(typ, s, nil); err != nil {
+			if err := resolveSimpleTypeRefs(typ, s, set.New[*SimpleType]()); err != nil {
 				return err
 			}
 		}
@@ -103,7 +107,7 @@ func resolveElementType(ed *ElementDecl, s *Schema, seen resolving) error {
 			return resolveComplexTypeRefs(ct, s, seen)
 		}
 		if st, ok := ed.Type.(*SimpleType); ok {
-			return resolveSimpleTypeRefs(st, s, nil)
+			return resolveSimpleTypeRefs(st, s, set.New[*SimpleType]())
 		}
 		return nil
 	}
@@ -119,15 +123,15 @@ func resolveElementType(ed *ElementDecl, s *Schema, seen resolving) error {
 }
 
 func resolveComplexTypeRefs(ct *ComplexType, s *Schema, seen resolving) error {
-	if seen[ct] {
+	if seen.Contains(ct) {
 		return nil
 	}
-	seen[ct] = true
+	seen.Add(ct)
 	if err := resolveDerivation(ct, s, seen); err != nil {
 		return err
 	}
 	if ct.Content != nil {
-		if err := expandGroupRefs(ct.Content, s, map[string]bool{}); err != nil {
+		if err := expandGroupRefs(ct.Content, s, set.New[string]()); err != nil {
 			return err
 		}
 	}
@@ -155,7 +159,7 @@ func resolveComplexTypeRefs(ct *ComplexType, s *Schema, seen resolving) error {
 	}
 	if ct.SimpleText != nil {
 		if st, ok := ct.SimpleText.(*SimpleType); ok {
-			if err := resolveSimpleTypeRefs(st, s, nil); err != nil {
+			if err := resolveSimpleTypeRefs(st, s, set.New[*SimpleType]()); err != nil {
 				return err
 			}
 		}
@@ -239,7 +243,7 @@ func resolveAttrType(ad *AttrDecl, s *Schema) error {
 		}
 	}
 	if st, ok := ad.Type.(*SimpleType); ok {
-		return resolveSimpleTypeRefs(st, s, nil)
+		return resolveSimpleTypeRefs(st, s, set.New[*SimpleType]())
 	}
 	return nil
 }
@@ -248,18 +252,15 @@ func resolveAttrType(ad *AttrDecl, s *Schema) error {
 // type, and its union members. Validation walks those links to apply the facets
 // a type inherits as well as the ones it states, so a derivation cycle would
 // recurse forever and fails here instead.
-func resolveSimpleTypeRefs(st *SimpleType, s *Schema, path map[*SimpleType]bool) error {
+func resolveSimpleTypeRefs(st *SimpleType, s *Schema, path set.Set[*SimpleType]) error {
 	if st == nil {
 		return nil
 	}
-	if path == nil {
-		path = map[*SimpleType]bool{}
-	}
-	if path[st] {
+	if path.Contains(st) {
 		return fmt.Errorf("simple type %q derives from itself", simpleTypeLabel(st))
 	}
-	path[st] = true
-	defer delete(path, st)
+	path.Add(st)
+	defer path.Remove(st)
 
 	resolveSimpleTypeBase(st, s)
 	if base, ok := st.BaseType.(*SimpleType); ok {

@@ -3,6 +3,8 @@ package validator
 import (
 	"bytes"
 	"fmt"
+
+	"github.com/wow-look-at-my/go-containers/set"
 )
 
 // SchemaResolver loads the bytes of a referenced schema. It is invoked once
@@ -24,7 +26,7 @@ type importResult struct {
 	imported  *Schema
 }
 
-func parseInclude(el *Element, parentNS string, resolver SchemaResolver, visited map[importKey]bool) (*Schema, error) {
+func parseInclude(el *Element, parentNS string, resolver SchemaResolver, visited set.Set[importKey]) (*Schema, error) {
 	loc, _ := el.Attr("schemaLocation")
 	if loc == "" {
 		return nil, fmt.Errorf("xs:include requires a schemaLocation attribute")
@@ -33,10 +35,10 @@ func parseInclude(el *Element, parentNS string, resolver SchemaResolver, visited
 		return nil, fmt.Errorf("xs:include schemaLocation %q requires a schema resolver", loc)
 	}
 	key := importKey{Location: loc}
-	if visited[key] {
+	if visited.Contains(key) {
 		return nil, nil
 	}
-	visited[key] = true
+	visited.Add(key)
 
 	data, err := resolver(parentNS, loc)
 	if err != nil {
@@ -78,7 +80,7 @@ func parseInclude(el *Element, parentNS string, resolver SchemaResolver, visited
 	return included, nil
 }
 
-func parseImport(el *Element, resolver SchemaResolver, visited map[importKey]bool) (*importResult, error) {
+func parseImport(el *Element, resolver SchemaResolver, visited set.Set[importKey]) (*importResult, error) {
 	ns, _ := el.Attr("namespace")
 	loc, _ := el.Attr("schemaLocation")
 	directive := &Import{Namespace: ns, SchemaLocation: loc}
@@ -90,10 +92,10 @@ func parseImport(el *Element, resolver SchemaResolver, visited map[importKey]boo
 		return nil, fmt.Errorf("xs:import schemaLocation %q requires a schema resolver", loc)
 	}
 	key := importKey{Namespace: ns, Location: loc}
-	if visited[key] {
+	if visited.Contains(key) {
 		return &importResult{directive: directive}, nil
 	}
-	visited[key] = true
+	visited.Add(key)
 
 	data, err := resolver(ns, loc)
 	if err != nil {

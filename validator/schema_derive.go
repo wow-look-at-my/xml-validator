@@ -19,7 +19,7 @@ import (
 // group it names. stack carries the groups currently being expanded: a group
 // that reaches itself would otherwise describe an infinitely deep document and
 // loop here forever.
-func expandGroupRefs(cm ContentModel, s *Schema, stack map[string]bool) error {
+func expandGroupRefs(cm ContentModel, s *Schema, stack set.Set[string]) error {
 	items := contentItems(cm)
 	for i, item := range items {
 		switch p := item.(type) {
@@ -46,20 +46,20 @@ func expandGroupRefs(cm ContentModel, s *Schema, stack map[string]bool) error {
 	return nil
 }
 
-func expandGroupRef(gr *GroupRef, s *Schema, stack map[string]bool) (Particle, error) {
+func expandGroupRef(gr *GroupRef, s *Schema, stack set.Set[string]) (Particle, error) {
 	name := stripPrefix(gr.Ref)
 	g, ok := s.Groups[name]
 	if !ok {
 		return nil, fmt.Errorf("group ref %q does not name a global group declaration", gr.Ref)
 	}
-	if stack[name] {
+	if stack.Contains(name) {
 		return nil, fmt.Errorf("group %q refers to itself", name)
 	}
 	if g.Content == nil {
 		return nil, fmt.Errorf("group %q declares no content model", name)
 	}
-	stack[name] = true
-	defer delete(stack, name)
+	stack.Add(name)
+	defer stack.Remove(name)
 
 	clone := cloneContentModel(g.Content)
 	setOccurs(clone, gr.MinOccurs, gr.MaxOccurs)

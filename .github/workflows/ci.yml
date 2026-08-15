@@ -14,6 +14,27 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # One job per module. The action runs `go-toolchain matrix`, which
+          # gates the module in its working directory; it does not walk a tree
+          # of modules the way a bare `go-toolchain` does.
+          - module: reader
+            autorelease: 'false'
+          - module: writer
+            autorelease: 'false'
+          - module: validator
+            autorelease: 'false'
+          # cli carries the published binary and the dats suites, so it is the
+          # one job that releases. A library module has nothing to publish.
+          - module: cli
+            autorelease: 'true'
+    name: test (${{ matrix.module }})
     steps:
       - uses: actions/checkout@v4
       - uses: wow-look-at-my/go-toolchain@v1
+        with:
+          working-directory: ${{ matrix.module }}
+          autorelease: ${{ matrix.autorelease }}
