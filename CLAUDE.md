@@ -101,6 +101,8 @@ different places.
     deviations, and how a keyref finds its key
   - Substitution groups, including `abstract` heads, `block="substitution"` /
     `blockDefault`, and transitive members. See `docs/substitution-groups.md`
+  - `xs:alternative` conditional type assignment over an attribute-test
+    language. See `docs/conditional-types.md`
 
 ## Hard Errors (Unsupported)
 
@@ -118,8 +120,8 @@ different places.
 - Encodings other than UTF-8 (UTF-16 inputs and UTF-8 BOMs are rejected; any encoding declaration other than UTF-8 is rejected)
 - xs:redefine, xs:override
 - xs:notation
-- `xs:alternative` (XSD 1.1 conditional type assignment), and any other
-  unrecognized child of an `xs:element`, and any selector or field XPath
+- Any unrecognized child of an `xs:element`, any `xs:alternative` test outside
+  the supported language, and any selector or field XPath
   outside the supported subset -- a constraint either runs or says it cannot
 - An `xs:list` with no item type and an `xs:union` with no members -- both used
   to accept every value
@@ -149,6 +151,7 @@ different places.
 - `validator/schema_parse_simple.go` -- xs:simpleType parsing (restriction facets, list, union)
 - `validator/schema_identity.go` -- xs:key/xs:keyref/xs:unique: XPath subset, selection, evaluation
 - `validator/schema_substitution.go` -- substitution groups: members, abstract heads, block, derivation check
+- `validator/schema_alternative.go` -- xs:alternative: test language, per-instance type choice
 - `validator/schema_value.go` -- simple-value validation (facets, list, union) shared by element text and attribute values
 - `validator/schema_validate.go` -- schema validation engine
 - `action.yml` -- composite GitHub Action (build with caching + run). The

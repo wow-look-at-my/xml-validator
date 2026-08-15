@@ -398,8 +398,8 @@ func TestSchemaUnknownElementChildRejected(t *testing.T) {
 	xsd := `<?xml version="1.0"?>
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
   <xs:element name="r" type="xs:string">
-    <xs:alternative test="true"/>
+    <xs:assert test="true()"/>
   </xs:element>
 </xs:schema>`
-	mustSchemaReject(t, `<?xml version="1.1"?><r>x</r>`, xsd, "unsupported schema element xs:alternative")
+	mustSchemaReject(t, `<?xml version="1.1"?><r>x</r>`, xsd, "unsupported schema element xs:assert")
 }

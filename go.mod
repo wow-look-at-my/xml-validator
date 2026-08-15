@@ -5,7 +5,7 @@ go 1.24.7
 require (
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.11.1
-	github.com/wow-look-at-my/go-containers v0.0.0-20260815182216-dbc69fb36452 // go-toolchain:branch=master
+	github.com/wow-look-at-my/go-containers v0.0.0-20260815193622-200150bfb1c8 // go-toolchain:branch=master
 )
 
 require (

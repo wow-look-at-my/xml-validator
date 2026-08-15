@@ -115,6 +115,9 @@ err = validator.ValidateSchema(xmlDoc, schema)
 - Substitution groups: a member may appear wherever its head is referenced and
   is validated against its own type. `abstract` heads and `block="substitution"`
   are honored
+- `xs:alternative` conditional type assignment, with tests over the element's
+  own attributes (`@kind='circle'`, `not(@a)`, `and` / `or`). A test outside
+  that language is rejected rather than guessed at
 
 ## What is rejected as unsupported
 
@@ -123,8 +126,7 @@ err = validator.ValidateSchema(xmlDoc, schema)
 - XML 1.0 documents (the declaration must say `version="1.1"`)
 - Missing XML declaration
 - Encodings other than UTF-8 (UTF-16 inputs and UTF-8 BOMs are rejected)
-- XSD: `xs:redefine`, `xs:override`, `xs:notation`, and `xs:alternative`
-  (XSD 1.1 conditional type assignment)
+- XSD: `xs:redefine`, `xs:override`, and `xs:notation`
 - A selector or field XPath outside the supported subset -- a predicate, a
   function, an axis, or `..`
 - `processContents="skip"` and `processContents="lax"` on `xs:any` /
