@@ -10,7 +10,7 @@ require (
 require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.9 // indirect
-	github.com/wow-look-at-my/go-containers v0.0.0-20260815182216-dbc69fb36452 // indirect
+	github.com/wow-look-at-my/go-containers v0.0.0-20260815193622-200150bfb1c8 // indirect
 	github.com/wow-look-at-my/xml-validator/reader v0.0.0-20260815191334-3096d3b2da43 // indirect
 )
 
