@@ -25,7 +25,7 @@ type Schema struct {
 	// identityRefs the xs:keyref declarations that must find one there. A
 	// constraint name is schema-wide in XSD, so both are kept on the schema
 	// rather than on the element that declares them.
-	identity    map[string]*IdentityConstraint
+	identity     map[string]*IdentityConstraint
 	identityRefs []*IdentityConstraint
 	// prefixes are the namespace declarations this schema document made, so a
 	// QName in a ref resolves to the namespace its author meant.
