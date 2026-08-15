@@ -112,6 +112,9 @@ err = validator.ValidateSchema(xmlDoc, schema)
 - Identity constraints (`xs:key`, `xs:keyref`, `xs:unique`) over the XPath
   subset XSD defines for a selector and a field. Anything outside that subset
   is rejected, so a constraint either runs or says it cannot
+- Substitution groups: a member may appear wherever its head is referenced and
+  is validated against its own type. `abstract` heads and `block="substitution"`
+  are honored
 
 ## What is rejected as unsupported
 
@@ -120,7 +123,8 @@ err = validator.ValidateSchema(xmlDoc, schema)
 - XML 1.0 documents (the declaration must say `version="1.1"`)
 - Missing XML declaration
 - Encodings other than UTF-8 (UTF-16 inputs and UTF-8 BOMs are rejected)
-- XSD: `xs:redefine`, `xs:override`, `xs:notation`, and `substitutionGroup`
+- XSD: `xs:redefine`, `xs:override`, `xs:notation`, and `xs:alternative`
+  (XSD 1.1 conditional type assignment)
 - A selector or field XPath outside the supported subset -- a predicate, a
   function, an axis, or `..`
 - `processContents="skip"` and `processContents="lax"` on `xs:any` /
