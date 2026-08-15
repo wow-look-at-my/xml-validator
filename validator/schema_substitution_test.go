@@ -266,6 +266,40 @@ func TestSchemaSubstitutionUntypedHeadAccepted(t *testing.T) {
 	mustSchemaValid(t, `<?xml version="1.1"?><doc><member/></doc>`, xsd)
 }
 
+func TestSchemaSubstituteCarriesItsOwnIdentityConstraints(t *testing.T) {
+	xsd := `<?xml version="1.0"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:complexType name="empty"/>
+  <xs:complexType name="listing">
+    <xs:complexContent>
+      <xs:extension base="empty">
+        <xs:sequence>
+          <xs:element name="item" maxOccurs="unbounded">
+            <xs:complexType><xs:attribute name="id" type="xs:string"/></xs:complexType>
+          </xs:element>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:element name="section" type="empty"/>
+  <xs:element name="items" type="listing" substitutionGroup="section">
+    <xs:key name="itemId">
+      <xs:selector xpath="item"/>
+      <xs:field xpath="@id"/>
+    </xs:key>
+  </xs:element>
+  <xs:element name="doc">
+    <xs:complexType>
+      <xs:sequence><xs:element ref="section"/></xs:sequence>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>`
+	mustSchemaValid(t, `<?xml version="1.1"?><doc><items><item id="a"/><item id="b"/></items></doc>`, xsd)
+	// The key belongs to the substitute, and it runs where the substitute does.
+	mustSchemaReject(t, `<?xml version="1.1"?><doc><items><item id="a"/><item id="a"/></items></doc>`, xsd,
+		"repeats a value")
+}
+
 func TestSchemaSubstitutionNamespaced(t *testing.T) {
 	xsd := `<?xml version="1.0"?>
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
