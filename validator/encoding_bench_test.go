@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
+	"github.com/stretchr/testify/require"
 	"strings"
 	"testing"
 )
@@ -46,38 +47,41 @@ func textPayload(nulEvery int) []byte {
 	return p
 }
 
-func docAllReferences(payload []byte) string {
+func docAllReferences(payload []byte) []byte {
 	var b strings.Builder
 	b.WriteString(xmlDecl + "<r>")
 	for _, c := range payload {
 		fmt.Fprintf(&b, "&#%d;", c)
 	}
 	b.WriteString("</r>")
-	return b.String()
+	return []byte(b.String())
 }
 
-func docByteMode(payload []byte) string {
-	var b strings.Builder
-	b.WriteString(byteDecl + "<r>")
-	b.WriteString(escapeXML(string(encodeBytes(payload)), false))
-	b.WriteString("</r>")
-	return b.String()
+// Byte mode is written as bytes, one per character. Building it as a Go
+// string would encode those characters as UTF-8, which is the other mode.
+func docByteMode(payload []byte) []byte {
+	text := byteDecl + "<r>" + escapeXML(encodeBytes(payload), false) + "</r>"
+	out := make([]byte, 0, len(text))
+	for _, r := range text {
+		out = append(out, byte(r))
+	}
+	return out
 }
 
-func docUTF8(payload []byte) string {
-	return xmlDecl + "<r>" + escapeXML(string(encodeBytes(payload)), false) + "</r>"
+func docUTF8(payload []byte) []byte {
+	return []byte(xmlDecl + "<r>" + escapeXML(encodeBytes(payload), false) + "</r>")
 }
 
-func docBase64(payload []byte) string {
-	return xmlDecl + "<blob>" + base64.StdEncoding.EncodeToString(payload) + "</blob>"
+func docBase64(payload []byte) []byte {
+	return []byte(xmlDecl + "<blob>" + base64.StdEncoding.EncodeToString(payload) + "</blob>")
 }
 
-func docHex(payload []byte) string {
-	return xmlDecl + "<blob>" + hex.EncodeToString(payload) + "</blob>"
+func docHex(payload []byte) []byte {
+	return []byte(xmlDecl + "<blob>" + hex.EncodeToString(payload) + "</blob>")
 }
 
-func benchForms(payload []byte) map[string]string {
-	return map[string]string{
+func benchForms(payload []byte) map[string][]byte {
+	return map[string][]byte{
 		"all-references": docAllReferences(payload),
 		"byte-mode":      docByteMode(payload),
 		"utf8":           docUTF8(payload),
@@ -93,9 +97,8 @@ func BenchmarkValidateBinary(b *testing.B) {
 			b.SetBytes(int64(benchPayloadSize))
 			b.ReportMetric(float64(len(doc))/float64(benchPayloadSize), "x-size")
 			for b.Loop() {
-				if err := Validate(strings.NewReader(doc)); err != nil {
-					b.Fatal(err)
-				}
+				require.NoError(b, Validate(bytes.NewReader(doc)))
+
 			}
 		})
 	}
@@ -109,9 +112,8 @@ func BenchmarkValidateSparseNulText(b *testing.B) {
 			b.SetBytes(int64(benchPayloadSize))
 			b.ReportMetric(float64(len(doc))/float64(benchPayloadSize), "x-size")
 			for b.Loop() {
-				if err := Validate(strings.NewReader(doc)); err != nil {
-					b.Fatal(err)
-				}
+				require.NoError(b, Validate(bytes.NewReader(doc)))
+
 			}
 		})
 	}
@@ -122,7 +124,7 @@ func BenchmarkValidateSparseNulText(b *testing.B) {
 // and hex are table-driven passes over bytes.
 func BenchmarkEncodeBinary(b *testing.B) {
 	payload := binaryPayload()
-	encoders := map[string]func([]byte) string{
+	encoders := map[string]func([]byte) []byte{
 		"all-references": docAllReferences,
 		"byte-mode":      docByteMode,
 		"utf8":           docUTF8,
@@ -133,9 +135,8 @@ func BenchmarkEncodeBinary(b *testing.B) {
 		b.Run(name, func(b *testing.B) {
 			b.SetBytes(int64(benchPayloadSize))
 			for b.Loop() {
-				if len(encode(payload)) == 0 {
-					b.Fatal("empty document")
-				}
+				require.NotEqual(b, 0, len(encode(payload)))
+
 			}
 		})
 	}
@@ -159,17 +160,14 @@ func BenchmarkRecoverPayload(b *testing.B) {
 		b.Run(name, func(b *testing.B) {
 			b.SetBytes(int64(benchPayloadSize))
 			for b.Loop() {
-				tree, err := ParseTree(strings.NewReader(doc))
-				if err != nil {
-					b.Fatal(err)
-				}
+				tree, err := ParseTree(bytes.NewReader(doc))
+				require.Nil(b, err)
+
 				got, err := decode[name](tree.Root.TextContent())
-				if err != nil {
-					b.Fatal(err)
-				}
-				if len(got) != len(payload) {
-					b.Fatalf("recovered %d bytes, want %d", len(got), len(payload))
-				}
+				require.Nil(b, err)
+
+				require.Equal(b, len(payload), len(got))
+
 			}
 		})
 	}
