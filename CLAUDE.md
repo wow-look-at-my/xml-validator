@@ -32,6 +32,10 @@ Run it at the repository root and it walks every module: tidy, vet, tests with
 coverage, the build, and the dats suites in `cli/`. The CLI binary lands at
 `cli/build/xml-validator`.
 
+CI gates one module per job instead, each with `working-directory:`. The
+action runs `go-toolchain matrix`, which builds the module it stands in and
+does not walk a tree of modules. Only the `cli` job publishes.
+
 ## CLI usage
 
 ```bash
