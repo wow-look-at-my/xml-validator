@@ -4,7 +4,7 @@ go 1.24.7
 
 require (
 	github.com/spf13/cobra v1.10.2
-	github.com/wow-look-at-my/xml-validator/validator v0.0.0-20260815191334-3096d3b2da43
+	github.com/wow-look-at-my/xml-validator/validator v0.0.0-20260816042650-2d019af64af6
 )
 
 require (
