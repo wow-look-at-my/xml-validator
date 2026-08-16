@@ -5,37 +5,58 @@ alternatives are tried in schema order; the first whose `test` holds decides the
 type, and an alternative with no `test` always holds, which is how a default is
 written. When none holds, the element's declared `type` applies.
 
-Code: `validator/schema_alternative.go`. A ref particle carries the
-alternatives of the declaration it names, so `<xs:element ref="v"/>` behaves the
-same as the global `v`.
+Code: `validator/schema_alternative.go` (parse, resolve, choose) and
+`validator/schema_alternative_expr.go` (the test language). A ref particle
+carries the alternatives of the declaration it names, so `<xs:element ref="v"/>`
+behaves the same as the global `v`.
 
-## The supported test language
+## The test language is the subset XSD requires
+
+XSD 1.1 §3.12.6 defines a "required subset" of XPath 2.0 that a conforming
+processor **must** accept, and that is what this implements:
 
 ```
-test ::= term ( ('and' | 'or') term )*
-term ::= '@name'
-       | '@name' ('=' | '!=') "'literal'"
-       | 'not(' term ')'
+Test        ::= OrExpr
+OrExpr      ::= AndExpr ( 'or' AndExpr )*
+AndExpr     ::= BooleanExpr ( 'and' BooleanExpr )*
+BooleanExpr ::= '(' OrExpr ')' | BooleanFunction | ValueExpr ( Comparator ValueExpr )?
+BooleanFunction ::= QName '(' OrExpr ')'
+Comparator  ::= '=' | '!=' | '<' | '<=' | '>' | '>='
+ValueExpr   ::= CastExpr | ConstructorFunction
+CastExpr    ::= SimpleValue ( 'cast' 'as' QName '?'? )?
+SimpleValue ::= AttrName | Literal
+AttrName    ::= '@' NameTest
+ConstructorFunction ::= QName '(' SimpleValue ')'
 ```
 
-`@name` alone is an attribute-presence test. A prefixed name resolves through
-the schema's own namespace declarations; an unprefixed one matches the local
-name in any namespace, the same rule the identity-constraint XPaths use and for
-the same reason (see `docs/identity-constraints.md`).
+`and` binds tighter than `or`, as in XPath; parentheses override that. A test
+outside this grammar is a hard error at schema-parse time. The spec permits
+that: a processor "may but is not required to" support expressions beyond the
+required subset, and a test this engine cannot evaluate would pick the wrong
+type in silence.
 
-Anything else is a hard error at schema-parse time: a function call, an element
-or descendant test, a numeric comparison, an unquoted right-hand side. A test
-this engine cannot evaluate would otherwise pick the wrong type in silence, and
-the wrong type validates the wrong things.
+What that rules out here: a function other than `not()` (only `fn:not` and the
+constructor functions are required), a path step into element content, and a
+cast to a user-defined type.
 
-## Mixing and with or
+## How a comparison reads
 
-Rejected rather than guessed at. XPath binds `and` tighter than `or`, so
-`@a='1' and @b='2' or @c='3'` means `(@a and @b) or @c` -- and a reader should
-not have to know that to know what a schema means. Write one operator per test,
-or split the alternative in two.
+An attribute is **untyped** during conditional type assignment -- deciding the
+type is the whole point, so it is not known yet. The other operand decides how
+the comparison reads:
 
-## Comparison against a missing attribute
+- Against a **numeric literal** or a numeric cast, both sides are numbers, so
+  `@a = 1` holds for `a="01"`.
+- Against a **quoted literal** or another attribute, both sides are text, so
+  `@a = '1'` does not hold for `a="01"`.
+- An **absent** attribute makes any comparison false, `!=` included. Use
+  `not(@a)` to test for absence.
+- A **failed cast** -- `xs:int(@a)` where `a="six"` -- makes the test false
+  rather than failing the document. The alternative simply is not selected,
+  which is what XSD says about an error in a test.
 
-An absent attribute makes both `=` and `!=` false, which is what XPath does with
-an empty sequence on one side. Use `not(@a)` to test for absence.
+## Effective boolean value
+
+A bare value as a condition follows XPath's effective boolean value: an absent
+attribute is false, an empty string is false, the number 0 is false, and
+anything else is true.

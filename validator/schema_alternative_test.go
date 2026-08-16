@@ -142,10 +142,11 @@ func TestSchemaAlternativeUnsupportedTestRejected(t *testing.T) {
 		test   string
 		expect string
 	}{
-		{"function call", "count(@a) > 1", "only attribute tests"},
-		{"element test", "child='x'", "only attribute tests"},
-		{"unquoted literal", "@a = 1", "must be a quoted literal"},
-		{"mixed and or", "@a='1' and @b='2' or @c='3'", "mixing \"and\" with \"or\""},
+		{"unsupported function", "count(@a) > 1", "function \"count\" is not supported"},
+		{"element test", "child='x'", "not an attribute, a literal, or a constructor function"},
+		{"user-defined cast", "@a cast as myType", "does not name a built-in datatype"},
+		{"unclosed literal", "@a = 'x", "never closed"},
+		{"unclosed paren", "(@a='1'", "expected \")\""},
 		{"empty", " ", "test is empty"},
 	}
 	for _, tc := range tests {
