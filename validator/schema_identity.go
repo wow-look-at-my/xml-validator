@@ -21,19 +21,22 @@ import (
 //   - Values compare in the field's value space: two numerals that denote the
 //     same number are one key, and "true" and "1" are one boolean.
 
-// nameTest matches one element or attribute name in a compiled path.
+// nameTest matches one element or attribute name in a compiled path. The three
+// forms XSD allows are "*" (anyName), "prefix:*" (anyLocal within one
+// namespace), and a QName.
 type nameTest struct {
-	anyName bool
-	anyNS   bool
-	ns      string
-	local   string
+	anyName  bool
+	anyLocal bool
+	anyNS    bool
+	ns       string
+	local    string
 }
 
 func (n nameTest) matches(ns, local string) bool {
 	if n.anyName {
 		return true
 	}
-	if n.local != local {
+	if !n.anyLocal && n.local != local {
 		return false
 	}
 	return n.anyNS || n.ns == ns
@@ -80,12 +83,23 @@ func compileIDPath(expr, whole string, s *Schema, allowAttr bool) (idPath, error
 	parts := strings.Split(expr, "/")
 	for i, part := range parts {
 		last := i == len(parts)-1
+		// XSD spells the attribute axis "@name" or "attribute::name", and lets
+		// a child step carry an explicit "child::". Both are in the grammar the
+		// schema-for-schemas enforces, so both resolve to the same step here.
+		attrStep := strings.HasPrefix(part, "@")
+		if rest, ok := strings.CutPrefix(part, "attribute::"); ok {
+			attrStep, part = true, "@"+rest
+		}
+		if rest, ok := strings.CutPrefix(part, "child::"); ok {
+			part = rest
+		}
 		switch {
 		case part == "":
 			return p, fmt.Errorf("unsupported xpath %q: an empty step (\"//\") is not supported", whole)
 		case part == ".":
-			return p, fmt.Errorf("unsupported xpath %q: \".\" is only supported as the whole path", whole)
-		case strings.HasPrefix(part, "@"):
+			// A self step selects what it started from, so it drops out.
+			continue
+		case attrStep:
 			if !allowAttr {
 				return p, fmt.Errorf("unsupported xpath %q: an attribute step is allowed in xs:field, not in xs:selector", whole)
 			}
@@ -119,21 +133,26 @@ func compileNameTest(name, whole string, s *Schema) (nameTest, error) {
 	if prefix != "" && validateNCName(prefix) != nil {
 		return nameTest{}, unsupportedXPathStep(name, whole)
 	}
-	if validateNCName(local) != nil {
+	// "prefix:*" is every name in one namespace.
+	anyLocal := local == "*"
+	if !anyLocal && validateNCName(local) != nil {
 		return nameTest{}, unsupportedXPathStep(name, whole)
 	}
 	if prefix == "" {
+		if anyLocal {
+			return nameTest{anyName: true}, nil
+		}
 		return nameTest{anyNS: true, local: local}, nil
 	}
 	ns, ok := s.prefixes[prefix]
 	if !ok {
 		return nameTest{}, fmt.Errorf("xpath %q uses prefix %q, which the schema does not declare", whole, prefix)
 	}
-	return nameTest{ns: ns, local: local}, nil
+	return nameTest{ns: ns, local: local, anyLocal: anyLocal}, nil
 }
 
 func unsupportedXPathStep(step, whole string) error {
-	return fmt.Errorf("unsupported xpath %q: step %q is not a name, \"*\", or \"@name\" -- predicates, functions, and axes are not supported", whole, step)
+	return fmt.Errorf("unsupported xpath %q: step %q is not a name, \"*\", \"prefix:*\", or \"@name\" -- a predicate, a function, and an axis other than child:: or attribute:: are outside the subset XSD allows here", whole, step)
 }
 
 // selectIDNodes returns the nodes the paths select from base, in document

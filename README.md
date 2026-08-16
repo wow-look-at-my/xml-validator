@@ -128,8 +128,9 @@ err = validator.ValidateSchema(xmlDoc, schema)
   is validated against its own type. `abstract` heads and `block="substitution"`
   are honored
 - `xs:alternative` conditional type assignment, with tests over the element's
-  own attributes (`@kind='circle'`, `not(@a)`, `and` / `or`). A test outside
-  that language is rejected rather than guessed at
+  own attributes. The test language is the required subset XSD 1.1 defines --
+  comparisons, `and`/`or` with parentheses, `not()`, casts and constructor
+  functions -- and a test outside it is rejected rather than guessed at
 
 ## What is rejected as unsupported
 
@@ -139,8 +140,8 @@ err = validator.ValidateSchema(xmlDoc, schema)
 - Missing XML declaration
 - Encodings other than UTF-8 and ISO-8859-1 (UTF-16 inputs and BOMs are rejected)
 - XSD: `xs:redefine`, `xs:override`, and `xs:notation`
-- A selector or field XPath outside the supported subset -- a predicate, a
-  function, an axis, or `..`
+- A selector or field XPath outside the subset XSD defines for them -- a
+  predicate, a function, an axis other than `child::`/`attribute::`, or `..`
 - `processContents="skip"` and `processContents="lax"` on `xs:any` /
   `xs:anyAttribute` -- only `strict` (the default) is allowed. This tool
   always validates: every element matched by a wildcard must have a global

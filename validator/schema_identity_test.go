@@ -292,7 +292,9 @@ func TestSchemaUnsupportedXPathRejected(t *testing.T) {
 		{"predicate", "provider[@id='x']", "is not a name"},
 		{"function", "count(provider)", "is not a name"},
 		{"parent axis", "../provider", "is not a name"},
-		{"axis", "child::provider", "is not a name"},
+		// child:: and attribute:: are in the grammar XSD states; any other axis
+		// is not.
+		{"axis", "descendant::provider", "is not a name"},
 		{"empty step", "providers//provider", "an empty step"},
 	}
 	for _, tc := range tests {

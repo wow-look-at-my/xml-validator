@@ -131,8 +131,9 @@ different places.
     deviations, and how a keyref finds its key
   - Substitution groups, including `abstract` heads, `block="substitution"` /
     `blockDefault`, and transitive members. See `docs/substitution-groups.md`
-  - `xs:alternative` conditional type assignment over an attribute-test
-    language. See `docs/conditional-types.md`
+  - `xs:alternative` conditional type assignment over the XPath subset XSD 1.1
+    requires: comparisons, `and`/`or` with parentheses, `not()`, casts, and
+    constructor functions. See `docs/conditional-types.md`
 
 ## Hard Errors (Unsupported)
 
@@ -151,7 +152,7 @@ different places.
 - xs:redefine, xs:override
 - xs:notation
 - Any unrecognized child of an `xs:element`, any `xs:alternative` test outside
-  the supported language, and any selector or field XPath
+  the subset XSD requires, and any selector or field XPath
   outside the supported subset -- a constraint either runs or says it cannot
 - An `xs:list` with no item type and an `xs:union` with no members -- both used
   to accept every value
@@ -190,7 +191,8 @@ different places.
 - `validator/schema_resolve.go` -- ref and type resolution over a parsed schema
 - `validator/schema_derive.go` -- group-ref expansion and complexContent derivation
 - `validator/schema_substitution.go` -- substitution groups: members, abstract heads, block, derivation check
-- `validator/schema_alternative.go` -- xs:alternative: test language, per-instance type choice
+- `validator/schema_alternative.go` -- xs:alternative: parse, resolve, per-instance type choice
+- `validator/schema_alternative_expr.go` -- the @test language: XSD 1.1's required XPath subset
 - `validator/schema_value.go` -- simple-value validation (facets, list, union) shared by element text and attribute values
 - `validator/schema_validate.go` -- schema validation engine
 - `validator/roundtrip_nul_test.go` -- parse/emit/reparse roundtrips for `&#0;`
