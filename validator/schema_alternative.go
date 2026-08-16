@@ -3,6 +3,8 @@ package validator
 import (
 	"fmt"
 	"strings"
+
+	"github.com/wow-look-at-my/go-containers/set"
 )
 
 // Conditional type assignment: xs:alternative gives an element a type chosen
@@ -295,12 +297,12 @@ func resolveAlternatives(ed *ElementDecl, s *Schema) error {
 			}
 		}
 		if ct, ok := alt.Type.(*ComplexType); ok {
-			if err := resolveComplexTypeRefs(ct, s, resolving{}); err != nil {
+			if err := resolveComplexTypeRefs(ct, s, set.New[*ComplexType]()); err != nil {
 				return err
 			}
 		}
 		if st, ok := alt.Type.(*SimpleType); ok {
-			if err := resolveSimpleTypeRefs(st, s, nil); err != nil {
+			if err := resolveSimpleTypeRefs(st, s, set.New[*SimpleType]()); err != nil {
 				return err
 			}
 		}
