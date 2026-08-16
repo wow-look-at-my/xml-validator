@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Fixture schema for the action self-test. It uses the two constraint classes
+     that a silent regression is most likely to drop: a facet on an ATTRIBUTE
+     value, and an identity constraint. -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified">
+	<xs:simpleType name="lower">
+		<xs:restriction base="xs:token">
+			<xs:pattern value="[a-z]+"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:element name="cfg">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="item" maxOccurs="unbounded">
+					<xs:complexType>
+						<xs:attribute name="id" type="lower" use="required"/>
+					</xs:complexType>
+				</xs:element>
+			</xs:sequence>
+		</xs:complexType>
+		<xs:key name="itemId">
+			<xs:selector xpath="item"/>
+			<xs:field xpath="@id"/>
+		</xs:key>
+	</xs:element>
+</xs:schema>

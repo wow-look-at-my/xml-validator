@@ -25,10 +25,12 @@ inputs:
 runs:
   using: 'composite'
   steps:
+    # The binary is the cli module, and this repository has no root go.mod.
+    # Both this step and the build below must name cli/ explicitly.
     - name: Setup Go
       uses: actions/setup-go@v5
       with:
-        go-version-file: '${{ github.action_path }}/go.mod'
+        go-version-file: '${{ github.action_path }}/cli/go.mod'
         cache: false
 
     # Logic lives in TypeScript (validated with tsc, run on Node) via the org's
@@ -89,7 +91,8 @@ runs:
           const binName = process.platform === 'win32' ? 'xml-validator.exe' : 'xml-validator';
           const binDir = path.join(runner.tool_cache, 'xml-validator', 'bin');
           await io.mkdirP(binDir);
-          await exec.exec('go', ['build', '-o', path.join(binDir, binName), '.'], { cwd: actionDir });
+          const cliDir = path.join(actionDir, 'cli');
+          await exec.exec('go', ['build', '-o', path.join(binDir, binName), './cmd/xml-validator'], { cwd: cliDir });
 
     - name: Run xml-validator
       uses: wow-look-at-my/actions@typescript#latest

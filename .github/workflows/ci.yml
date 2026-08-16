@@ -38,3 +38,28 @@ jobs:
         with:
           working-directory: ${{ matrix.module }}
           autorelease: ${{ matrix.autorelease }}
+
+  # The four jobs above gate the Go modules and never run action.yml, so the
+  # action can break for every consumer while this workflow stays green. That
+  # happened: deleting the root go.mod left Setup Go pointing at a file that
+  # does not exist, and nothing here noticed.
+  action:
+    name: action
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Valid document is accepted
+        uses: ./
+        with:
+          schema: testdata/action/schema.xsd
+          files: testdata/action/valid.xml
+
+      # Proves the action reports a real verdict. Without this, an action that
+      # accepted everything would pass the step above.
+      - name: Invalid documents are rejected
+        uses: ./
+        with:
+          schema: testdata/action/schema.xsd
+          files: testdata/action/*.invalid.xml
+          expect-fail: true
