@@ -34,7 +34,12 @@ jobs:
     name: test (${{ matrix.module }})
     steps:
       - uses: actions/checkout@v4
+      # Native per-platform binaries, not the default single fat APE. The dats
+      # suites run the built binary inside a plain debian container, where an
+      # APE has no loader and exits 121 before main runs.
       - uses: wow-look-at-my/go-toolchain@v1
         with:
           working-directory: ${{ matrix.module }}
           autorelease: ${{ matrix.autorelease }}
+          os: linux,darwin,windows
+          arch: amd64,arm64
