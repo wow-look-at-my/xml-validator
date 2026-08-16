@@ -1,4 +1,4 @@
-package validator
+package reader
 
 import (
 	"fmt"
@@ -8,7 +8,7 @@ import (
 )
 
 func ParseTree(r io.Reader) (*Document, error) {
-	runes, err := readInput(r)
+	runes, err := Decode(r)
 	if err != nil {
 		return nil, err
 	}
@@ -144,14 +144,20 @@ func (tp *treeParser) skipDoctype() {
 }
 
 func (tp *treeParser) parseName() string {
-	var name []rune
+	return string(tp.nameRunes())
+}
+
+// nameRunes is parseName without the string: it slices the name out of the
+// input, so a caller that only compares the name allocates nothing.
+func (tp *treeParser) nameRunes() []rune {
+	start := tp.pos
 	if !tp.eof() && IsNameStartChar(tp.peek()) {
-		name = append(name, tp.advance())
+		tp.advance()
 	}
 	for !tp.eof() && IsNameChar(tp.peek()) {
-		name = append(name, tp.advance())
+		tp.advance()
 	}
-	return string(name)
+	return tp.input[start:tp.pos]
 }
 
 func (tp *treeParser) parseElement(parentNS map[string]string) (*Element, error) {
@@ -369,42 +375,52 @@ func (tp *treeParser) parseRef() (rune, error) {
 			hex = true
 			tp.advance()
 		}
-		var digits []rune
+		// A stack buffer, and leading zeros skipped so an arbitrarily padded
+		// reference still parses. Growing a slice here allocated on every
+		// reference in the document. See parseCharRef in elements.go.
+		var buf [8]byte
+		n := 0
+		leading := true
+		tooLong := false
 		for !tp.eof() && tp.peek() != ';' {
-			digits = append(digits, tp.advance())
+			r := tp.advance()
+			if leading && r == '0' {
+				continue
+			}
+			leading = false
+			if n == len(buf) {
+				tooLong = true
+				continue
+			}
+			buf[n] = byte(r)
+			n++
 		}
 		if !tp.eof() {
 			tp.advance()
 		}
-		s := string(digits)
-		var val int64
-		var err error
-		if hex {
-			val, err = strconv.ParseInt(s, 16, 32)
-		} else {
-			val, err = strconv.ParseInt(s, 10, 32)
+		if tooLong {
+			return 0, tp.errorf("invalid character reference")
 		}
+		if n == 0 {
+			return 0, nil // every digit was a leading zero
+		}
+		base := 10
+		if hex {
+			base = 16
+		}
+		val, err := strconv.ParseInt(string(buf[:n]), base, 32)
 		if err != nil {
 			return 0, tp.errorf("invalid character reference")
 		}
 		return rune(val), nil
 	}
-	name := tp.parseName()
+	// Matched where it sits: the name is only a string on the error path.
+	name := tp.nameRunes()
 	if !tp.eof() && tp.peek() == ';' {
 		tp.advance()
 	}
-	switch name {
-	case "amp":
-		return '&', nil
-	case "lt":
-		return '<', nil
-	case "gt":
-		return '>', nil
-	case "apos":
-		return '\'', nil
-	case "quot":
-		return '"', nil
-	default:
-		return 0, tp.errorf("unknown entity &%s;", name)
+	if r, ok := PredefinedEntity(name); ok {
+		return r, nil
 	}
+	return 0, tp.errorf("unknown entity &%s;", string(name))
 }

@@ -2,6 +2,7 @@ package validator
 
 import (
 	"fmt"
+	"github.com/wow-look-at-my/xml-validator/reader"
 	"strings"
 )
 
@@ -230,8 +231,8 @@ func (p *parser) validateEncName(name string) error {
 }
 
 func (p *parser) validateEncodingMatch(declared string) error {
-	if strings.ToUpper(declared) != "UTF-8" {
-		return p.errorf("unsupported encoding %q (only UTF-8 is supported)", declared)
+	if reader.CanonicalEncoding(declared) == "" {
+		return p.errorf("unsupported encoding %q (UTF-8 and ISO-8859-1 are supported)", declared)
 	}
 	return nil
 }
@@ -350,10 +351,12 @@ func (p *parser) parseName() (string, error) {
 	if !IsNameStartChar(r) {
 		return "", p.errorf("invalid name start character %q (U+%04X)", string(r), r)
 	}
-	var name []rune
-	name = append(name, p.advance())
+	// Slice the name out of the input instead of growing a rune slice and
+	// converting that: the caller wants one string, so one allocation.
+	start := p.pos
+	p.advance()
 	for !p.eof() && IsNameChar(p.peek()) {
-		name = append(name, p.advance())
+		p.advance()
 	}
-	return string(name), nil
+	return string(p.input[start:p.pos]), nil
 }

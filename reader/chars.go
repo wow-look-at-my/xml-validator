@@ -1,4 +1,4 @@
-package validator
+package reader
 
 // IsChar returns true if r is a valid XML 1.1 Char.
 // [2] Char ::= [#x1-#xD7FF] | [#xE000-#xFFFD] | [#x10000-#x10FFFF]
