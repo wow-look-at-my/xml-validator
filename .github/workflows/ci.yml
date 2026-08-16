@@ -34,6 +34,12 @@ jobs:
     name: test (${{ matrix.module }})
     steps:
       - uses: actions/checkout@v4
+      # dats picks its sandbox backend at run time -- bubblewrap first, docker
+      # as the fallback. Under docker the command runs inside the image, so the
+      # binary the dats phase staged is not the binary that runs, and the cli
+      # suites fail on a runner that happens to lack bwrap. Installing it makes
+      # the choice the same one every time.
+      - run: sudo apt-get install -y bubblewrap
       - uses: wow-look-at-my/go-toolchain@v1
         with:
           working-directory: ${{ matrix.module }}
