@@ -129,6 +129,10 @@ different places.
   - Identity constraints: `xs:key`, `xs:keyref`, `xs:unique`. See
     `docs/identity-constraints.md` for the XPath subset, the two deliberate
     deviations, and how a keyref finds its key
+  - Substitution groups, including `abstract` heads, `block="substitution"` /
+    `blockDefault`, and transitive members. See `docs/substitution-groups.md`
+  - `xs:alternative` conditional type assignment over an attribute-test
+    language. See `docs/conditional-types.md`
 
 ## Hard Errors (Unsupported)
 
@@ -146,9 +150,9 @@ different places.
 - Encodings other than UTF-8 and ISO-8859-1 (UTF-16 inputs and BOMs are rejected; any other encoding declaration is rejected by name)
 - xs:redefine, xs:override
 - xs:notation
-- Any unrecognized child of an `xs:element`, and any selector or field XPath
+- Any unrecognized child of an `xs:element`, any `xs:alternative` test outside
+  the supported language, and any selector or field XPath
   outside the supported subset -- a constraint either runs or says it cannot
-- Type substitution (substitutionGroup)
 - An `xs:list` with no item type and an `xs:union` with no members -- both used
   to accept every value
 - A simple type that derives from itself
@@ -185,8 +189,8 @@ different places.
 - `validator/schema_qname.go` -- namespace-keyed lookup of global declarations
 - `validator/schema_resolve.go` -- ref and type resolution over a parsed schema
 - `validator/schema_derive.go` -- group-ref expansion and complexContent derivation
-- `validator/schema_parse_simple.go` -- xs:simpleType parsing (restriction facets, list, union)
-- `validator/schema_identity.go` -- xs:key/xs:keyref/xs:unique: XPath subset, selection, evaluation
+- `validator/schema_substitution.go` -- substitution groups: members, abstract heads, block, derivation check
+- `validator/schema_alternative.go` -- xs:alternative: test language, per-instance type choice
 - `validator/schema_value.go` -- simple-value validation (facets, list, union) shared by element text and attribute values
 - `validator/schema_validate.go` -- schema validation engine
 - `validator/roundtrip_nul_test.go` -- parse/emit/reparse roundtrips for `&#0;`

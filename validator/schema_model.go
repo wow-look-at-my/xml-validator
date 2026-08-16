@@ -27,6 +27,9 @@ type Schema struct {
 	// rather than on the element that declares them.
 	identity     map[string]*IdentityConstraint
 	identityRefs []*IdentityConstraint
+	// BlockDefault is the schema's blockDefault attribute: the refusal every
+	// element inherits when it states no block of its own.
+	BlockDefault string
 	// prefixes are the namespace declarations this schema document made, so a
 	// QName in a ref resolves to the namespace its author meant.
 	prefixes map[string]string
@@ -51,6 +54,19 @@ type ElementDecl struct {
 	Fixed     string
 	Nillable  bool
 	Ref       string
+	// SubstitutionGroup names the global element this one may stand in for.
+	// Abstract marks an element that only its substitutes may replace, and
+	// Block ("substitution", "#all", ...) is the head's refusal to be replaced
+	// at all; an empty Block takes the schema's blockDefault.
+	SubstitutionGroup string
+	Abstract          bool
+	Block             string
+	// substitutes are the declarations that may appear where a reference to
+	// this element does, transitively. A member of a member substitutes too.
+	substitutes []*ElementDecl
+	// Alternatives are the xs:alternative type choices, in schema order. The
+	// first whose test holds gives the instance its type.
+	Alternatives []*TypeAlternative
 	// Constraints are the xs:key, xs:keyref, and xs:unique declarations on this
 	// element. They are evaluated over the element's own subtree.
 	Constraints []*IdentityConstraint
@@ -92,6 +108,10 @@ type ComplexType struct {
 	baseName      string
 	derivation    string // "extension" or "restriction"
 	attrGroupRefs []string
+	// baseType is the type this one derived from, kept after resolution folded
+	// the base in. A substitution group member must derive from its head's
+	// type, and that walk needs the chain.
+	baseType Type
 }
 
 func (t *ComplexType) typeName() string { return t.Name }

@@ -394,21 +394,12 @@ func TestSchemaConstraintMissingSelectorRejected(t *testing.T) {
 	mustSchemaReject(t, `<?xml version="1.1"?><cfg>x</cfg>`, xsd, "requires an xs:selector")
 }
 
-func TestSchemaSubstitutionGroupRejected(t *testing.T) {
-	xsd := `<?xml version="1.0"?>
-<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
-  <xs:element name="head" type="xs:string"/>
-  <xs:element name="member" type="xs:string" substitutionGroup="head"/>
-</xs:schema>`
-	mustSchemaReject(t, `<?xml version="1.1"?><head>x</head>`, xsd, "substitutionGroup")
-}
-
 func TestSchemaUnknownElementChildRejected(t *testing.T) {
 	xsd := `<?xml version="1.0"?>
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
   <xs:element name="r" type="xs:string">
-    <xs:alternative test="true"/>
+    <xs:assert test="true()"/>
   </xs:element>
 </xs:schema>`
-	mustSchemaReject(t, `<?xml version="1.1"?><r>x</r>`, xsd, "unsupported schema element xs:alternative")
+	mustSchemaReject(t, `<?xml version="1.1"?><r>x</r>`, xsd, "unsupported schema element xs:assert")
 }

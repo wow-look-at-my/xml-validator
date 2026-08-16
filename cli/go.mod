@@ -10,9 +10,14 @@ require (
 require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.9 // indirect
-	github.com/wow-look-at-my/go-containers v0.0.0-20260815193622-200150bfb1c8 // indirect
+	github.com/wow-look-at-my/go-containers v0.0.0-20260815235059-bc089f373e68 // indirect
 	github.com/wow-look-at-my/xml-validator/reader v0.0.0-20260815191334-3096d3b2da43 // indirect
 )
+
+// go-containers reaches this module through validator, so the require line is
+// indirect and cannot carry a branch marker. The replace pins the version that
+// actually reaches the build, and tracks the same branch validator does.
+replace github.com/wow-look-at-my/go-containers => github.com/wow-look-at-my/go-containers v0.0.0-20260815235059-bc089f373e68 // go-toolchain:branch=master
 
 // Both ship from this repository.
 replace github.com/wow-look-at-my/xml-validator/validator => ../validator
