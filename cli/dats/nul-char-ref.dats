@@ -3,7 +3,8 @@
 # user runs, not only for the library.
 #
 # $GO_TOOLCHAIN_DATS_BUILD_DIR holds copies of the binaries this build just
-# made. It is read-only inside the sandbox, which is enough to exec them.
+# made. It is read-only inside the sandbox, and the dats phase assimilates a
+# cosmo APE copy as it stages it, so these tests exec that path in place.
 # see docs/nul-char-ref.md
 
 setup:
