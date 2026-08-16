@@ -1,0 +1,40 @@
+; The measurement corpus: three Hugging Face datasets, referenced rather than
+; copied. Each is a shallow clone, and every large file in all three is Git
+; LFS, so `git submodule update --init` fetches pointers and costs little. The
+; blobs are fetched per path, by whoever wants to run the measurement:
+;
+;	git -C corpus/wikipedia    lfs pull --include="20231101.is/*,20231101.am/*"
+;	git -C corpus/rosetta-code lfs pull --include="data/*"
+;	git -C corpus/images       lfs pull --include="transformers/model_doc/*"
+;
+; Narrow the checkout first with sparse-checkout, or wikipedia alone lists
+; every language. See docs/encodings.md and tools/extract-corpus.js.
+;
+; `--filter=blob:none` does NOT work against huggingface.co: the promisor
+; fetch fails with "expected 'packfile'". Shallow plus sparse is the recipe
+; that works.
+
+; `ignore = dirty` on all three: fetching LFS blobs rewrites files in the
+; working tree, and one file upstream (transformers/model_doc/eomt_architecture.png)
+; is committed as real bytes under a path .gitattributes marks as LFS, so
+; git-lfs rewrites it to a pointer on every checkout and the tree never comes
+; back clean. These are read-only data mirrors -- nothing here is ours to
+; commit. A moved gitlink is still reported, which is the part that matters.
+
+[submodule "corpus/images"]
+	path = corpus/images
+	url = https://huggingface.co/datasets/huggingface/documentation-images
+	shallow = true
+	ignore = dirty
+
+[submodule "corpus/rosetta-code"]
+	path = corpus/rosetta-code
+	url = https://huggingface.co/datasets/christopher/rosetta-code
+	shallow = true
+	ignore = dirty
+
+[submodule "corpus/wikipedia"]
+	path = corpus/wikipedia
+	url = https://huggingface.co/datasets/wikimedia/wikipedia
+	shallow = true
+	ignore = dirty

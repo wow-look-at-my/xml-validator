@@ -4,21 +4,30 @@ Strict XML 1.1 validator with optional XSD schema validation. Anything the
 validator does not understand is a hard error -- there is no fallback to XML
 1.0, no DTD support, no permissive mode.
 
-Ships as **both** a command-line tool and a Go library that share the same
-parser and validation engine.
+Ships as a command-line tool and as four Go modules, so a program takes only
+the part it needs.
+
+| module | what it is | depends on |
+|---|---|---|
+| `.../reader` | bytes to a tree: decoding, character classes, the tree parser | nothing |
+| `.../writer` | a tree back to bytes; base64 by default for a byte payload | reader |
+| `.../validator` | well-formedness and XSD, on top of reader | reader |
+| `.../cli` | the `xml-validator` command | validator |
 
 ## Install
 
 ### CLI
 
 ```bash
-go install github.com/wow-look-at-my/xml-validator@latest
+go install github.com/wow-look-at-my/xml-validator/cli/cmd/xml-validator@latest
 ```
 
 ### Library
 
 ```bash
-go get github.com/wow-look-at-my/xml-validator/validator
+go get github.com/wow-look-at-my/xml-validator/validator   # validate
+go get github.com/wow-look-at-my/xml-validator/reader      # just read
+go get github.com/wow-look-at-my/xml-validator/writer      # just write
 ```
 
 ## CLI usage
@@ -93,7 +102,10 @@ err = validator.ValidateSchema(xmlDoc, schema)
   `&#0;` is accepted, one deliberate deviation from XML 1.1 -- a literal NUL
   byte and a lone surrogate are still rejected
 - Namespaces in XML 1.1
-- UTF-8 only, no BOM (per [utf8everywhere](https://utf8everywhere.org/))
+- Two input modes: UTF-8 (the default) and an 8-bit byte mode selected by
+  `encoding="ISO-8859-1"`, where one byte is one character and anything above
+  U+00FF takes a character reference. No BOM in either
+  (per [utf8everywhere](https://utf8everywhere.org/))
 - XML 1.1 line-ending normalization (`#x85`, `#x2028`)
 - XSD schema validation: complex/simple types, facets, sequence/choice/all,
   attribute groups, simpleContent/complexContent, `xs:any`, and 35+ built-in
@@ -125,7 +137,7 @@ err = validator.ValidateSchema(xmlDoc, schema)
 - General entity references beyond the five predefined ones
 - XML 1.0 documents (the declaration must say `version="1.1"`)
 - Missing XML declaration
-- Encodings other than UTF-8 (UTF-16 inputs and UTF-8 BOMs are rejected)
+- Encodings other than UTF-8 and ISO-8859-1 (UTF-16 inputs and BOMs are rejected)
 - XSD: `xs:redefine`, `xs:override`, and `xs:notation`
 - A selector or field XPath outside the supported subset -- a predicate, a
   function, an axis, or `..`
@@ -183,5 +195,6 @@ Point `schema` at an XSD to validate every file against it:
 go-toolchain
 ```
 
-That runs `go mod tidy`, `go vet`, tests with coverage, and produces the
-binary at `build/xml-validator`.
+Run it at the repository root and it walks all four modules: tidy, vet, tests
+with coverage, the build, and the CLI suites under `cli/dats/`. The binary
+lands at `cli/build/xml-validator`.

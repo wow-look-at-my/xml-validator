@@ -1,4 +1,4 @@
-package validator
+package reader
 
 type Document struct {
 	Root *Element

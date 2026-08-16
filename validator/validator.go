@@ -2,6 +2,7 @@ package validator
 
 import (
 	"bytes"
+	"github.com/wow-look-at-my/xml-validator/reader"
 	"io"
 	"os"
 	"path/filepath"
@@ -22,7 +23,7 @@ func asError(err error) *Error {
 // Input-level failures (read errors, empty input, unsupported encoding)
 // are reported at line 1, column 1.
 func Validate(r io.Reader) error {
-	runes, err := readInput(r)
+	runes, err := reader.Decode(r)
 	if err != nil {
 		return asError(err)
 	}
@@ -60,7 +61,7 @@ func ValidateWithSchemaBytes(xmlData, xsdData []byte) error {
 // to load any xs:import directives that name a schemaLocation. Passing a nil
 // resolver behaves like [ValidateWithSchemaBytes].
 func ValidateWithSchemaResolver(xmlData, xsdData []byte, resolver SchemaResolver) error {
-	runes, err := readInput(bytes.NewReader(xmlData))
+	runes, err := reader.Decode(bytes.NewReader(xmlData))
 	if err != nil {
 		return asError(err)
 	}
