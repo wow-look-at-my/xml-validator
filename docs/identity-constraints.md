@@ -12,17 +12,24 @@ Code: `validator/schema_identity.go` (compile, select, evaluate) and
 
 A selector and a field take the subset XSD defines for them:
 
+This is the grammar XSD states for them, and the schema-for-schemas enforces it
+with an `xs:pattern`:
+
 ```
-path      ::= alternative ( '|' alternative )*
-alternative ::= ( './/' | './' )? step ( '/' step )*   |   '.'
-step      ::= NCName | prefix ':' NCName | '*'
-field     ::= path, whose last step may be '@name', '@prefix:name', or '@*'
+Selector ::= Path ( '|' Path )*
+Path     ::= ('.//')? Step ( '/' Step )*
+Step     ::= '.' | NameTest                     ( 'child::' is also allowed )
+NameTest ::= QName | '*' | NCName ':' '*'
+Field's Path ::= ('.//')? ( Step '/' )* ( Step | '@' NameTest )
+                                                ( 'attribute::' is also allowed )
 ```
 
-Everything else is rejected by name: a predicate (`provider[@id='x']`), a
-function (`count(...)`), an axis (`child::provider`), a parent step (`..`), and
-an empty step (`a//b`). An attribute step in a selector is rejected too -- a
-selector selects elements.
+All of it is accepted, `child::` and `attribute::` included. What is rejected is
+what the grammar has no room for: a predicate (`provider[@id='x']`), a function
+(`count(...)`), any other axis (`descendant::`), a parent step (`..`), and an
+empty step (`a//b`). An attribute step in a selector is rejected too -- a
+selector selects elements. Rejecting those refuses nothing a conforming schema
+may contain.
 
 ## Two deliberate deviations from XPath 1.0
 
