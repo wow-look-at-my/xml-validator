@@ -11,7 +11,7 @@ require (
 )
 
 require (
-	github.com/wow-look-at-my/go-containers v0.0.0-20260815235059-bc089f373e68 // go-toolchain:branch=master
+	github.com/wow-look-at-my/go-containers v0.0.0-20260815235059-bc089f373e68 // go-toolchain:auto-branch
 	github.com/wow-look-at-my/xml-validator/reader v0.0.0-20260815191334-3096d3b2da43
 )
 
