@@ -14,6 +14,11 @@ require (
 	github.com/wow-look-at-my/xml-validator/reader v0.0.0-20260815191334-3096d3b2da43 // indirect
 )
 
+// go-containers reaches this module through validator, so the require line is
+// indirect and cannot carry a branch marker. The replace pins the version that
+// actually reaches the build, and tracks the same branch validator does.
+replace github.com/wow-look-at-my/go-containers => github.com/wow-look-at-my/go-containers v0.0.0-20260815193622-200150bfb1c8 // go-toolchain:branch=master
+
 // Both ship from this repository.
 replace github.com/wow-look-at-my/xml-validator/validator => ../validator
 
