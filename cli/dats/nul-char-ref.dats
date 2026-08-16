@@ -3,7 +3,9 @@
 # user runs, not only for the library.
 #
 # $GO_TOOLCHAIN_DATS_BUILD_DIR holds copies of the binaries this build just
-# made. It is read-only inside the sandbox, which is enough to exec them.
+# made, and it is read-only inside the sandbox. A cosmo build is an APE, whose
+# loader writes to its own file on the first run, so each command copies the
+# binary into a writable temp dir and runs the copy.
 # see docs/nul-char-ref.md
 
 setup:
@@ -11,7 +13,7 @@ setup:
 
 tests:
 	- desc: a document with a NUL character reference is valid
-	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" {inputs.nul.xml}'
+	  cmd: 'V="$(mktemp -d)/v"; cp "$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" "$V"; "$V" {inputs.nul.xml}'
 	  inputs:
 		files:
 			nul.xml: |
@@ -22,7 +24,7 @@ tests:
 			- "valid XML 1.1 document"
 
 	- desc: every spelling of the reference is valid
-	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" {inputs.spellings.xml}'
+	  cmd: 'V="$(mktemp -d)/v"; cp "$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" "$V"; "$V" {inputs.spellings.xml}'
 	  inputs:
 		files:
 			spellings.xml: |
@@ -50,7 +52,7 @@ tests:
 	# report this file as valid. The error names line 3.
 	- desc: parsing continues past the reference to a later error
 	  exit: 1
-	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" {inputs.late-error.xml}'
+	  cmd: 'V="$(mktemp -d)/v"; cp "$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" "$V"; "$V" {inputs.late-error.xml}'
 	  inputs:
 		files:
 			late-error.xml: |
@@ -67,7 +69,7 @@ tests:
 	# The same document with the tail made well-formed: the reference stopped
 	# nothing, so the whole file validates.
 	- desc: content after the reference is ordinary content
-	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" {inputs.tail.xml}'
+	  cmd: 'V="$(mktemp -d)/v"; cp "$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" "$V"; "$V" {inputs.tail.xml}'
 	  inputs:
 		files:
 			tail.xml: |
@@ -85,7 +87,7 @@ tests:
 	# that treated `&#0;` and a NUL byte as the same thing would accept both.
 	- desc: a literal NUL byte is rejected
 	  exit: 1
-	  cmd: 'printf %b "<?xml version=\"1.1\"?><r>a\000b</r>" > {outputs.nul.bin}; "$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" {outputs.nul.bin}'
+	  cmd: 'V="$(mktemp -d)/v"; cp "$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" "$V"; printf %b "<?xml version=\"1.1\"?><r>a\000b</r>" > {outputs.nul.bin}; "$V" {outputs.nul.bin}'
 	  outputs:
 		stderr:
 			- "invalid character U+0000 in character data"
@@ -94,13 +96,13 @@ tests:
 
 	- desc: a literal NUL byte is rejected inside CDATA
 	  exit: 1
-	  cmd: 'printf %b "<?xml version=\"1.1\"?><r><![CDATA[a\000b]]></r>" > {outputs.cdata.bin}; "$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" {outputs.cdata.bin}'
+	  cmd: 'V="$(mktemp -d)/v"; cp "$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" "$V"; printf %b "<?xml version=\"1.1\"?><r><![CDATA[a\000b]]></r>" > {outputs.cdata.bin}; "$V" {outputs.cdata.bin}'
 	  outputs:
 		stderr:
 			- "invalid character U+0000 in CDATA section"
 
 	- desc: the reference works on stdin too
-	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator"'
+	  cmd: 'V="$(mktemp -d)/v"; cp "$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" "$V"; "$V"'
 	  inputs:
 		stdin: |
 			<?xml version="1.1"?>
@@ -112,7 +114,7 @@ tests:
 	# Schema validation counts the value as three characters: a, U+0000, b. A
 	# terminator would leave a value of length 1.
 	- desc: the schema length facet counts the NUL as one character
-	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema {inputs.len3.xsd} {inputs.doc.xml}'
+	  cmd: 'V="$(mktemp -d)/v"; cp "$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" "$V"; "$V" --schema {inputs.len3.xsd} {inputs.doc.xml}'
 	  inputs:
 		files:
 			doc.xml: |
@@ -141,13 +143,14 @@ tests:
 	- desc: a 256-byte binary payload roundtrips through XML and back
 	  cmd: |
 		set -e
+		V="$(mktemp -d)/v"; cp "$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" "$V"
 		w="$(mktemp -d)"
 		: > "$w/orig.bin"
 		for i in $(seq 0 255); do printf "\\$(printf '%03o' "$i")" >> "$w/orig.bin"; done
 		{ printf '<?xml version="1.1"?><r>'
 		  od -An -v -tu1 "$w/orig.bin" | tr -s ' ' '\n' | grep . | while read -r n; do printf '&#%s;' "$n"; done
 		  printf '</r>'; } > "$w/enc.xml"
-		"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" "$w/enc.xml"
+		"$V" "$w/enc.xml"
 		grep -o '&#[0-9]*;' "$w/enc.xml" | tr -cd '0-9\n' | while read -r n; do printf "\\$(printf '%03o' "$n")"; done > "$w/dec.bin"
 		echo "sizes: orig $(wc -c < "$w/orig.bin") xml $(wc -c < "$w/enc.xml") decoded $(wc -c < "$w/dec.bin")"
 		echo "bytes outside printable ASCII in the xml: $(LC_ALL=C tr -d '\040-\176' < "$w/enc.xml" | wc -c)"
@@ -170,11 +173,12 @@ tests:
 	- desc: a 256-byte payload roundtrips through xs:base64Binary
 	  cmd: |
 		set -e
+		V="$(mktemp -d)/v"; cp "$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" "$V"
 		w="$(mktemp -d)"
 		: > "$w/orig.bin"
 		for i in $(seq 0 255); do printf "\\$(printf '%03o' "$i")" >> "$w/orig.bin"; done
 		{ printf '<?xml version="1.1"?><blob>'; base64 -w0 < "$w/orig.bin"; printf '</blob>'; } > "$w/b64.xml"
-		"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema {inputs.b64-256.xsd} "$w/b64.xml"
+		"$V" --schema {inputs.b64-256.xsd} "$w/b64.xml"
 		sed -e 's|.*<blob>||' -e 's|</blob>.*||' "$w/b64.xml" | base64 -d > "$w/dec.bin"
 		echo "xml $(wc -c < "$w/b64.xml") bytes, decoded $(wc -c < "$w/dec.bin") bytes"
 		test "$(sha256sum < "$w/orig.bin")" = "$(sha256sum < "$w/dec.bin")"
@@ -203,11 +207,12 @@ tests:
 	- desc: a 256-byte payload roundtrips through xs:hexBinary
 	  cmd: |
 		set -e
+		V="$(mktemp -d)/v"; cp "$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" "$V"
 		w="$(mktemp -d)"
 		: > "$w/orig.bin"
 		for i in $(seq 0 255); do printf "\\$(printf '%03o' "$i")" >> "$w/orig.bin"; done
 		{ printf '<?xml version="1.1"?><blob>'; od -An -v -tx1 "$w/orig.bin" | tr -d ' \n' | tr 'a-f' 'A-F'; printf '</blob>'; } > "$w/hex.xml"
-		"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema {inputs.hex-256.xsd} "$w/hex.xml"
+		"$V" --schema {inputs.hex-256.xsd} "$w/hex.xml"
 		sed -e 's|.*<blob>||' -e 's|</blob>.*||' "$w/hex.xml" | tr -d '\n' | sed 's/../&\n/g' | grep . | while read -r h; do printf "\\$(printf '%03o' "$((16#$h))")"; done > "$w/dec.bin"
 		echo "xml $(wc -c < "$w/hex.xml") bytes, decoded $(wc -c < "$w/dec.bin") bytes"
 		test "$(sha256sum < "$w/orig.bin")" = "$(sha256sum < "$w/dec.bin")"
@@ -235,7 +240,7 @@ tests:
 	# Latin-1 payload written one byte per character is rejected outright.
 	- desc: a raw Latin-1 byte is not valid UTF-8
 	  exit: 1
-	  cmd: 'printf %b "<?xml version=\"1.1\"?><r>\351</r>" > {outputs.latin1.xml}; "$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" {outputs.latin1.xml}'
+	  cmd: 'V="$(mktemp -d)/v"; cp "$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" "$V"; printf %b "<?xml version=\"1.1\"?><r>\351</r>" > {outputs.latin1.xml}; "$V" {outputs.latin1.xml}'
 	  outputs:
 		stderr:
 			- "invalid UTF-8 byte sequence"
@@ -245,11 +250,12 @@ tests:
 	- desc: the schema counts the binary payload as 256 characters
 	  cmd: |
 		set -e
+		V="$(mktemp -d)/v"; cp "$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" "$V"
 		w="$(mktemp -d)"
 		{ printf '<?xml version="1.1"?><r>'
 		  for i in $(seq 0 255); do printf '&#%d;' "$i"; done
 		  printf '</r>'; } > "$w/enc.xml"
-		"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema {inputs.len256.xsd} "$w/enc.xml"
+		"$V" --schema {inputs.len256.xsd} "$w/enc.xml"
 	  inputs:
 		files:
 			len256.xsd: |
@@ -269,7 +275,7 @@ tests:
 
 	- desc: the same value fails a length-1 facet, naming length 3
 	  exit: 1
-	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema {inputs.len1.xsd} {inputs.doc.xml}'
+	  cmd: 'V="$(mktemp -d)/v"; cp "$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" "$V"; "$V" --schema {inputs.len1.xsd} {inputs.doc.xml}'
 	  inputs:
 		files:
 			doc.xml: |
