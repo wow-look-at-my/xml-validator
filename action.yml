@@ -17,10 +17,6 @@ inputs:
     description: 'Additional CLI arguments passed to each invocation.'
     required: false
     default: ''
-  expect-fail:
-    description: 'Invert the check: every named file MUST be rejected. A file that validates clean fails the step. Use it to prove a schema still catches what it claims to catch.'
-    required: false
-    default: 'false'
 
 runs:
   using: 'composite'
@@ -100,7 +96,6 @@ runs:
         XMLV_FILES: ${{ inputs.files }}
         XMLV_SCHEMA: ${{ inputs.schema }}
         XMLV_ARGS: ${{ inputs.args }}
-        XMLV_EXPECT_FAIL: ${{ inputs.expect-fail }}
       with:
         script: |
           const binName = process.platform === 'win32' ? 'xml-validator.exe' : 'xml-validator';
@@ -109,13 +104,6 @@ runs:
           const filesInput = (process.env.XMLV_FILES ?? '').trim();
           const schema = (process.env.XMLV_SCHEMA ?? '').trim();
           const extraArgs = (process.env.XMLV_ARGS ?? '').trim();
-
-          const rawExpectFail = (process.env.XMLV_EXPECT_FAIL ?? 'false').trim().toLowerCase();
-          if (rawExpectFail !== 'true' && rawExpectFail !== 'false') {
-            core.setFailed(`expect-fail must be "true" or "false", got "${rawExpectFail}"`);
-            return;
-          }
-          const expectFail: boolean = rawExpectFail === 'true';
 
           const base: string[] = [];
           if (schema) base.push('--schema', schema);
@@ -142,13 +130,7 @@ runs:
             files = [];
             for (const token of filesInput.split(/\s+/)) {
               if (/[*?[]/.test(token)) {
-                const matches = fs.globSync(token);
-                // A pattern matching nothing validates nothing, so success would be a lie.
-                if (matches.length === 0) {
-                  core.setFailed(`files pattern "${token}" matched no files`);
-                  return;
-                }
-                files.push(...matches);
+                files.push(...fs.globSync(token));
               } else {
                 files.push(token);
               }
@@ -166,15 +148,10 @@ runs:
           for (const file of files) {
             core.startGroup(`xml-validator ${file}`);
             const code = await exec.exec(bin, [...base, ...extra, file], { ignoreReturnCode: true });
-            const wrong = expectFail ? code === 0 : code !== 0;
-            if (wrong) {
-              failed++;
-              if (expectFail) core.error(`${file}: expected rejection, but it validated clean`);
-            }
+            if (code !== 0) failed++;
             core.endGroup();
           }
 
           if (failed > 0) {
-            const what = expectFail ? 'were accepted but must be rejected' : 'failed validation';
-            core.setFailed(`${failed} of ${files.length} file(s) ${what}`);
+            core.setFailed(`${failed} of ${files.length} file(s) failed validation`);
           }

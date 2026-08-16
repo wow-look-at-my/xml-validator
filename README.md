@@ -181,28 +181,13 @@ Point `schema` at an XSD to validate every file against it:
     schema: 'schema.xsd'
 ```
 
-### Fixtures that must be rejected
-
-Set `expect-fail` to invert the check. Every named file must be rejected, and a
-file that validates clean fails the step. Use a second step for it, so the valid
-and invalid corpora stay separate:
-
-```yaml
-- uses: wow-look-at-my/xml-validator@v1
-  with:
-    files: 'examples/*.invalid.xml'
-    schema: 'schema.xsd'
-    expect-fail: true
-```
-
 ### Inputs
 
 | Input | Required | Description |
 |-------|----------|-------------|
-| `files` | No | Space-separated files or glob patterns to validate. When omitted, auto-discovers every `*.xml` file in the workspace. A pattern that matches no file fails the step. |
+| `files` | No | Space-separated files or glob patterns to validate. When omitted, auto-discovers every `*.xml` file in the workspace. |
 | `schema` | No | Path to an XSD schema to validate every file against. When omitted, only XML 1.1 well-formedness is checked. |
 | `args` | No | Additional CLI arguments passed to each invocation. |
-| `expect-fail` | No | `true` inverts the check: every named file must be rejected. Default `false`. |
 
 ## Build & test
 
