@@ -36,10 +36,14 @@ jobs:
       - uses: actions/checkout@v4
       # dats picks its sandbox backend at run time -- bubblewrap first, docker
       # as the fallback. Under docker the command runs inside the image, so the
-      # binary the dats phase staged is not the binary that runs, and the cli
-      # suites fail on a runner that happens to lack bwrap. Installing it makes
-      # the choice the same one every time.
-      - run: sudo apt-get install -y bubblewrap
+      # binary the dats phase staged is not the binary that runs and every test
+      # that execs it dies. Installing bwrap is not enough on Ubuntu 24.04:
+      # AppArmor refuses the unprivileged user namespace it needs, dats sees an
+      # unusable backend and falls back anyway. Both lines, or neither works.
+      - name: Give dats a sandbox it can actually build
+        run: |
+          sudo apt-get install -y bubblewrap
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
       - uses: wow-look-at-my/go-toolchain@v1
         with:
           working-directory: ${{ matrix.module }}
