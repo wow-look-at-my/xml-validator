@@ -143,8 +143,7 @@ runs:
             for (const token of filesInput.split(/\s+/)) {
               if (/[*?[]/.test(token)) {
                 const matches = fs.globSync(token);
-                // A pattern that matches nothing validates nothing. Reporting success
-                // here would claim a check ran that did not.
+                // A pattern matching nothing validates nothing, so success would be a lie.
                 if (matches.length === 0) {
                   core.setFailed(`files pattern "${token}" matched no files`);
                   return;
