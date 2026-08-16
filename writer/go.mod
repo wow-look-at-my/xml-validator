@@ -17,7 +17,7 @@ require (
 // go-containers reaches this module through reader, so the require line is
 // indirect and cannot carry a branch marker. The replace pins the version that
 // actually reaches the build, and tracks the same branch reader does.
-replace github.com/wow-look-at-my/go-containers => github.com/wow-look-at-my/go-containers v0.0.0-20260815235059-bc089f373e68 // go-toolchain:branch=master
+replace github.com/wow-look-at-my/go-containers => github.com/wow-look-at-my/go-containers v0.0.0-20260815235059-bc089f373e68 // go-toolchain:auto-branch
 
 // The reader module ships from this repository.
 replace github.com/wow-look-at-my/xml-validator/reader => ../reader
