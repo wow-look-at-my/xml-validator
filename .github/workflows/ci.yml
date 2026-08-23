@@ -43,3 +43,42 @@ jobs:
           autorelease: ${{ matrix.autorelease }}
           os: linux,darwin,windows
           arch: amd64,arm64
+
+  # The action is the one surface no Go test reaches, and every repository in
+  # the org runs it. This job runs it from the checkout, so an install that
+  # cannot produce a working binary fails here instead of in each consumer.
+  action:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Accept a valid document and a schema
+        uses: ./
+        with:
+          files: 'testdata/action/valid.xml testdata/action/valid.xsd'
+
+      - name: Validate against a schema
+        uses: ./
+        with:
+          files: 'testdata/action/valid.xml'
+          schema: 'testdata/action/valid.xsd'
+
+      # The negative control. Without it every check above also passes for an
+      # action that reports success whatever the validator answered.
+      - name: Reject an XML 1.0 document
+        id: reject
+        continue-on-error: true
+        uses: ./
+        with:
+          files: 'testdata/action/xml10.xml'
+
+      - name: The rejection must have failed its step
+        uses: wow-look-at-my/actions@typescript#latest
+        env:
+          OUTCOME: ${{ steps.reject.outcome }}
+        with:
+          script: |
+            const outcome = (process.env.OUTCOME ?? '').trim();
+            if (outcome !== 'failure') {
+              core.setFailed(`the action reported ${outcome || 'nothing'} for an XML 1.0 document`);
+            }
