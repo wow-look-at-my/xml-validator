@@ -202,7 +202,10 @@ different places.
 - `cli/dats/nul-char-ref.dats` -- CLI suite for `&#0;`, run after
   every build
 - `docs/nul-char-ref.md` -- what `&#0;` is, what it is not, and how to check
-- `action.yml` -- composite GitHub Action (build with caching + run). The
-  cache-key, build, and validation steps run as TypeScript (tsc-checked, Node)
-  via `wow-look-at-my/actions@typescript#latest` instead of inline shell, so the
-  logic stays portable across runner OSes; the validator is invoked once per file.
+- `action.yml` -- composite GitHub Action. It installs the released binary via
+  `buildhost-download`, checks it runs (`--help`), and falls back to a cached
+  source build only when that fails, warning as it does. Zero-config discovery
+  covers `*.xml` and `*.xsd`, and the validator is invoked once per file. Every
+  step carrying logic runs as TypeScript (tsc-checked, Node) via
+  `wow-look-at-my/actions@typescript#latest` instead of inline shell, so the
+  logic stays portable across runner OSes.
