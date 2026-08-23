@@ -21,8 +21,8 @@ inputs:
 runs:
   using: 'composite'
   steps:
-    # The binary is the cli module, so its go.mod is the one that names the
-    # toolchain. There is no module at the repository root.
+    # The binary is the cli module, and this repository has no root go.mod.
+    # Both this step and the build below must name cli/ explicitly.
     - name: Setup Go
       uses: actions/setup-go@v5
       with:
