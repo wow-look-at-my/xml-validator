@@ -1,6 +1,6 @@
 module github.com/wow-look-at-my/xml-validator/validator
 
-go 1.24.7
+go 1.26
 
 require github.com/stretchr/testify v1.11.1
 
@@ -11,8 +11,8 @@ require (
 )
 
 require (
-	github.com/wow-look-at-my/go-containers v0.0.0-20260815235059-bc089f373e68 // go-toolchain:auto-branch
-	github.com/wow-look-at-my/xml-validator/reader v0.0.0-20260816042650-2d019af64af6 // go-toolchain:auto-branch
+	github.com/wow-look-at-my/go-containers v0.0.0-20260820210621-2e1261867045 // go-toolchain:auto-branch
+	github.com/wow-look-at-my/xml-validator/reader v0.0.0-20260823072327-30bfdcf6eb24 // go-toolchain:auto-branch
 )
 
 // The reader module ships from this repository, so a build here uses the tree
