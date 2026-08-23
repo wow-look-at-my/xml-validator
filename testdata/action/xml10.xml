@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<note>
+	<to>the action</to>
+	<body>XML 1.0. The validator rejects it, so the action must report a failure.</body>
+</note>

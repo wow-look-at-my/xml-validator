@@ -18,28 +18,59 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # One job per module. The action runs `go-toolchain matrix`, which
-          # gates the module in its working directory; it does not walk a tree
-          # of modules the way a bare `go-toolchain` does.
+          # One job per module: `go-toolchain matrix` gates only its own directory.
           - module: reader
             autorelease: 'false'
           - module: writer
             autorelease: 'false'
           - module: validator
             autorelease: 'false'
-          # cli carries the published binary and the dats suites, so it is the
-          # one job that releases. A library module has nothing to publish.
+          # cli carries the published binary, so it is the one job that releases.
           - module: cli
             autorelease: 'true'
     name: test (${{ matrix.module }})
     steps:
       - uses: actions/checkout@v4
-      # Native per-platform binaries, not the default single fat APE. The dats
-      # suites run the built binary inside a plain debian container, where an
-      # APE has no loader and exits 121 before main runs.
+      # Native per-platform binaries: the dats suites run one where an APE has no loader.
       - uses: wow-look-at-my/go-toolchain@v1
         with:
           working-directory: ${{ matrix.module }}
           autorelease: ${{ matrix.autorelease }}
           os: linux,darwin,windows
           arch: amd64,arm64
+
+  # No Go test reaches the action, so this job runs it from the checkout. docs/action.md
+  action:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Accept a valid document and a schema
+        uses: ./
+        with:
+          files: 'testdata/action/valid.xml testdata/action/valid.xsd'
+
+      - name: Validate against a schema
+        uses: ./
+        with:
+          files: 'testdata/action/valid.xml'
+          schema: 'testdata/action/valid.xsd'
+
+      # The negative control: the checks above also pass for an action that never fails.
+      - name: Reject an XML 1.0 document
+        id: reject
+        continue-on-error: true
+        uses: ./
+        with:
+          files: 'testdata/action/xml10.xml'
+
+      - name: The rejection must have failed its step
+        uses: wow-look-at-my/actions@typescript#latest
+        env:
+          OUTCOME: ${{ steps.reject.outcome }}
+        with:
+          script: |
+            const outcome = (process.env.OUTCOME ?? '').trim();
+            if (outcome !== 'failure') {
+              core.setFailed(`the action reported ${outcome || 'nothing'} for an XML 1.0 document`);
+            }

@@ -1,0 +1,5 @@
+<?xml version="1.1" encoding="UTF-8"?>
+<note>
+	<to>the action</to>
+	<body>A well-formed XML 1.1 document. The action must accept it.</body>
+</note>
