@@ -65,8 +65,7 @@ jobs:
         with:
           files: 'testdata/action/xml10.xml'
 
-      # install-only validates nothing, so the XML 1.0 document below proves the
-      # binary arrived by rejecting it -- which the validate mode cannot do.
+      # install-only validates nothing, so the rejection below is what proves the binary arrived.
       - name: Put the binary on PATH and validate nothing
         uses: ./
         with:
