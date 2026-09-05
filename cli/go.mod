@@ -4,20 +4,20 @@ go 1.26
 
 require (
 	github.com/spf13/cobra v1.10.2
-	github.com/wow-look-at-my/xml-validator/validator v0.0.0-20260823072327-30bfdcf6eb24 // go-toolchain:auto-branch
+	github.com/wow-look-at-my/xml-validator/validator v0.0.0-20260905020842-b64bac5c026b // go-toolchain:auto-branch
 )
 
 require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.9 // indirect
-	github.com/wow-look-at-my/go-containers v0.0.0-20260820210621-2e1261867045 // indirect
-	github.com/wow-look-at-my/xml-validator/reader v0.0.0-20260823072327-30bfdcf6eb24 // indirect; go-toolchain:auto-branch
+	github.com/wow-look-at-my/go-containers v0.0.0-20260826161058-40a3d1ef3d41 // indirect
+	github.com/wow-look-at-my/xml-validator/reader v0.0.0-20260905020842-b64bac5c026b // indirect; go-toolchain:auto-branch
 )
 
 // go-containers reaches this module through validator, so the require line is
 // indirect and cannot carry a branch marker. The replace pins the version that
 // actually reaches the build, and tracks the same branch validator does.
-replace github.com/wow-look-at-my/go-containers => github.com/wow-look-at-my/go-containers v0.0.0-20260820210621-2e1261867045 // go-toolchain:auto-branch
+replace github.com/wow-look-at-my/go-containers => github.com/wow-look-at-my/go-containers v0.0.0-20260826161058-40a3d1ef3d41 // go-toolchain:auto-branch
 
 // Both ship from this repository.
 replace github.com/wow-look-at-my/xml-validator/validator => ../validator

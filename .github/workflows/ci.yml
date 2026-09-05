@@ -2,6 +2,7 @@ name: CI
 
 on:
   push:
+    branches: ['**']
 
 permissions:
   id-token: write
@@ -31,13 +32,12 @@ jobs:
     name: test (${{ matrix.module }})
     steps:
       - uses: actions/checkout@v4
-      # Native per-platform binaries: the dats suites run one where an APE has no loader.
-      - uses: wow-look-at-my/go-toolchain@v1
+      # One fat APE over every host go-toolchain verifies. darwin/amd64 and windows/arm64 are refused.
+      - uses: wow-look-at-my/go-toolchain@master
         with:
           working-directory: ${{ matrix.module }}
           autorelease: ${{ matrix.autorelease }}
-          os: linux,darwin,windows
-          arch: amd64,arm64
+          cosmo-platforms: linux/amd64,linux/arm64,darwin/arm64,windows/amd64
 
   # No Go test reaches the action, so this job runs it from the checkout. docs/action.md
   action:
@@ -63,6 +63,22 @@ jobs:
         uses: ./
         with:
           files: 'testdata/action/xml10.xml'
+
+      # install-only validates nothing, so the rejection below is what proves the binary arrived.
+      - name: Put the binary on PATH and validate nothing
+        uses: ./
+        with:
+          install-only: 'true'
+
+      - name: The installed binary runs and still rejects XML 1.0
+        uses: wow-look-at-my/actions@typescript#latest
+        with:
+          script: |
+            await $`xml-validator testdata/action/valid.xml`;
+            const code = await exec.exec('xml-validator', ['testdata/action/xml10.xml'], { ignoreReturnCode: true });
+            if (code === 0) {
+              core.setFailed('the installed binary accepted an XML 1.0 document');
+            }
 
       - name: The rejection must have failed its step
         uses: wow-look-at-my/actions@typescript#latest
