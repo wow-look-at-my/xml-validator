@@ -13,8 +13,13 @@ import (
 // and per character reference, which is what the benchmarks measure in bulk.
 // see docs/encodings.md
 
-// allocsPerParse is the heap allocations one Validate of doc costs.
-func allocsPerParse(doc string) float64 {
+// allocsPerParse is the heap allocations one Validate of doc costs. testing.AllocsPerRun sets GOMAXPROCS to 1 for the
+// length of its measurement and restores it after, which is process-wide state: every caller runs alone, or two of them
+// fight over the setting and the whole package stops making progress.
+func allocsPerParse(t *testing.T, doc string) float64 {
+	t.Helper()
+	t.Serial()
+
 	input := []byte(doc)
 	return testing.AllocsPerRun(200, func() {
 		if err := Validate(bytes.NewReader(input)); err != nil {
@@ -28,8 +33,8 @@ func allocsPerParse(doc string) float64 {
 // thousand times the text costs a handful more allocations rather than a
 // thousand times as many.
 func TestLiteralCharactersDoNotAllocatePerCharacter(t *testing.T) {
-	small := allocsPerParse(xmlDecl + `<r>` + strings.Repeat("a", 100) + `</r>`)
-	large := allocsPerParse(xmlDecl + `<r>` + strings.Repeat("a", 100000) + `</r>`)
+	small := allocsPerParse(t, xmlDecl+`<r>`+strings.Repeat("a", 100)+`</r>`)
+	large := allocsPerParse(t, xmlDecl+`<r>`+strings.Repeat("a", 100000)+`</r>`)
 
 	assert.Less(t, large, small*3, "1000x the text cost more than 3x the allocations")
 }
@@ -37,8 +42,8 @@ func TestLiteralCharactersDoNotAllocatePerCharacter(t *testing.T) {
 // A character reference costs nothing either, which is the path a document
 // pays on every escaped character.
 func TestCharacterReferencesDoNotAllocatePerReference(t *testing.T) {
-	none := allocsPerParse(xmlDecl + `<r>` + strings.Repeat("a", 40000) + `</r>`)
-	many := allocsPerParse(xmlDecl + `<r>` + strings.Repeat("&#233;", 10000) + `</r>`)
+	none := allocsPerParse(t, xmlDecl+`<r>`+strings.Repeat("a", 40000)+`</r>`)
+	many := allocsPerParse(t, xmlDecl+`<r>`+strings.Repeat("&#233;", 10000)+`</r>`)
 
 	assert.LessOrEqual(t, many, none+2, "10,000 references cost more than 2 allocations")
 }
@@ -46,8 +51,8 @@ func TestCharacterReferencesDoNotAllocatePerReference(t *testing.T) {
 // And neither does a predefined entity reference, which used to build its
 // name as a string before comparing it.
 func TestEntityReferencesDoNotAllocatePerReference(t *testing.T) {
-	none := allocsPerParse(xmlDecl + `<r>` + strings.Repeat("a", 50000) + `</r>`)
-	many := allocsPerParse(xmlDecl + `<r>` + strings.Repeat("&amp;", 10000) + `</r>`)
+	none := allocsPerParse(t, xmlDecl+`<r>`+strings.Repeat("a", 50000)+`</r>`)
+	many := allocsPerParse(t, xmlDecl+`<r>`+strings.Repeat("&amp;", 10000)+`</r>`)
 
 	assert.LessOrEqual(t, many, none+2, "10,000 entity references cost more than 2 allocations")
 }
