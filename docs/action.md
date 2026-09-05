@@ -31,13 +31,13 @@ finding, not a file to walk past.
 
 ## Driving the binary yourself
 
-`install-only: 'true'` puts xml-validator on `PATH`, reports it as the `path`
-output, and validates nothing. It exists for a suite that asserts a document is
-REJECTED: the validate mode fails the job on exactly those documents, so such a
-suite has to run the binary itself. `api-cli-spec` is the consumer.
+`install-only: 'true'` puts xml-validator on `PATH` and validates nothing.
 
-The `path` output is set either way, so a job that validates can also reach the
-binary it used.
+It exists for a suite that asserts a document is REJECTED. The validate mode
+fails the job on exactly those documents. Such a suite runs the binary itself.
+`api-cli-spec` is the consumer.
+
+The `path` output names the binary this run resolved. It is set either way.
 
 ## What CI proves
 
