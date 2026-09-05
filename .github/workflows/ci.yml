@@ -32,12 +32,12 @@ jobs:
     name: test (${{ matrix.module }})
     steps:
       - uses: actions/checkout@v4
-      # One fat APE covering the hosts the old os/arch pair listed: those inputs are gone.
+      # One fat APE over every host go-toolchain verifies. darwin/amd64 and windows/arm64 are refused.
       - uses: wow-look-at-my/go-toolchain@master
         with:
           working-directory: ${{ matrix.module }}
           autorelease: ${{ matrix.autorelease }}
-          cosmo-platforms: linux/amd64,linux/arm64,darwin/amd64,darwin/arm64,windows/amd64,windows/arm64
+          cosmo-platforms: linux/amd64,linux/arm64,darwin/arm64,windows/amd64
 
   # No Go test reaches the action, so this job runs it from the checkout. docs/action.md
   action:
