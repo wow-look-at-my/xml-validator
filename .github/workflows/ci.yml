@@ -32,13 +32,12 @@ jobs:
     name: test (${{ matrix.module }})
     steps:
       - uses: actions/checkout@v4
-      # Native per-platform binaries: the dats suites run one where an APE has no loader.
+      # One fat APE covering the hosts the old os/arch pair listed: those inputs are gone.
       - uses: wow-look-at-my/go-toolchain@master
         with:
           working-directory: ${{ matrix.module }}
           autorelease: ${{ matrix.autorelease }}
-          os: linux,darwin,windows
-          arch: amd64,arm64
+          cosmo-platforms: linux/amd64,linux/arm64,darwin/amd64,darwin/arm64,windows/amd64,windows/arm64
 
   # No Go test reaches the action, so this job runs it from the checkout. docs/action.md
   action:
