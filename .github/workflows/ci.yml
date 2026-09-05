@@ -2,6 +2,7 @@ name: CI
 
 on:
   push:
+    branches: ['**']
 
 permissions:
   id-token: write
@@ -32,7 +33,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       # Native per-platform binaries: the dats suites run one where an APE has no loader.
-      - uses: wow-look-at-my/go-toolchain@v1
+      - uses: wow-look-at-my/go-toolchain@master
         with:
           working-directory: ${{ matrix.module }}
           autorelease: ${{ matrix.autorelease }}
