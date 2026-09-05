@@ -29,6 +29,16 @@ finding, not a file to walk past.
 
 `schema` adds `--schema` to every invocation. `args` is passed through.
 
+## Driving the binary yourself
+
+`install-only: 'true'` puts xml-validator on `PATH`, reports it as the `path`
+output, and validates nothing. It exists for a suite that asserts a document is
+REJECTED: the validate mode fails the job on exactly those documents, so such a
+suite has to run the binary itself. `api-cli-spec` is the consumer.
+
+The `path` output is set either way, so a job that validates can also reach the
+binary it used.
+
 ## What CI proves
 
 The `action` job in `.github/workflows/ci.yml` runs the action from the

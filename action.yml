@@ -17,6 +17,15 @@ inputs:
     description: 'Additional CLI arguments passed to each invocation.'
     required: false
     default: ''
+  install-only:
+    description: 'Put xml-validator on PATH and validate nothing. For a job that drives the binary itself -- a suite asserting that a document is REJECTED cannot use the validate mode, which fails the job on exactly those documents.'
+    required: false
+    default: 'false'
+
+outputs:
+  path:
+    description: 'The xml-validator binary this run resolved, downloaded or built.'
+    value: ${{ steps.validate.outputs.path }}
 
 runs:
   using: 'composite'
@@ -118,17 +127,26 @@ runs:
           await exec.exec('go', ['build', '-o', path.join(binDir, binName), './cmd/xml-validator'], { cwd: cliDir });
 
     - name: Run xml-validator
+      id: validate
       uses: wow-look-at-my/actions@typescript#latest
       env:
         XMLV_BIN: ${{ steps.usable.outputs.result == 'true' && steps.download.outputs.path || '' }}
         XMLV_FILES: ${{ inputs.files }}
         XMLV_SCHEMA: ${{ inputs.schema }}
         XMLV_ARGS: ${{ inputs.args }}
+        XMLV_INSTALL_ONLY: ${{ inputs.install-only }}
       with:
         script: |
           const binName = process.platform === 'win32' ? 'xml-validator.exe' : 'xml-validator';
           const built = path.join(runner.tool_cache, 'xml-validator', 'bin', binName);
           const bin = (process.env.XMLV_BIN ?? '').trim() || built;
+
+          core.setOutput('path', bin);
+          core.addPath(path.dirname(bin));
+          if ((process.env.XMLV_INSTALL_ONLY ?? '').trim() === 'true') {
+            core.info(`xml-validator is on PATH at ${bin}; validating nothing`);
+            return;
+          }
 
           const filesInput = (process.env.XMLV_FILES ?? '').trim();
           const schema = (process.env.XMLV_SCHEMA ?? '').trim();
