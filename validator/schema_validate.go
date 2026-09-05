@@ -46,14 +46,19 @@ func (sv *schemaValidator) addErrorAt(line, col int, format string, args ...any)
 	sv.errors = append(sv.errors, &Error{Line: line, Col: col, Message: msg})
 }
 
+// validateRoot matches the document's root against a global declaration, by namespace AND local name, the same as every
+// other element. A root in another namespace is a different element, and the local name it shares with a declared one is
+// a coincidence. Falling back to that local name here accepted a document written against a different vocabulary, which
+// is the one place a schema most has to say no.
 func (sv *schemaValidator) validateRoot(el *Element) {
 	rootName := el.Local
 	decl, ok := sv.schema.Elements[qnameKey(el.Namespace, rootName)]
 	if !ok {
-		decl = findByLocal(sv.schema.Elements, rootName)
-		ok = decl != nil
-	}
-	if !ok {
+		if other := findByLocal(sv.schema.Elements, rootName); other != nil {
+			sv.addError(el, "root element %q is in namespace %q, but the schema declares it in %q",
+				rootName, el.Namespace, other.Namespace)
+			return
+		}
 		sv.addError(el, "element %q is not declared as a global element in the schema", rootName)
 		return
 	}

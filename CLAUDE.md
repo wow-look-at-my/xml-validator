@@ -94,6 +94,10 @@ different places.
   terminator, proved at both the library and the CLI layer.
 - XSD schema validation (`--schema`):
   - Element declarations (global, local, refs)
+  - Root matching by namespace AND local name. A root in another namespace, or
+    in none, is a different element from the declared one and is rejected by
+    name -- sharing a local name with a declaration is a coincidence, and taking
+    it for a match validated a document written against another vocabulary
   - Complex types (sequence, choice, all content models)
   - Simple types (restriction with facets, list, union)
   - Attributes (required/optional/prohibited, type checking, fixed values)
