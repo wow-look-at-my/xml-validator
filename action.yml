@@ -6,7 +6,7 @@ branding:
 
 inputs:
   files:
-    description: 'Space-separated files or glob patterns to validate. When omitted, auto-discovers every *.xml and *.xsd file in the workspace.'
+    description: 'Space-separated files or glob patterns to validate. A pattern starting with "!" removes what it matches, which is how one directory holding documents for two schemas names each half. When omitted, auto-discovers every *.xml and *.xsd file in the workspace.'
     required: false
     default: ''
   schema:
@@ -180,14 +180,20 @@ runs:
 
           let files: string[];
           if (filesInput) {
-            files = [];
+            const expand = (token: string): string[] =>
+              /[*?[]/.test(token) ? fs.globSync(token) : [token];
+
+            // A "!" token removes what it matches, which is how one directory names the half that belongs to each schema.
+            const keep: string[] = [];
+            const drop = new Set<string>();
             for (const token of filesInput.split(/\s+/)) {
-              if (/[*?[]/.test(token)) {
-                files.push(...fs.globSync(token));
+              if (token.startsWith('!')) {
+                for (const name of expand(token.slice(1))) drop.add(path.normalize(name));
               } else {
-                files.push(token);
+                keep.push(...expand(token));
               }
             }
+            files = keep.filter((name) => !drop.has(path.normalize(name)));
           } else {
             files = discover();
             if (files.length === 0) {

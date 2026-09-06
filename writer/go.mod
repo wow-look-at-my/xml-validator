@@ -4,7 +4,7 @@ go 1.26
 
 require (
 	github.com/stretchr/testify v1.11.1
-	github.com/wow-look-at-my/xml-validator/reader v0.0.0-20260905020842-b64bac5c026b // go-toolchain:auto-branch
+	github.com/wow-look-at-my/xml-validator/reader v0.0.0-20260905064311-b54c8b4b3c13 // go-toolchain:auto-branch
 )
 
 require (

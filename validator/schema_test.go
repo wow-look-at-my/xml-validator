@@ -270,6 +270,14 @@ func TestSchemaAllMissing(t *testing.T) {
 	mustSchemaReject(t, `<?xml version="1.1"?><config><host>localhost</host></config>`, allXSD, "requires at least 1")
 }
 
+// An all group takes its members in any order, so a stranger among them is the one thing left for it to refuse. The
+// message names the child, because the whole group is otherwise a plausible place for the reader to look.
+func TestSchemaAllRejectsAChildItDoesNotDeclare(t *testing.T) {
+	mustSchemaReject(t,
+		`<?xml version="1.1"?><config><host>h</host><port>1</port><proxy>p</proxy></config>`,
+		allXSD, `unexpected element "proxy" in all group of "config"`)
+}
+
 const nestedXSD = `<?xml version="1.0"?>
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
   <xs:element name="library">

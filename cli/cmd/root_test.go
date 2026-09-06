@@ -100,8 +100,8 @@ func TestReportsASchemaViolation(t *testing.T) {
 	assert.Contains(t, err.Error(), "value length 2 does not equal required length 3")
 }
 
-// Schema validation reads the document twice, from a path, so there is
-// nothing to read from stdin and the command says so rather than hanging.
+// Schema validation re-reads the document from a path, so there is nothing
+// left on stdin and the command says so rather than hanging.
 func TestSchemaNeedsAFileArgument(t *testing.T) {
 	_, err := run(t, "", "--schema", write(t, "schema.xsd", lengthXSD))
 

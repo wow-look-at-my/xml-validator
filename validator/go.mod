@@ -12,7 +12,7 @@ require (
 
 require (
 	github.com/wow-look-at-my/go-containers v0.0.0-20260826161058-40a3d1ef3d41 // go-toolchain:auto-branch
-	github.com/wow-look-at-my/xml-validator/reader v0.0.0-20260905020842-b64bac5c026b // go-toolchain:auto-branch
+	github.com/wow-look-at-my/xml-validator/reader v0.0.0-20260905064311-b54c8b4b3c13 // go-toolchain:auto-branch
 )
 
 // The reader module ships from this repository, so a build here uses the tree
