@@ -2,19 +2,13 @@ package validator
 
 import "strings"
 
-// A schema names things across namespaces, and two namespaces may legitimately
-// use the same local name -- one <params> per imported vocabulary is the
-// ordinary case, not an exotic one. Global element and attribute declarations
-// are therefore keyed by namespace AND local name, and a QName in a ref is
-// resolved through the prefixes its own schema document declared.
+// A schema names things across namespaces, and namespaces may legitimately use the same local name.
 
 // qnameKey is the map key for a global declaration.
 func qnameKey(ns, local string) string { return ns + " " + local }
 
-// resolveQName splits a QName and resolves its prefix through the schema's own
-// declarations. An unprefixed name takes the default namespace when the schema
-// declared one, and the schema's target namespace otherwise -- which is what a
-// schema that omits xmlns= but names a targetNamespace means in practice.
+// resolveQName splits a QName and resolves its prefix through the schema's
+// own declarations.
 func (s *Schema) resolveQName(name string) (ns, local string) {
 	prefix := ""
 	local = name
@@ -30,9 +24,8 @@ func (s *Schema) resolveQName(name string) (ns, local string) {
 	return "", local
 }
 
-// lookupElement finds a global element declaration by QName, falling back to a
-// local-name match when nothing declared that namespace. The fallback is what
-// keeps a schema that never mentions namespaces working exactly as before.
+// lookupElement finds a global element declaration by QName, falling back to
+// a local-name match when nothing declared that namespace.
 func (s *Schema) lookupElement(name string) *ElementDecl {
 	ns, local := s.resolveQName(name)
 	if ed, ok := s.Elements[qnameKey(ns, local)]; ok {
@@ -66,9 +59,7 @@ func lookupIdentityKey(s *Schema, local string) (string, bool) {
 }
 
 // findByLocal returns the sole declaration with the given local name, or nil
-// when there is none or more than one -- an ambiguous fallback would pick a
-// vocabulary at random, and answering "I do not know which" is the honest
-// result.
+// when there is none or more than one.
 func findByLocal[T any](m map[string]T, local string) T {
 	var found T
 	count := 0

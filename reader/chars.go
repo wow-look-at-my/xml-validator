@@ -15,11 +15,7 @@ func IsChar10(r rune) bool {
 		(r >= 0x10000 && r <= 0x10FFFF)
 }
 
-// IsCharRefValue returns true if r may be produced by a character reference. It
-// is IsChar plus U+0000, which the Char production excludes: `&#0;` is ASCII
-// bytes, so a document carrying one contains no NUL byte and nothing that reads
-// it has to survive one. A literal NUL is still rejected, as is a lone
-// surrogate, which is not a character in any encoding.
+// IsCharRefValue returns true if r may be produced by a character reference.
 func IsCharRefValue(r rune) bool {
 	return r == 0 || IsChar(r)
 }

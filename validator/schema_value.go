@@ -116,7 +116,7 @@ func validateListLengthFacet(count int, f Facet) error {
 }
 
 // validateUnionValue accepts the value if one member type accepts it. Each
-// member carries its own facets, so a union of two enumerations allows the
+// member carries its own facets, so a union of enumerations allows the
 // values of both and nothing else.
 func validateUnionValue(value string, st *SimpleType) error {
 	matched := false

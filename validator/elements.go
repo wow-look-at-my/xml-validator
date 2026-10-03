@@ -331,9 +331,7 @@ func (p *parser) parseCharRef() (rune, error) {
 	if p.eof() {
 		return 0, p.errorf("unterminated character reference")
 	}
-	// The digit text names a problem and is needed nowhere else, so each
-	// error path slices it out itself. A closure capturing the parser would
-	// be neater and allocates on every reference, error or not.
+	// The digit text names a problem and is needed nowhere else, so each error path slices it out itself.
 	end := p.pos
 	empty := end == start
 	p.advance() // consume ';'
@@ -345,10 +343,7 @@ func (p *parser) parseCharRef() (rune, error) {
 		return 0, p.errorf("invalid character reference value %q", string(p.input[start:end]))
 	}
 
-	// Folded here rather than handed to strconv: the digits were already
-	// scanned and checked above, and the call cost more than the arithmetic
-	// on a path that runs once per escaped character. Zero digits is how
-	// `&#0;` is written, and folds to zero on its own.
+	// Folded here rather than handed to strconv: the digits were already scanned and checked above.
 	var val int64
 	for _, c := range buf[:n] {
 		var d int64

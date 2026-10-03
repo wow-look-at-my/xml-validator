@@ -12,12 +12,12 @@ import (
 // so matching never has to know how a declaration was assembled.
 //
 // Both are COPIED rather than shared. A reference states its own occurrence
-// counts, and resolution fills in element refs in place, so two uses of one
+// counts, and resolution fills in element refs in place, so uses of one
 // group would otherwise overwrite each other's counts.
 
-// expandGroupRefs replaces every GroupRef in a content model with a copy of the
-// group it names. stack carries the groups currently being expanded: a group
-// that reaches itself would otherwise describe an infinitely deep document and
+// expandGroupRefs replaces every GroupRef in a content model with a copy of
+// the group it names. stack carries the groups being expanded: a group that
+// reaches itself would otherwise describe an infinitely deep document and
 // loop here forever.
 func expandGroupRefs(cm ContentModel, s *Schema, stack set.Set[string]) error {
 	items := contentItems(cm)

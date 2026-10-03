@@ -23,7 +23,6 @@ func lengthXSD(kind string, n int) string {
 }
 
 func TestLengthFacetCountsCharactersNotBytes(t *testing.T) {
-	// "é" is 2 bytes, "æ" 2, "文" 3, "𝄞" 4: 4 characters, 11 bytes.
 	doc := `<?xml version="1.1"?><v>éæ文𝄞</v>`
 
 	mustSchemaValid(t, doc, lengthXSD("length", 4))
@@ -33,8 +32,6 @@ func TestLengthFacetCountsCharactersNotBytes(t *testing.T) {
 	mustSchemaReject(t, doc, lengthXSD("maxLength", 3), "value length 4 exceeds maxLength 3")
 }
 
-// Every byte value 0 through 255 as a character reference: 256 characters,
-// which UTF-8 writes as 384 bytes.
 func TestLengthFacetOverEveryByteValue(t *testing.T) {
 	var refs strings.Builder
 	for i := range 256 {
@@ -60,7 +57,7 @@ func binaryLengthXSD(base string, n int) string {
 }
 
 // The binary types measure octets, so their length is what the value decodes
-// to: four hex digit pairs are four octets, not eight characters.
+// to: hex digit pairs are octets, not several characters.
 func TestLengthFacetOnBinaryTypesCountsOctets(t *testing.T) {
 	hex := `<?xml version="1.1"?><v>00FF10AB</v>`
 	mustSchemaValid(t, hex, binaryLengthXSD("hexBinary", 4))
@@ -72,8 +69,6 @@ func TestLengthFacetOnBinaryTypesCountsOctets(t *testing.T) {
 	mustSchemaReject(t, b64, binaryLengthXSD("base64Binary", 8), "value length 4")
 }
 
-// A facet value that is not a length is an error in the schema, never a
-// length of 0 that admits every value.
 func TestLengthFacetRejectsAMalformedValue(t *testing.T) {
 	doc := `<?xml version="1.1"?><v>abc</v>`
 	xsd := `<?xml version="1.0"?>

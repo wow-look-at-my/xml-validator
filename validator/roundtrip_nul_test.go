@@ -9,18 +9,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// A parsed `&#0;` is U+0000: a character with a value, like any other. These
-// tests emit it back as `&#0;` and reparse, so the claim is a measured
-// equality rather than an assertion about the parser alone.
-// see docs/nul-char-ref.md
-
 const xmlDecl = `<?xml version="1.1"?>`
 
-// serializeDoc emits a parsed tree as an XML 1.1 document. It escapes U+0000
-// and the restricted characters as decimal character references, which is the
-// only spelling that keeps them out of the byte stream.
-//
-// It emits no namespace declarations, so every document here declares none.
 func serializeDoc(d *Document) string {
 	var b strings.Builder
 	b.WriteString(xmlDecl)
@@ -65,13 +55,10 @@ func escapeXML(s string, inAttr bool) string {
 			fmt.Fprintf(&b, "&#%d;", r)
 		// CR, NEL and LINE SEPARATOR all normalize to LF when they are literal
 		// characters, so a payload that carries one has to write a reference.
-		// Normalization runs over the input bytes, before any reference
-		// resolves, which is why the reference survives it.
 		case r == '\r' || r == 0x85 || r == 0x2028:
 			fmt.Fprintf(&b, "&#%d;", r)
-		// Tab and newline are legal in an attribute value here, but a
-		// conforming reader folds both to a space. A reference is the spelling
-		// that means the character itself.
+		// Tab and newline are legal in an attribute value here, but a conforming
+		// reader folds both to a space.
 		case inAttr && (r == '\t' || r == '\n'):
 			fmt.Fprintf(&b, "&#%d;", r)
 		default:
@@ -82,8 +69,7 @@ func escapeXML(s string, inAttr bool) string {
 }
 
 // snap is a document tree stripped of the parts a roundtrip may legitimately
-// change: source positions, and where the parser split one run of text into
-// several CharData nodes.
+// change.
 type snap struct {
 	Name  string
 	Attrs []attrSnap
@@ -158,8 +144,8 @@ func TestRoundtripNulInAttributeValue(t *testing.T) {
 	assert.Equal(t, "plain", other, "the NUL in the first attribute did not end the second")
 }
 
-// The four spellings differ as text and mean the same character, so they all
-// come back out as the one canonical reference.
+// The spellings differ as text and mean the same character, so they all come
+// back out as the canonical reference.
 func TestRoundtripNulSpellingsConverge(t *testing.T) {
 	for _, ref := range []string{"&#0;", "&#00;", "&#x0;", "&#x00;", "&#0000000;"} {
 		t.Run(ref, func(t *testing.T) {
@@ -184,7 +170,7 @@ func TestNulDoesNotTerminateTheDocument(t *testing.T) {
 	assert.Contains(t, out, "<c/>", "the tail of the document survived the NUL")
 }
 
-// The reference is four ASCII bytes. Nothing that reads the document has to
+// The reference is ASCII bytes. Nothing that reads the document has to
 // survive a NUL byte, because the document has none.
 func TestNulCharRefIsFourAsciiBytes(t *testing.T) {
 	_, out := roundtrip(t, xmlDecl+`<r>`+strings.Repeat("&#0;", 100)+`</r>`)
@@ -207,7 +193,7 @@ func TestParsedNulIsAnOrdinaryStringByte(t *testing.T) {
 	assert.Equal(t, 5, len([]rune(text)))
 }
 
-// Inside CDATA the same five characters are text, not a reference: no NUL is
+// Inside CDATA the same a few characters are text, not a reference: no NUL is
 // produced, and the emitted document escapes the ampersand to keep it that way.
 func TestNulCharRefInCDATAStaysLiteral(t *testing.T) {
 	doc, out := roundtrip(t, xmlDecl+`<r><![CDATA[a&#0;b]]></r>`)
@@ -235,9 +221,6 @@ func TestRejectLiteralNulInEveryContext(t *testing.T) {
 	}
 }
 
-// allBytes is a binary payload holding one of every byte value, 0 through 255,
-// in order. Byte b is carried as the character U+00XX with the same value, the
-// Latin-1 mapping, so the payload survives as 256 distinct characters.
 func allBytes() []byte {
 	p := make([]byte, 256)
 	for i := range p {
@@ -266,9 +249,8 @@ func decodeBytes(t *testing.T, s string) []byte {
 	return out
 }
 
-// The whole point, on real binary data: 256 bytes go in, an XML document comes
-// out, and the same 256 bytes come back. U+0000 is one of them, and it is no
-// more special than U+0041.
+// The whole point, on real binary data: many bytes go in, an XML document
+// comes out, and the same many bytes come back.
 func TestRoundtripEveryByteValue(t *testing.T) {
 	payload := allBytes()
 	text := encodeBytes(payload)
@@ -307,8 +289,6 @@ func TestRoundtripEveryByteValueAsReferences(t *testing.T) {
 	assert.NotContains(t, out, "\x00")
 }
 
-// Byte 0 is not the end of the payload, and neither is any run of them: the
-// bytes after the NULs are still there, in order.
 func TestRoundtripBinaryPayloadWithEmbeddedNuls(t *testing.T) {
 	payload := append(allBytes(), 0, 0, 0, 'e', 'n', 'd')
 	src := xmlDecl + `<r>` + escapeXML(encodeBytes(payload), false) + `</r>`
@@ -333,7 +313,7 @@ const lengthSchema = `<?xml version="1.1"?>
 </xs:schema>`
 
 // Schema validation counts the NUL as one character, the same as the letters
-// around it. A terminator would leave a value of length 1.
+// around it.
 func TestSchemaCountsNulAsOneCharacter(t *testing.T) {
 	doc := xmlDecl + `<r>a&#0;b</r>`
 

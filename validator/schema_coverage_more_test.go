@@ -289,7 +289,7 @@ func TestSchemaImportAttrGroupCollision(t *testing.T) {
 	assert.Contains(t, err.Error(), "more than once")
 }
 
-// The same local name in two DIFFERENT namespaces is not a collision: one
+// The same local name in DIFFERENT namespaces is not a collision: one
 // <params> per imported vocabulary is what namespaces are for.
 func TestSchemaImportSameNameDifferentNamespaces(t *testing.T) {
 	mainXSD := `<?xml version="1.0"?>
@@ -326,8 +326,7 @@ func TestSchemaImportSameNameDifferentNamespaces(t *testing.T) {
 	doc := `<?xml version="1.1"?><root xmlns:a="http://a" xmlns:b="http://b"><a:dup>text</a:dup><b:dup>7</b:dup></root>`
 	require.NoError(t, ValidateWithSchemaResolver([]byte(doc), []byte(mainXSD), resolver))
 
-	// Each ref resolved to its OWN namespace's declaration, so the types are
-	// not interchangeable.
+	// Each ref resolved to its OWN namespace's declaration, so the types are not interchangeable.
 	bad := `<?xml version="1.1"?><root xmlns:a="http://a" xmlns:b="http://b"><a:dup>text</a:dup><b:dup>text</b:dup></root>`
 	err := ValidateWithSchemaResolver([]byte(bad), []byte(mainXSD), resolver)
 	require.Error(t, err)
