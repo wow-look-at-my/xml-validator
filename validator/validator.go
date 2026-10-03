@@ -8,9 +8,8 @@ import (
 	"path/filepath"
 )
 
-// asError converts any error into a *[Error] so the public Validate*
-// entry points always return *Error. If err is already *Error it is
-// returned unchanged; otherwise it is wrapped at line 1, column 1.
+// asError converts any error into a *[Error] so the public Validate* entry
+// points always return *Error.
 func asError(err error) *Error {
 	if e, ok := err.(*Error); ok {
 		return e
@@ -18,10 +17,7 @@ func asError(err error) *Error {
 	return &Error{Line: 1, Col: 1, Message: err.Error()}
 }
 
-// Validate verifies that the input is a well-formed XML 1.1 document.
 // On failure it returns a *[Error] with the line and column of the problem.
-// Input-level failures (read errors, empty input, unsupported encoding)
-// are reported at line 1, column 1.
 func Validate(r io.Reader) error {
 	runes, err := reader.Decode(r)
 	if err != nil {
@@ -31,14 +27,7 @@ func Validate(r io.Reader) error {
 	return p.parseDocument()
 }
 
-// ValidateWithSchema runs XML 1.1 well-formedness validation on xml, parses
-// the XSD schema from xsd, and then validates the document against the schema.
 // On failure it returns a *[Error].
-//
-// Imports in the schema (xs:import) without a schemaLocation are accepted as
-// namespace declarations. Imports with a schemaLocation produce an error
-// because no resolver is available; use [ValidateWithSchemaResolver] or
-// [ValidateWithSchemaFile] to support those.
 func ValidateWithSchema(xml, xsd io.Reader) error {
 	xmlData, err := io.ReadAll(xml)
 	if err != nil {
@@ -52,7 +41,6 @@ func ValidateWithSchema(xml, xsd io.Reader) error {
 }
 
 // ValidateWithSchemaBytes is the byte-oriented form of [ValidateWithSchema].
-// It is useful when the document and schema are already in memory.
 func ValidateWithSchemaBytes(xmlData, xsdData []byte) error {
 	return ValidateWithSchemaResolver(xmlData, xsdData, nil)
 }

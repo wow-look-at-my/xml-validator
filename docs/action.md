@@ -5,7 +5,7 @@
 ## Getting the binary
 
 1. **buildhost.** `buildhost-download` resolves the release for the runner's own os/arch. `required: false` turns a missing artifact into an output rather than a failed step, which is what leaves the build below reachable. The destination is named because Windows wants the `.exe` suffix to run a file.
-2. **The `--help` check.** A download proves bytes arrived, never that they run here: a fat APE exits 121 before `main` on a runner with no loader for it. One `--help` separates the two.
+2. **The `--help` check.** A download proves bytes arrived, not that they run here: a fat APE exits 121 before `main` on a runner with no loader for it. One `--help` separates the two.
 3. **The source build.** Only a failure above reaches it, and it warns as it goes. A broken publish then shows up in the log rather than as a slower green run. It sets up Go from `cli/go.mod`, caches the binary on a hash of the Go sources, and builds `cli/cmd/xml-validator`. The binary is the `cli` module and this repository has no root `go.mod`, so both steps name `cli/` explicitly.
 
 ## Choosing files
@@ -28,4 +28,4 @@ The `action` job in `.github/workflows/ci.yml` runs the action from the checkout
 
 ## Writing comments in this file
 
-`yaml-comment-block` fails the build on two adjacent `#` lines in a workflow or an action. The TypeScript action fails on two adjacent `//` lines in a script. One line, or this doc.
+`yaml-comment-block` fails the build on a couple of adjacent `#` lines in a workflow or an action. The TypeScript action fails on a couple of adjacent `//` lines in a script. One line, or this doc.

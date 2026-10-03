@@ -36,9 +36,7 @@ func parseAll(el *Element) (*All, error) {
 		return nil, err
 	}
 	// Order-free matching is defined over individual children, so an all-group
-	// holds element declarations and wildcards. A nested compositor -- a group
-	// reference expands to one -- would be matched by no branch at all, which
-	// reads as "this content is allowed".
+	// holds element declarations and wildcards.
 	for _, item := range items {
 		switch item.(type) {
 		case *ElementDecl, *AnyParticle:
@@ -86,10 +84,7 @@ func parseParticles(el *Element) ([]Particle, error) {
 			}
 			items = append(items, c)
 		case "all":
-			// An all-group matches its members in any order, which only has a
-			// meaning when it covers a whole element. Nested, it would have to
-			// share the child list with its siblings positionally, so XSD
-			// forbids it -- and matching quietly ignored it, which is worse.
+			// An all-group matches its members in any order, which only has a meaning when it covers a whole element.
 			return nil, fmt.Errorf("xs:all must be the entire content model of a complex type, not a particle inside xs:%s", el.Local)
 		case "group":
 			gr, err := parseGroupRef(child)
@@ -110,7 +105,6 @@ func parseParticles(el *Element) ([]Particle, error) {
 			}
 			items = append(items, ap)
 		case "annotation":
-			// skip
 		}
 	}
 	return items, nil

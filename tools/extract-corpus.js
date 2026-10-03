@@ -1,21 +1,4 @@
 // Extracts measurable samples from the corpus submodules.
-//
-// Usage: node tools/extract-corpus.js [DIR]   (default: corpus/samples)
-//
-// The corpus is three Hugging Face datasets attached as submodules under
-// corpus/. Each is a shallow, sparse, LFS-pointer-only clone, so a checkout of
-// this repo costs pointers until someone fetches the blobs they want:
-//
-//	git submodule update --init --depth 1
-//	git -C corpus/wikipedia    lfs pull --include="20231101.is/*,20231101.am/*"
-//	git -C corpus/rosetta-code lfs pull --include="data/*"
-//	git -C corpus/images       lfs pull --include="transformers/model_doc/*"
-//
-// Prose and code arrive as parquet, which duckdb reads. Images are files
-// already, so tools/encoding-sizes.js reads them from the submodule directly
-// and this tool leaves them alone.
-//
-// see docs/encodings.md
 
 const fs = require('fs');
 const path = require('path');
@@ -26,9 +9,8 @@ const PER_CATEGORY = Number(process.env.CORPUS_SAMPLES ?? 25);
 const MAX_SAMPLE_BYTES = 20000;
 const CORPUS = path.join(__dirname, '..', 'corpus');
 
-// Wikipedia in scripts that stress the two modes differently: Latin-1 prose
-// is what byte mode is for, and a script outside Latin-1 is what it is not.
-// These are the small language shards, so fetching them is cheap.
+// Wikipedia in scripts that stress both modes differently: Latin-1 prose is
+// what byte mode is for, and a script outside Latin-1 is what it is not.
 const WIKIPEDIA = {
 	'prose-icelandic': '20231101.is',
 	'prose-nepali': '20231101.ne',

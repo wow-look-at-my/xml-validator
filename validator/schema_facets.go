@@ -13,10 +13,6 @@ import (
 )
 
 // validateLengthFacet applies minLength, maxLength and length.
-//
-// The unit is characters for a string type and octets for the binary types --
-// never the bytes of the UTF-8 encoding, which counted a 256-character value
-// as 384 as soon as one character was outside ASCII.
 func validateLengthFacet(value, baseTypeName string, f Facet) error {
 	n, err := strconv.Atoi(f.Value)
 	if err != nil || n < 0 {
@@ -109,7 +105,6 @@ func validateFacet(value, baseTypeName string, f Facet) error {
 			return fmt.Errorf("value has %d fraction digits, exceeds fractionDigits %d", frac, n)
 		}
 	case "whiteSpace":
-		// handled during normalization, not validation
 	}
 	return nil
 }

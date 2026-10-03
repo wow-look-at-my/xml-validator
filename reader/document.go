@@ -13,11 +13,7 @@ type Element struct {
 	Prefix    string
 	Attrs     []Attr
 	Children  []Node
-	// Namespaces is every prefix in scope here, inherited declarations
-	// included, with the default namespace under the empty key. The xmlns
-	// attributes themselves are not in Attrs -- they are declarations, not
-	// data -- so this is the only way to resolve a QName that appears inside
-	// an attribute VALUE, which is how a schema writes `ref="a:dup"`.
+	// Namespaces is every prefix in scope here, inherited declarations included.
 	Namespaces map[string]string
 	Line       int
 	Col        int
@@ -29,10 +25,7 @@ type Attr struct {
 	Local     string
 	Prefix    string
 	Value     string
-	// Line and Col locate the attribute's name in the source. Without them a
-	// consumer reporting a problem with an attribute's value can only point at
-	// the element that owns it, which on a multi-attribute element is the wrong
-	// place to look.
+	// Line and Col locate the attribute's name in the source.
 	Line int
 	Col  int
 }

@@ -2,7 +2,7 @@ package validator
 
 import "testing"
 
-// A head element referenced from a content model, with two members carrying
+// A head element referenced from a content model, with members carrying
 // their own types. The member is what the instance is validated against.
 const substitutionXSD = `<?xml version="1.0"?>
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
@@ -151,8 +151,7 @@ func TestSchemaSubstitutionInAllGroup(t *testing.T) {
     </xs:complexType>
   </xs:element>
 </xs:schema>`
-	// A substitute fills the head's slot, in either order, and still satisfies
-	// the head's minOccurs.
+	// A substitute fills the head's slot, in either order, and still satisfies the head's minOccurs.
 	mustSchemaValid(t, `<?xml version="1.1"?><doc><other>o</other><member>m</member></doc>`, xsd)
 	mustSchemaReject(t, `<?xml version="1.1"?><doc><other>o</other></doc>`, xsd, "requires at least")
 	// The slot is filled once: a second substitute exceeds maxOccurs.
@@ -189,8 +188,7 @@ func TestSchemaSubstitutionAppliesToReferencesOnly(t *testing.T) {
     </xs:complexType>
   </xs:element>
 </xs:schema>`
-	// The local declaration is a different element that happens to share a
-	// name, so nothing substitutes for it.
+	// The local declaration is a different element that happens to share a name, so nothing substitutes for it.
 	mustSchemaValid(t, `<?xml version="1.1"?><doc><head>x</head></doc>`, xsd)
 	mustSchemaReject(t, `<?xml version="1.1"?><doc><member>x</member></doc>`, xsd, "requires at least")
 }

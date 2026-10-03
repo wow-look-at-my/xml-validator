@@ -8,7 +8,7 @@ import (
 )
 
 // One named type reaches both an element and an attribute, which is what makes
-// a gap between the two visible.
+// a gap between both visible.
 const attrFacetXSD = `<?xml version="1.0"?>
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
   <xs:simpleType name="pat">
@@ -117,8 +117,7 @@ func TestSchemaFacetsInheritedFromBaseType(t *testing.T) {
   </xs:element>
 </xs:schema>`
 	mustSchemaValid(t, `<?xml version="1.1"?><r v="abc"><t>xyz</t></r>`, xsd)
-	// maxLength comes from the base type, pattern from the derived one. Both
-	// apply, on the attribute and on the element alike.
+	// maxLength comes from the base type, pattern from the derived one.
 	mustSchemaReject(t, `<?xml version="1.1"?><r v="abcdefg"/>`, xsd, "exceeds maxLength 5")
 	mustSchemaReject(t, `<?xml version="1.1"?><r v="ABC"/>`, xsd, "does not match pattern")
 	mustSchemaReject(t, `<?xml version="1.1"?><r><t>abcdefg</t></r>`, xsd, "exceeds maxLength 5")
@@ -139,7 +138,7 @@ func TestSchemaListLengthFacetsCountItems(t *testing.T) {
     </xs:complexType>
   </xs:element>
 </xs:schema>`
-	// "10 20" is 5 characters and 2 items; the facet counts the items.
+	// "10 20" is a few characters and items; the facet counts the items.
 	mustSchemaValid(t, `<?xml version="1.1"?><r point="10 20"/>`, xsd)
 	mustSchemaReject(t, `<?xml version="1.1"?><r point="10 20 30"/>`, xsd, "3 item(s)")
 }

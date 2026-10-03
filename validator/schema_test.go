@@ -46,9 +46,11 @@ func TestSchemaUndeclaredRoot(t *testing.T) {
 		"not declared as a global element")
 }
 
-// A root is matched by namespace and local name together, the same as any other element. Sharing a local name with a
-// declared element is a coincidence, and taking it for a match validated a document written against a whole other
-// vocabulary -- the one thing a caller reaches for a schema to rule out.
+// A root is matched by namespace and local name together, the same as any
+// other element. Sharing a local name with a declared element is a
+// coincidence, and taking it for a match validated a document written against
+// a whole other vocabulary -- the thing a caller reaches for a schema to rule
+// out.
 func TestSchemaRootInAnotherNamespaceIsRejected(t *testing.T) {
 	xsd := `<?xml version="1.0"?>
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:mine" elementFormDefault="qualified">
@@ -491,8 +493,8 @@ func TestAnyAttributeOther(t *testing.T) {
     </xs:complexType>
   </xs:element>
 </xs:schema>`
-	// The root declares the schema's own namespace, because that is where the schema declares <r>. An unprefixed
-	// attribute is still in no namespace whatever the default namespace is, so ##other keeps rejecting local=.
+	// The root declares the schema's own namespace, because that is where the
+	// schema declares <r>.
 	mustSchemaValid(t, `<?xml version="1.1"?>
 <r xmlns="http://mine.com" xmlns:x="http://x.com" x:foo="1"/>`, xsd)
 	mustSchemaReject(t, `<?xml version="1.1"?><r xmlns="http://mine.com" local="bad"/>`, xsd, "unexpected attribute")
