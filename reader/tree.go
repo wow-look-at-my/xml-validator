@@ -256,7 +256,10 @@ func (tp *treeParser) parseElement(parentNS map[string]string) (*Element, error)
 	}
 	elem.Children = children
 
-	// A truncated document ends here, with content already parsed.
+	// A truncated document ends here, with content already parsed. Reporting it
+	// as a document would hand a caller a partial answer that reads as a whole
+	// one -- a stream cut mid-element is exactly the case that has to be told
+	// apart from a stream that finished.
 	if err := tp.expect("</"); err != nil {
 		return nil, tp.errorf("element %q is never closed", name)
 	}
@@ -372,7 +375,9 @@ func (tp *treeParser) parseRef() (rune, error) {
 			hex = true
 			tp.advance()
 		}
-		// A stack buffer, and leading zeros skipped so an arbitrarily padded reference still parses.
+		// A stack buffer, and leading zeros skipped so an arbitrarily padded
+		// reference still parses. Growing a slice here allocated on every
+		// reference in the document. See parseCharRef in elements.go.
 		var buf [8]byte
 		n := 0
 		leading := true

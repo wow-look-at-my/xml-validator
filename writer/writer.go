@@ -1,5 +1,6 @@
-// It is the other half of the reader module: reader turns bytes into a tree,
-// writer turns a tree back into bytes.
+// Package writer emits XML 1.1 documents that this repository's validator
+// accepts. It is the other half of the reader module: reader turns bytes into
+// a tree, writer turns a tree back into bytes.
 //
 // see docs/encodings.md
 package writer
@@ -20,8 +21,11 @@ type Encoding int
 const (
 	// UTF8 is the default: no encoding declaration, characters as UTF-8.
 	UTF8 Encoding = iota
+	// Bytes writes one byte per character and declares ISO-8859-1. A
+	// character above U+00FF has no byte and becomes a reference.
 	Bytes
-	// References writes every character as `&#N;`.
+	// References writes every character as `&#N;`. The result is printable
+	// ASCII whatever it carries, at about 5.5x the payload.
 	References
 )
 
@@ -34,11 +38,17 @@ const (
 type BinaryEncoding int
 
 const (
-	// Base64 is the default, and it is the default because it is the right answer for arbitrary bytes on every axis measured.
+	// Base64 is the default, and it is the default because it is the right
+	// answer for arbitrary bytes on every axis measured: 1.33x against byte
+	// mode's 2.15x, 3.6x faster to validate and 19x faster to encode. See
+	// docs/encodings.md for the numbers and for the case that goes the other
+	// way -- text with the occasional NUL, which Text carries better.
 	Base64 BinaryEncoding = iota
 	// Hex is xs:hexBinary: twice the payload, and readable.
 	Hex
-	// Text spells the payload as characters, escaping only what cannot stand for itself.
+	// Text spells the payload as characters, escaping only what cannot stand
+	// for itself. Smaller than Base64 only when little of the payload needs
+	// escaping, which is text, not blobs.
 	Text
 )
 
@@ -49,8 +59,8 @@ type Options struct {
 	Binary BinaryEncoding
 }
 
-// The tree came from reader.ParseTree, or was built by hand; either way what
-// comes out parses back to an equal tree.
+// WriteDocument writes doc as XML 1.1. The tree came from reader.ParseTree, or
+// was built by hand; either way what comes out parses back to an equal tree.
 func WriteDocument(w io.Writer, doc *reader.Document, opts Options) error {
 	if doc == nil || doc.Root == nil {
 		return fmt.Errorf("writer: document has no root element")
@@ -78,7 +88,8 @@ func WriteBinary(w io.Writer, element string, payload []byte, opts Options) erro
 	default:
 		return fmt.Errorf("writer: unknown binary encoding %d", opts.Binary)
 	}
-	// base64 and hex are ASCII whatever the payload was, so the document's own encoding does not change what they spell.
+	// base64 and hex are ASCII whatever the payload was, so the document's
+	// own encoding does not change what they spell.
 	_, err := io.WriteString(w, utf8Decl+"<"+element+">"+content+"</"+element+">")
 	return err
 }

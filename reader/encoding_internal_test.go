@@ -7,7 +7,9 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// The encoding declaration decides how the bytes are read, so it is read from the bytes.
+// The encoding declaration decides how the bytes are read, so it is read from
+// the bytes. Every spelling a declaration may use is ASCII in both modes.
+// see docs/encodings.md
 
 const xmlDecl = `<?xml version="1.1"?>`
 

@@ -6,9 +6,29 @@ import (
 	"strings"
 )
 
-// The test language of xs:alternative.
+// The test language of xs:alternative. XSD 1.1 defines a "required subset" of
+// XPath 2.0 that a conforming processor must accept, and this is that grammar:
+//
+//	Test        ::= OrExpr
+//	OrExpr      ::= AndExpr ( 'or' AndExpr )*
+//	AndExpr     ::= BooleanExpr ( 'and' BooleanExpr )*
+//	BooleanExpr ::= '(' OrExpr ')' | BooleanFunction | ValueExpr ( Comparator ValueExpr )?
+//	BooleanFunction ::= QName '(' OrExpr ')'
+//	Comparator  ::= '=' | '!=' | '<' | '<=' | '>' | '>='
+//	ValueExpr   ::= CastExpr | ConstructorFunction
+//	CastExpr    ::= SimpleValue ( 'cast' 'as' QName '?'? )?
+//	SimpleValue ::= AttrName | Literal
+//	AttrName    ::= '@' NameTest
+//	ConstructorFunction ::= QName '(' SimpleValue ')'
+//
+// An expression outside it is a hard error at schema-parse time. Only fn:not is
+// a required function; another name is rejected rather than guessed at.
+//
+// see docs/conditional-types.md
 
-// atom is one evaluated value.
+// atom is one evaluated value. An attribute is untyped, which is what decides
+// how a comparison against it reads: numeric when the other side is numeric,
+// text otherwise.
 type atom struct {
 	absent  bool
 	text    string
@@ -50,7 +70,8 @@ type notNode struct{ inner testExpr }
 
 func (n notNode) eval(el *Element) bool { return !n.inner.eval(el) }
 
-// existsNode is a ValueExpr standing alone as a condition: its effective boolean value.
+// existsNode is a ValueExpr standing alone as a condition: its effective
+// boolean value. An absent attribute is false, and so is an empty string.
 type existsNode struct{ inner valueExpr }
 
 func (n existsNode) eval(el *Element) bool {
@@ -132,7 +153,8 @@ type literalValue struct{ a atom }
 
 func (v literalValue) value(*Element) (atom, error) { return v.a, nil }
 
-// castValue is both "cast as T" and a constructor function T(...).
+// castValue is both "cast as T" and a constructor function T(...): each checks
+// the value against T and fails the alternative when it does not fit.
 type castValue struct {
 	inner    valueExpr
 	typeName string

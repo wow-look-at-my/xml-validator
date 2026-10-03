@@ -8,10 +8,22 @@ import (
 	"github.com/wow-look-at-my/go-containers/set"
 )
 
-// Identity constraints -- xs:key, xs:keyref, xs:unique -- over the XPath
-// subset XSD defines for a selector and a field.
+// Identity constraints -- xs:key, xs:keyref, xs:unique -- over the XPath subset
+// XSD defines for a selector and a field. Anything outside that subset is a
+// hard error at schema-parse time, so a constraint either runs or says it
+// cannot.
+//
+// Two rules differ from XPath 1.0 read literally, both to keep a constraint
+// from being silently vacuous:
+//   - An unprefixed name matches its local name in ANY namespace. XPath reads
+//     it as the no-namespace name, which selects nothing under a schema with a
+//     target namespace.
+//   - Values compare in the field's value space: two numerals that denote the
+//     same number are one key, and "true" and "1" are one boolean.
 
-// nameTest matches one element or attribute name in a compiled path.
+// nameTest matches one element or attribute name in a compiled path. The three
+// forms XSD allows are "*" (anyName), "prefix:*" (anyLocal within one
+// namespace), and a QName.
 type nameTest struct {
 	anyName  bool
 	anyLocal bool
@@ -31,7 +43,7 @@ func (n nameTest) matches(ns, local string) bool {
 }
 
 // idPath is one alternative of a selector or field XPath: an optional ".//"
-// prefix, a run of child steps.
+// prefix, a run of child steps, and -- for a field -- a trailing attribute.
 type idPath struct {
 	descendant bool
 	steps      []nameTest
@@ -71,7 +83,9 @@ func compileIDPath(expr, whole string, s *Schema, allowAttr bool) (idPath, error
 	parts := strings.Split(expr, "/")
 	for i, part := range parts {
 		last := i == len(parts)-1
-		// XSD spells the attribute axis "@name" or "attribute::name", and lets a child step carry an explicit "child::".
+		// XSD spells the attribute axis "@name" or "attribute::name", and lets
+		// a child step carry an explicit "child::". Both are in the grammar the
+		// schema-for-schemas enforces, so both resolve to the same step here.
 		attrStep := strings.HasPrefix(part, "@")
 		if rest, ok := strings.CutPrefix(part, "attribute::"); ok {
 			attrStep, part = true, "@"+rest
@@ -183,7 +197,9 @@ func appendDescendants(out []*Element, el *Element) []*Element {
 	return out
 }
 
-// identityScope holds the key tables one element's constraints produced, keyed by constraint name.
+// identityScope holds the key tables one element's constraints produced, keyed
+// by constraint name. A keyref resolves against the nearest enclosing scope
+// that evaluated the key it names.
 type identityScope map[string]map[string]*Element
 
 func (sv *schemaValidator) checkIdentity(el *Element, scopes []identityScope) {
@@ -195,7 +211,8 @@ func (sv *schemaValidator) checkIdentity(el *Element, scopes []identityScope) {
 				scope[qnameKey(sv.schema.TargetNamespace, c.Name)] = sv.buildKeyTable(el, c)
 			}
 		}
-		// The full slice expression forces a copy, so one child's scope never lands in a sibling's stack.
+		// The full slice expression forces a copy, so one child's scope never
+		// lands in a sibling's stack.
 		scopes = append(scopes[:len(scopes):len(scopes)], scope)
 		for _, c := range decl.Constraints {
 			if c.Kind == "keyref" {
@@ -256,8 +273,8 @@ func keyTableFor(name string, scopes []identityScope) map[string]*Element {
 }
 
 // fieldTuple builds one target's key. It reports false when a field selects
-// nothing: xs:key requires every field, while xs:unique and xs:keyref do not
-// count that node.
+// nothing: xs:key requires every field, while xs:unique and xs:keyref simply do
+// not count that node.
 func (sv *schemaValidator) fieldTuple(target *Element, c *IdentityConstraint) (string, bool) {
 	parts := make([]string, 0, len(c.fields))
 	for i, f := range c.fields {
@@ -320,7 +337,9 @@ func (sv *schemaValidator) attrFieldType(el *Element, attr Attr) Type {
 	return nil
 }
 
-// identityValueKey renders a field value for comparison.
+// identityValueKey renders a field value for comparison. The field's declared
+// type decides the value space: 1 and 1.0 are one integer key, and only an
+// xs:string keeps whitespace that would otherwise collapse.
 func identityValueKey(value string, t Type) string {
 	base := "string"
 	switch typ := t.(type) {
@@ -397,3 +416,5 @@ func parseIdentityConstraint(el *Element) (*IdentityConstraint, error) {
 	}
 	return ic, nil
 }
+
+// parseInlineSimpleType returns the xs:simpleType written inside an xs:list or

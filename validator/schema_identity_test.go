@@ -75,7 +75,8 @@ func TestSchemaUniqueAllowsAbsentField(t *testing.T) {
     </xs:unique>
   </xs:element>
 </xs:schema>`
-	// Rules carry no ref at all: xs:unique does not count a node whose field selects nothing.
+	// Two rules carry no ref at all: xs:unique does not count a node whose
+	// field selects nothing, so this is not a duplicate.
 	mustSchemaValid(t, `<?xml version="1.1"?><rules><rule/><rule/><rule ref="a"/></rules>`, xsd)
 	mustSchemaReject(t, `<?xml version="1.1"?><rules><rule ref="a"/><rule ref="a"/></rules>`, xsd,
 		`xs:unique "ruleRef": element "rule" repeats a value`)
@@ -101,6 +102,7 @@ func TestSchemaKeyComparesInValueSpace(t *testing.T) {
     </xs:key>
   </xs:element>
 </xs:schema>`
+	// 01 and 1 are one integer, so they collide.
 	mustSchemaReject(t, `<?xml version="1.1"?><rows><row n="01"/><row n="1"/></rows>`, xsd, "repeats a value")
 	mustSchemaValid(t, `<?xml version="1.1"?><rows><row n="1"/><row n="2"/></rows>`, xsd)
 }
@@ -246,8 +248,9 @@ func TestSchemaKeyScopesToEachElementInstance(t *testing.T) {
     </xs:key>
   </xs:element>
 </xs:schema>`
-	// The key is declared on box, so each box is its own scope: boxes may
-	// each hold an item with the same id.
+	// The key is declared on box, so each box is its own scope: two boxes may
+	// each hold an item with the same id. A ref particle carries the
+	// constraints of the declaration it names, which is what makes this run.
 	mustSchemaValid(t, `<?xml version="1.1"?><doc>`+
 		`<box><item id="a"/></box><box><item id="a"/></box></doc>`, xsd)
 	mustSchemaReject(t, `<?xml version="1.1"?><doc>`+
@@ -289,7 +292,8 @@ func TestSchemaUnsupportedXPathRejected(t *testing.T) {
 		{"predicate", "provider[@id='x']", "is not a name"},
 		{"function", "count(provider)", "is not a name"},
 		{"parent axis", "../provider", "is not a name"},
-		// child:: and attribute:: are in the grammar XSD states; any other axis is not.
+		// child:: and attribute:: are in the grammar XSD states; any other axis
+		// is not.
 		{"axis", "descendant::provider", "is not a name"},
 		{"empty step", "providers//provider", "an empty step"},
 	}

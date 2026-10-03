@@ -393,7 +393,8 @@ func TestUTF16LEBOMRejected(t *testing.T) {
 }
 
 func TestUTF16BENoBOMRejected(t *testing.T) {
-	// UTF-16 BE with no BOM but the leading-NUL heuristic should still be detected and rejected.
+	// UTF-16 BE with no BOM but the leading-NUL heuristic should still be
+	// detected and rejected.
 	xmlStr := `<?xml version="1.1"?><r/>`
 	var buf []byte
 	for _, r := range xmlStr {

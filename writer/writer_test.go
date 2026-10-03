@@ -14,7 +14,8 @@ import (
 )
 
 // What comes out of the writer goes back through the reader, because a writer
-// whose output does not parse is not a writer. see docs/encodings.md
+// whose output does not parse is not a writer.
+// see docs/encodings.md
 
 func roundtrip(t *testing.T, doc *reader.Document, opts writer.Options) (*reader.Document, string) {
 	t.Helper()

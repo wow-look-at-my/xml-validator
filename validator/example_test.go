@@ -10,11 +10,13 @@ import (
 func ExampleValidate() {
 	err := validator.Validate(strings.NewReader(`<?xml version="1.1"?><greeting>hi</greeting>`))
 	fmt.Println(err)
+	// Output: <nil>
 }
 
 func ExampleValidate_invalid() {
 	err := validator.Validate(strings.NewReader(`<?xml version="1.1"?><r>&lt;</x>`))
 	fmt.Println(err != nil)
+	// Output: true
 }
 
 func ExampleValidateWithSchema() {
@@ -32,6 +34,7 @@ func ExampleValidateWithSchema() {
 
 	err := validator.ValidateWithSchema(strings.NewReader(xml), strings.NewReader(xsd))
 	fmt.Println(err)
+	// Output: <nil>
 }
 
 func ExampleParseTree() {

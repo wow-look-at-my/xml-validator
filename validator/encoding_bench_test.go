@@ -10,7 +10,13 @@ import (
 	"testing"
 )
 
-// What each wire form costs to READ, against what it costs to store.
+// What each wire form costs to READ, against what it costs to store. Sizes
+// live in docs/encodings.md; this is the other half of the decision.
+//
+// Every benchmark carries the same payload and reports ns/op against
+// b.SetBytes(payload), so B/s is per payload byte and the forms compare
+// directly.
+// see docs/encodings.md
 
 const benchPayloadSize = 64 * 1024
 
@@ -86,6 +92,11 @@ func benchForms(payload []byte) map[string][]byte {
 
 // Every form carries the SAME payload, and MB/s is per payload byte, which
 // answers "I have these bytes, what is the cheapest way to carry them".
+//
+// The documents differ in size because that is what an encoding does, so the
+// per-payload-byte rate mixes two effects: how fast the parser reads this
+// form, and how much of it there is. ns/doc-byte separates them -- it is flat
+// across forms that need no references and rises with the ones that do.
 func report(b *testing.B, doc []byte) {
 	b.SetBytes(int64(benchPayloadSize))
 	b.ReportMetric(float64(len(doc))/float64(benchPayloadSize), "x-size")
@@ -105,6 +116,8 @@ func BenchmarkValidateBinary(b *testing.B) {
 	}
 }
 
+// Text with a NUL every 512 bytes: 0.2% of the payload, the density where
+// escaping is meant to beat base64.
 func BenchmarkValidateSparseNulText(b *testing.B) {
 	for name, doc := range benchForms(textPayload(512)) {
 		b.Run(name, func(b *testing.B) {
@@ -160,8 +173,8 @@ func BenchmarkEncodeBinary(b *testing.B) {
 	}
 }
 
-// Reading the payload back out, which is what a consumer does: parse the
-// tree, then whatever the form needs to become bytes again.
+// Reading the payload back out, which is what a consumer actually does: parse
+// the tree, then whatever the form needs to become bytes again.
 func BenchmarkRecoverPayload(b *testing.B) {
 	payload := binaryPayload()
 	forms := benchForms(payload)
@@ -191,7 +204,7 @@ func BenchmarkRecoverPayload(b *testing.B) {
 	}
 }
 
-// latin1Bytes is the decode step for those character-carrying forms: each
+// latin1Bytes is the decode step for the three character-carrying forms: each
 // character is one byte, which is what the encoder wrote.
 func latin1Bytes(s string) ([]byte, error) {
 	out := make([]byte, 0, len(s))

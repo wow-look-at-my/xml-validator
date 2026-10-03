@@ -1,6 +1,6 @@
 # The two input modes: UTF-8 and byte mode
 
-This validator reads a document in one of two modes. The encoding declaration picks between them. Nothing else does.
+This validator reads a document in one of two modes. The encoding declaration picks between them, and nothing else does.
 
 | declared encoding | mode | a byte is |
 |---|---|---|
@@ -13,7 +13,7 @@ The aliases are the ones IANA registers for that character set: `ISO8859-1`, `IS
 
 Byte b is the character U+00XX with the same value. A document is exactly as many bytes as it has characters, and every byte decodes, so byte mode has no equivalent of `invalid UTF-8 byte sequence`.
 
-**It is one byte per CHARACTER, not per payload byte.** Byte mode is not a byte-transparent transport, and XML does not have one. Of the values, 191 may appear literally and cost one byte each. The other 65 may not appear literally in any XML document in any encoding. Those are U+0000, the restricted C0 and C1 controls, and CR and NEL, which line-ending normalization rewrites. Each costs a reference, 4 to several bytes.
+**It is one byte per CHARACTER, not per payload byte.** Byte mode is not a byte-transparent transport, and XML does not have one. Of the 256 values, 191 may appear literally and cost one byte each. The other 65 may not appear literally in any XML document in any encoding. Those are U+0000, the restricted C0 and C1 controls, and CR and NEL, which line-ending normalization rewrites. Each costs a reference, 4 to 6 bytes.
 
 So a payload of representable characters really is 1.00x. A payload of arbitrary bytes is about 2.1x, because a quarter of it is characters XML does not carry literally. That is what `xs:base64Binary` and `xs:hexBinary` are for, and why the table below measures byte mode twice.
 
@@ -32,7 +32,7 @@ Line-ending normalization also still applies, and in byte mode it has more to do
 
 ## What it costs and what it saves
 
-Measured, not estimated: samples over 14.8 MiB, drawn from the corpus submodules. The built binary checked every document behind the table below. `tools/extract-corpus.js` pulls the samples out and `tools/encoding-sizes.js --corpus corpus/samples --validate` produces this:
+Measured, not estimated: 350 samples over 14.8 MiB, drawn from the corpus submodules. The built binary checked every document behind the table below. `tools/extract-corpus.js` pulls the samples out and `tools/encoding-sizes.js --corpus corpus/samples --validate` produces this:
 
 | corpus | files | median | byte mode (text) | byte mode (bytes) | UTF-8 | base64 | hex | all refs |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
@@ -51,18 +51,18 @@ Measured, not estimated: samples over 14.8 MiB, drawn from the corpus submodules
 | prose-nepali | 25 | 15263 B | 2.24x | 1.58x | 1.00x | 1.34x | 2.00x | 5.93x |
 | prose-yiddish | 25 | 6097 B | 3.20x | 2.42x | 1.01x | 1.34x | 2.01x | 5.89x |
 
-Ratios are document bytes per payload byte. The byte-mode columns are the questions you can ask of the mode. The **text** column decodes the payload and writes each character as a byte where Latin-1 has one. The **bytes** column writes the payload's bytes as they are.
+Ratios are document bytes per payload byte. The two byte-mode columns are the two questions you can ask of the mode. The **text** column decodes the payload and writes each character as a byte where Latin-1 has one. The **bytes** column writes the payload's bytes as they are.
 
 What the numbers say:
 
-- **Byte mode wins on Latin-1 text, and only there.** Icelandic prose comes out at 0.92x -- smaller than the UTF-8 payload itself, because every accented character is a couple of bytes there and one here.
-- **It loses badly outside Latin-1.** Yiddish 3.20x, Nepali 2.24x, Amharic 2.20x: every character has to be a reference, which costs 6 to several bytes where UTF-8 spends 2 or a lower count.
+- **Byte mode wins on Latin-1 text, and only there.** Icelandic prose comes out at 0.92x -- smaller than the UTF-8 payload itself, because every accented character is two bytes there and one here.
+- **It loses badly outside Latin-1.** Yiddish 3.20x, Nepali 2.24x, Amharic 2.20x: every character has to be a reference, which costs 6 to 8 bytes where UTF-8 spends 2 or 3.
 - **Code is 1.03x to 1.09x in every mode**, because it is mostly ASCII. The mode barely matters there.
 - **UTF-8 is 1.00x on anything already UTF-8**, and cannot carry anything else. Every image row is `n/a` for it.
 - **base64 is 1.33x to 1.37x on everything**, flat, which is what makes it the answer for images and any other arbitrary bytes.
 - **Escaping every character is 5.4x to 6.0x.** It is the wire form that survives anything. It costs what that is worth.
 
-The declaration itself costs many bytes more than the UTF-8 one. A short document with a few high characters is therefore still smaller in UTF-8. A document pays that back at its 22nd such character.
+The declaration itself costs 22 bytes more than the UTF-8 one. A short document with a few high characters is therefore still smaller in UTF-8. A document pays that back at its 22nd such character.
 
 ## What each form costs to read and write
 
@@ -86,20 +86,20 @@ base64 is not fast. References are slow. `BenchmarkValidateNoReferences` separat
 | hexBinary | 35.1 MB/s | 32 | 2.00x |
 | all references | 5.7 MB/s | 37 | 5.6x |
 
-Byte mode reads the binary payload at 20.8 MB/s and this at 117.4 MB/s, on the same parser and the same payload size. What changed is the number of references, and nothing else.
+Byte mode reads the binary payload at 20.8 MB/s and this one at 117.4 MB/s, on the same parser and the same payload size. What changed is the number of references, and nothing else.
 
-The allocation column used to tell the same story louder -- 42,537 for the binary payload against 35 for base64. A reference built a rune slice and a string before it parsed its digits. A predefined entity built its name as a string before it compared it. Neither does now. The digits go in a stack buffer. An entity name is matched where it sits. The line-ending normalizer rewrites its input instead of copying it. Every column above is flat at a few dozen allocations per document, whatever the document holds. `validator/alloc_test.go` fails if that stops being true.
+The allocation column used to tell the same story louder -- 42,537 for the binary payload against 35 for base64. A reference built a rune slice and a string before it parsed its digits. A predefined entity built its name as a string before it compared it. Neither does now. The digits go in a stack buffer, and an entity name is matched where it sits. The line-ending normalizer rewrites its input instead of copying it. Every column above is flat at a few dozen allocations per document, whatever the document holds. `validator/alloc_test.go` fails if that stops being true.
 
 What is left is the work itself. A literal character is a pointer bump and a range check. A reference is a scan, a digit fold and a validity check.
 
 With references out of the way, what remains is document size. Throughput per payload byte tracks the expansion ratio: byte mode at 1.00x reads 117.4 MB/s against UTF-8 at 2.00x reading 48.8 MB/s. The parser walks at a near-constant rate per DOCUMENT byte, so a form that doubles the document roughly halves the throughput.
 
-base64 wins on binary for both reasons at once. It removes every reference. It is the smallest form that does. Give it a payload that needed no references anyway and it loses to byte mode by 2.2x. Being 33% larger is all it has left.
+base64 wins on binary for both reasons at once. It removes every reference, and it is the smallest form that does. Give it a payload that needed no references anyway and it loses to byte mode by 2.2x. Being 33% larger is all it has left.
 
-The cases separate cleanly:
+The two cases separate cleanly:
 
 - **Arbitrary bytes: base64Binary wins on every axis.** 1.33x against byte mode's 2.15x, 3.6x faster to validate, 19x faster to encode.
-- **Text with occasional NULs: escaping wins on every axis.** At one NUL every few bytes, byte mode validates at 120 MB/s against base64's 61, and costs 1.03x against 1.33x. Base64 there is bigger, slower, and opaque to every tool that reads text.
+- **Text with occasional NULs: escaping wins on every axis.** At one NUL per 512 bytes, byte mode validates at 120 MB/s against base64's 61, and costs 1.03x against 1.33x. Base64 there is bigger, slower, and opaque to every tool that reads text.
 
 Escaping every character is the worst of both, and its 5.4 MB/s is what a document that survives a byte-mangling transport costs.
 
@@ -107,7 +107,7 @@ These are this validator's numbers, not universal ones. The parser is recursive 
 
 ## Where it lives
 
-- `validator/encoding.go` -- the mode constants, the alias table, `sniffEncoding`, and the decoders.
+- `validator/encoding.go` -- the mode constants, the alias table, `sniffEncoding`, and the two decoders.
 - `validator/reader.go` -- picks a decoder, then normalizes line endings.
 - `validator/parser.go` -- `validateEncodingMatch` rejects a name that selects neither mode.
 - `validator/encoding_test.go` and `dats/encodings.dats` -- the tests, at the library and at the built CLI.

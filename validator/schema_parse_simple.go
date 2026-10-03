@@ -61,6 +61,7 @@ func parseSimpleType(el *Element) (*SimpleType, error) {
 				return nil, fmt.Errorf("xs:union requires a memberTypes attribute or inline xs:simpleType members")
 			}
 		case "annotation":
+			// skip
 		}
 	}
 

@@ -10,7 +10,9 @@ import (
 type schemaValidator struct {
 	schema *Schema
 	errors []error
-	// elemDecls and attrDecls record which declaration matched each instance node.
+	// elemDecls and attrDecls record which declaration matched each instance
+	// node. The identity pass needs the declared type of a field to compare
+	// values in the right value space.
 	elemDecls map[*Element]*ElementDecl
 	attrDecls map[*Element]map[attrKey]*AttrDecl
 }
@@ -23,7 +25,9 @@ func ValidateSchema(doc *Document, schema *Schema) error {
 	}
 	sv.validateRoot(doc.Root)
 	// Identity constraints run only over a document that already matches the
-	// schema.
+	// schema. On a document with structural errors the fields point at nodes
+	// that never matched a declaration, so every constraint would report noise
+	// on top of the real failure.
 	if len(sv.errors) == 0 {
 		sv.checkIdentity(doc.Root, nil)
 	}
@@ -42,12 +46,10 @@ func (sv *schemaValidator) addErrorAt(line, col int, format string, args ...any)
 	sv.errors = append(sv.errors, &Error{Line: line, Col: col, Message: msg})
 }
 
-// validateRoot matches the document's root against a global declaration, by
-// namespace AND local name, the same as every other element. A root in
-// another namespace is a different element, and the local name it shares with
-// a declared one is a coincidence. Falling back to that local name here
-// accepted a document written against a different vocabulary, which is the
-// place a schema most has to say no.
+// validateRoot matches the document's root against a global declaration, by namespace AND local name, the same as every
+// other element. A root in another namespace is a different element, and the local name it shares with a declared one is
+// a coincidence. Falling back to that local name here accepted a document written against a different vocabulary, which
+// is the one place a schema most has to say no.
 func (sv *schemaValidator) validateRoot(el *Element) {
 	rootName := el.Local
 	decl, ok := sv.schema.Elements[qnameKey(el.Namespace, rootName)]
@@ -78,7 +80,8 @@ func (sv *schemaValidator) validateElement(el *Element, decl *ElementDecl) {
 		return
 	}
 
-	// An xs:alternative can hand this instance a different type than the declared one, decided by its own attributes.
+	// An xs:alternative can hand this instance a different type than the
+	// declared one, decided by its own attributes.
 	typ := chooseType(el, decl)
 	if typ == nil {
 		return
@@ -129,6 +132,7 @@ func (sv *schemaValidator) validateComplexElement(el *Element, ct *ComplexType) 
 	if !ct.Mixed {
 		text := strings.TrimSpace(el.TextContent())
 		if text != "" && len(children) > 0 {
+			// mixed text and elements without mixed="true"
 		}
 	}
 
@@ -194,14 +198,17 @@ func (sv *schemaValidator) validateAttributes(el *Element, decls []*AttrDecl, an
 }
 
 // attrKey identifies an attribute declaration the way an instance document
-// does: by namespace and local name together.
+// does: by namespace and local name together. Local declarations carry an empty
+// namespace, so an unqualified attribute never matches a global one that a
+// dialect declared under its own namespace.
 type attrKey struct {
 	ns    string
 	local string
 }
 
 // qualifiedName renders an attribute for an error message, showing the
-// namespace when there is one.
+// namespace when there is one -- "top-k" alone does not say which vocabulary it
+// came from when several are in play.
 func qualifiedName(ns, local string) string {
 	if ns == "" {
 		return local
@@ -340,7 +347,8 @@ func (sv *schemaValidator) validateAll(el *Element, children []*Element, all *Al
 			sv.addError(child, "element %q is abstract: only an element that substitutes for it may appear here", child.Local)
 			continue
 		}
-		// A substitute fills the slot of the element it stands in for.
+		// A substitute fills the slot of the element it stands in for, so the
+		// occurrence counts are the particle's, not the member's.
 		seen[slot.Name]++
 		maxOccurs := slot.MaxOccurs
 		if maxOccurs < 0 {
@@ -511,7 +519,10 @@ func (sv *schemaValidator) anyMatchesElement(ap *AnyParticle, el *Element) bool 
 }
 
 // processWildcardElement validates an element matched by an xs:any wildcard
-// against its global declaration.
+// against its global declaration. The matching element MUST have a global
+// declaration the validator can find -- the schema parser rejects every
+// processContents value other than "strict", so there is no "silently
+// accept" branch.
 func (sv *schemaValidator) processWildcardElement(_ *AnyParticle, el *Element) {
 	decl := sv.lookupGlobalElement(el.Local, el.Namespace)
 	if decl == nil {
@@ -522,7 +533,10 @@ func (sv *schemaValidator) processWildcardElement(_ *AnyParticle, el *Element) {
 }
 
 // lookupGlobalElement returns the global element declaration matching the
-// given local name and namespace, or nil if none is found.
+// given local name and namespace, or nil if none is found. The schema's
+// Elements map is keyed by local name only (xs:import / xs:include flatten
+// names across namespaces); we use the Namespace field recorded at parse time
+// to disambiguate.
 func (sv *schemaValidator) lookupGlobalElement(local, ns string) *ElementDecl {
 	if decl, ok := sv.schema.Elements[qnameKey(ns, local)]; ok {
 		return decl

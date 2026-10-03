@@ -10,7 +10,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Byte mode: one byte is one character, U+0000 through U+00FF.
+// Byte mode: one byte is one character, U+0000 through U+00FF. A character
+// above that has no byte, so it takes a character reference.
+// see docs/encodings.md
 
 const byteDecl = `<?xml version="1.1" encoding="ISO-8859-1"?>`
 
@@ -37,7 +39,7 @@ func TestByteModeReadsOneBytePerCharacter(t *testing.T) {
 	assert.Len(t, doc, len(byteDecl)+3+len(`<r></r>`)+2, "one byte per character")
 }
 
-// The same document in both modes: identical characters, different bytes.
+// The same document in the two modes: identical characters, different bytes.
 func TestByteModeIsShorterThanUTF8ForTheHighHalf(t *testing.T) {
 	text := "àáâãäåæçèéêëìíîï"
 	asBytes := latin1(t, byteDecl+`<r>`+text+`</r>`)

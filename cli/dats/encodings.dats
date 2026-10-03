@@ -1,4 +1,6 @@
-# Both input modes, at the built CLI.
+# The two input modes, at the built CLI. UTF-8 is the default; a document
+# that declares ISO-8859-1 is read one byte per character.
+# see docs/encodings.md
 
 setup:
 	- test -x "$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator"
@@ -18,9 +20,10 @@ tests:
 			- "valid XML 1.1 document"
 			- "document 60 bytes"
 
-	# The same several characters in UTF-8. The whole document is still
-	# smaller: naming the encoding costs many bytes, which characters do
-	# not repay. A longer text does.
+	# The same 10 characters in UTF-8. The content is 12 bytes here against
+	# 10 in byte mode, because e-acute and i-diaeresis take two bytes each.
+	# The whole document is still smaller: naming the encoding costs 22
+	# bytes, which two characters do not repay. A longer text does.
 	- desc: the same text in UTF-8 spends two bytes on each high character
 	  cmd: |
 		set -e
@@ -62,6 +65,8 @@ tests:
 			- "unsupported encoding"
 			- "UTF-8 and ISO-8859-1 are supported"
 
+	# Byte mode is about bytes, not about which characters are legal: a
+	# literal NUL is still rejected, and &#0; still carries U+0000.
 	- desc: byte mode still rejects a literal NUL byte
 	  exit: 1
 	  cmd: 'printf %b "<?xml version=\"1.1\" encoding=\"ISO-8859-1\"?><r>a\000b</r>" > {outputs.nul.xml}; "$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" {outputs.nul.xml}'
@@ -75,6 +80,8 @@ tests:
 		stdout:
 			- "valid XML 1.1 document"
 
+	# Every Latin-1 byte roundtrips: 256 bytes in, one character each, and
+	# the schema counts 256 of them.
 	- desc: all 256 byte values are 256 characters in byte mode
 	  cmd: |
 		set -e

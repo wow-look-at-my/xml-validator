@@ -2,7 +2,7 @@
 
 Strict XML 1.0 and XML 1.1 validator with optional XSD schema validation. Anything the validator does not understand is a hard error -- there is no DTD support and no permissive mode.
 
-Ships as a command-line tool and as four Go modules. As a result, a program takes only the part it needs.
+Ships as a command-line tool and as four Go modules, so a program takes only the part it needs.
 
 | module | what it is | depends on |
 |---|---|---|
@@ -91,7 +91,7 @@ err = validator.ValidateSchema(xmlDoc, schema)
 
 - XML 1.0 and XML 1.1. The declaration decides which rules apply, and a document with no declaration is XML 1.0. Each version gets its own character class, line endings and namespace rules. XML 1.0 refuses a C0 control even as a reference, keeps `#x85` and `#x2028` as characters, and cannot undeclare a prefix
 - Elements, attributes, text content, CDATA sections, comments, PIs
-- Character references (`&#N;`, `&#xN;`) and the predefined entities. `&#0;` is accepted, one deliberate deviation from XML 1.1 -- a literal NUL byte and a lone surrogate are still rejected
+- Character references (`&#N;`, `&#xN;`) and the five predefined entities. `&#0;` is accepted, one deliberate deviation from XML 1.1 -- a literal NUL byte and a lone surrogate are still rejected
 - Namespaces in XML 1.0 and 1.1
 - Two input modes: UTF-8 (the default) and an 8-bit byte mode selected by `encoding="ISO-8859-1"`. In byte mode one byte is one character, and anything above U+00FF takes a character reference. No BOM in either (per [utf8everywhere](https://utf8everywhere.org/))
 - Line-ending normalization of the declared version (`#x85` and `#x2028` in XML 1.1 only)
@@ -107,7 +107,7 @@ err = validator.ValidateSchema(xmlDoc, schema)
 ## What is rejected as unsupported
 
 - DOCTYPE declarations
-- General entity references beyond the predefined ones
+- General entity references beyond the five predefined ones
 - Any version other than `1.0` and `1.1`
 - Encodings other than UTF-8 and ISO-8859-1 (UTF-16 inputs and BOMs are rejected)
 - XSD: `xs:redefine`, `xs:override`, and `xs:notation`
@@ -159,4 +159,4 @@ Point `schema` at an XSD to validate every file against it:
 go-toolchain
 ```
 
-Run it at the repository root and it walks all modules: tidy, vet, tests with coverage, the build, and the CLI suites under `cli/dats/`. The binary lands at `cli/build/xml-validator`.
+Run it at the repository root and it walks all four modules: tidy, vet, tests with coverage, the build, and the CLI suites under `cli/dats/`. The binary lands at `cli/build/xml-validator`.

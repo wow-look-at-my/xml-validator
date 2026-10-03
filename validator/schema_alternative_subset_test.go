@@ -2,8 +2,9 @@ package validator
 
 import "testing"
 
-// Everything here is inside that subset, so rejecting any of it would refuse a
-// conforming schema.
+// XSD 1.1 defines a "required subset" of XPath 2.0 for xs:alternative/@test and
+// says a conforming processor must accept and process it. Everything here is
+// inside that subset, so rejecting any of it would refuse a conforming schema.
 
 // numeric selects an xs:int content type, textual an xs:string one, so the
 // document tells us which alternative won: a non-numeric body is an error only
@@ -68,7 +69,8 @@ func TestAlternativeOrderComparators(t *testing.T) {
 }
 
 func TestAlternativeNumericLiteral(t *testing.T) {
-	// An unquoted number is a Literal in the subset: the untyped attribute is compared as a number.
+	// An unquoted number is a Literal in the subset: the untyped attribute is
+	// compared as a number, so "01" and "1" are the same value.
 	assertChoice(t, "@a = 1", `a="1"`, true)
 	assertChoice(t, "@a = 1", `a="01"`, true)
 	assertChoice(t, "@a = 1", `a="2"`, false)
@@ -98,7 +100,7 @@ func TestAlternativeParentheses(t *testing.T) {
 }
 
 func TestAlternativeNotOverAnExpression(t *testing.T) {
-	// not() takes a whole OrExpr, not one term.
+	// not() takes a whole OrExpr, not just one term.
 	assertChoice(t, "not(@a='1' or @a='2')", `a="3"`, true)
 	assertChoice(t, "not(@a='1' or @a='2')", `a="2"`, false)
 	assertChoice(t, "not(@a)", ``, true)
@@ -114,7 +116,8 @@ func TestAlternativeAttributeAgainstAttribute(t *testing.T) {
 }
 
 func TestAlternativeConstructorFunction(t *testing.T) {
-	// xs:int(@a) fails to construct when the value is not an int, and a failed test does not select the alternative.
+	// xs:int(@a) fails to construct when the value is not an int, and a failed
+	// test simply does not select the alternative.
 	assertChoice(t, "xs:int(@a) = 5", `a="5"`, true)
 	assertChoice(t, "xs:int(@a) = 5", `a="six"`, false)
 	assertChoice(t, "xs:boolean(@a) = 'true'", `a="true"`, true)

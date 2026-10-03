@@ -40,7 +40,7 @@ func TestRoundtripBase64BinaryPayload(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, payload, decoded, "the payload did not survive base64Binary")
 
-	// Octets, not the characters that carry them.
+	// 256 octets, not the 344 characters that carry them.
 	err = ValidateWithSchemaBytes([]byte(doc), []byte(binaryTypeXSD("base64Binary", 344)))
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "value length 256")
@@ -58,12 +58,13 @@ func TestRoundtripHexBinaryPayload(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, payload, decoded, "the payload did not survive hexBinary")
 
+	// 256 octets, not the 512 hex digits that spell them.
 	err = ValidateWithSchemaBytes([]byte(doc), []byte(binaryTypeXSD("hexBinary", 512)))
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "value length 256")
 }
 
-// Those wire forms for the same many bytes, side by side. Each is ASCII,
+// The three wire forms for the same 256 bytes, side by side. Each is ASCII,
 // and none of them holds a NUL byte.
 func TestBinaryWireFormSizes(t *testing.T) {
 	payload := allBytes()
@@ -77,6 +78,8 @@ func TestBinaryWireFormSizes(t *testing.T) {
 		"base64":     xmlDecl + `<blob>` + base64.StdEncoding.EncodeToString(payload) + `</blob>`,
 		"hex":        xmlDecl + `<blob>` + strings.ToUpper(hex.EncodeToString(payload)) + `</blob>`,
 	}
+	// 256 payload bytes become 1430, 344 and 512 characters of content; the
+	// declaration and the tags add the rest.
 	sizes := map[string]int{"references": 1454, "base64": 378, "hex": 546}
 
 	for name, doc := range forms {

@@ -7,7 +7,13 @@ import (
 	"github.com/wow-look-at-my/go-containers/set"
 )
 
-// SchemaResolver loads the bytes of a referenced schema.
+// SchemaResolver loads the bytes of a referenced schema. It is invoked once
+// per xs:import directive that has a schemaLocation. The namespace argument
+// is the target namespace of the imported schema (may be empty), and
+// schemaLocation is the URI hint from the directive. Returning a nil byte
+// slice with a nil error is treated as "skip this import"; returning an
+// empty-but-non-nil slice is treated as malformed schema content and will
+// surface as a parse error.
 type SchemaResolver func(namespace, schemaLocation string) ([]byte, error)
 
 type importKey struct {
