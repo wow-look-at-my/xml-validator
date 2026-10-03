@@ -8,6 +8,15 @@ func IsChar(r rune) bool {
 		(r >= 0x10000 && r <= 0x10FFFF)
 }
 
+// IsChar10 reports whether r is a Char under Version10. A C0 control other
+// than tab, LF and CR is not a character, even as a reference.
+func IsChar10(r rune) bool {
+	return r == 0x9 || r == 0xA || r == 0xD ||
+		(r >= 0x20 && r <= 0xD7FF) ||
+		(r >= 0xE000 && r <= 0xFFFD) ||
+		(r >= 0x10000 && r <= 0x10FFFF)
+}
+
 // IsCharRefValue returns true if r may be produced by a character reference.
 // It is IsChar plus U+0000, which the Char production excludes: `&#0;` is four
 // ASCII bytes, so a document carrying one contains no NUL byte and nothing that
