@@ -137,6 +137,10 @@ func (p *parser) parseAttributes() ([]attribute, map[string]string, error) {
 				return nil, nil, &Error{Line: attrLine, Col: attrCol,
 					Message: "the prefix 'xmlns' must not be declared"}
 			}
+			if val == "" && p.version == reader.Version10 {
+				return nil, nil, &Error{Line: attrLine, Col: attrCol,
+					Message: fmt.Sprintf("Namespaces in XML 1.0 cannot undeclare the prefix %q (only XML 1.1 can)", prefix)}
+			}
 			if prefix == "xml" && val != "http://www.w3.org/XML/1998/namespace" {
 				return nil, nil, &Error{Line: attrLine, Col: attrCol,
 					Message: "the prefix 'xml' must not be bound to any namespace other than http://www.w3.org/XML/1998/namespace"}
@@ -174,10 +178,10 @@ func (p *parser) parseAttValue() (string, error) {
 			val = append(val, resolved)
 			continue
 		}
-		if IsRestrictedChar(r) {
+		if p.isRestricted(r) {
 			return "", p.errorf("restricted character U+%04X must not appear literally in attribute value (use a character reference)", r)
 		}
-		if !IsChar(r) {
+		if !p.isChar(r) {
 			return "", p.errorf("invalid character U+%04X in attribute value", r)
 		}
 		val = append(val, p.advance())
@@ -223,7 +227,7 @@ func (p *parser) parseContent() error {
 			if err != nil {
 				return err
 			}
-			if !IsCharRefValue(r) {
+			if !p.isCharRefValue(r) {
 				return p.errorf("character reference resolves to invalid character U+%04X", r)
 			}
 		} else {
@@ -244,10 +248,10 @@ func (p *parser) parseCharData() error {
 		if r == ']' && p.peekAt(1) == ']' && p.peekAt(2) == '>' {
 			return p.errorf("']]>' is not allowed in character data")
 		}
-		if IsRestrictedChar(r) {
+		if p.isRestricted(r) {
 			return p.errorf("restricted character U+%04X must not appear literally in character data (use a character reference)", r)
 		}
-		if !IsChar(r) {
+		if !p.isChar(r) {
 			return p.errorf("invalid character U+%04X in character data", r)
 		}
 		p.advance()
@@ -268,7 +272,7 @@ func (p *parser) parseCDSect() error {
 			return nil
 		}
 		r := p.advance()
-		if !IsChar(r) {
+		if !p.isChar(r) {
 			return p.errorf("invalid character U+%04X in CDATA section", r)
 		}
 	}
@@ -371,8 +375,8 @@ func (p *parser) parseCharRef() (rune, error) {
 	}
 
 	r := rune(val)
-	if !IsCharRefValue(r) {
-		return 0, p.errorf("character reference &#%s; resolves to invalid XML 1.1 character U+%04X", string(p.input[start:end]), r)
+	if !p.isCharRefValue(r) {
+		return 0, p.errorf("character reference &#%s; resolves to invalid XML %s character U+%04X", string(p.input[start:end]), p.version, r)
 	}
 	return r, nil
 }

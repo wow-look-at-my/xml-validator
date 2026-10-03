@@ -15,7 +15,7 @@ func TestParseXMLDeclMissingVersion(t *testing.T) {
 }
 
 func TestParseXMLDeclBadVersion(t *testing.T) {
-	err := Validate(strings.NewReader(`<?xml version="1.0"?><r/>`))
+	err := Validate(strings.NewReader(`<?xml version="1.01"?><r/>`))
 	require.Error(t, err)
 }
 

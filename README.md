@@ -1,6 +1,6 @@
 # xml-validator
 
-Strict XML 1.1 validator with optional XSD schema validation. Anything the validator does not understand is a hard error -- there is no fallback to XML 1.0, no DTD support, no permissive mode.
+Strict XML 1.0 and XML 1.1 validator with optional XSD schema validation. Anything the validator does not understand is a hard error -- there is no DTD support and no permissive mode.
 
 Ships as a command-line tool and as four Go modules, so a program takes only the part it needs.
 
@@ -35,7 +35,7 @@ xml-validator                           # validate from stdin
 xml-validator --schema schema.xsd file  # validate against XSD schema
 ```
 
-Exit code is `0` on a valid XML 1.1 document, `1` with an error message on failure.
+Exit code is `0` on a valid XML 1.0 or XML 1.1 document, `1` with an error message on failure.
 
 ## Library usage
 
@@ -89,12 +89,12 @@ err = validator.ValidateSchema(xmlDoc, schema)
 
 ## What is supported
 
-- XML 1.1 declaration (required)
+- XML 1.0 and XML 1.1. The declaration decides which rules apply, and a document with no declaration is XML 1.0. Each version gets its own character class, line endings and namespace rules. XML 1.0 refuses a C0 control even as a reference, keeps `#x85` and `#x2028` as characters, and cannot undeclare a prefix
 - Elements, attributes, text content, CDATA sections, comments, PIs
 - Character references (`&#N;`, `&#xN;`) and the five predefined entities. `&#0;` is accepted, one deliberate deviation from XML 1.1 -- a literal NUL byte and a lone surrogate are still rejected
-- Namespaces in XML 1.1
+- Namespaces in XML 1.0 and 1.1
 - Two input modes: UTF-8 (the default) and an 8-bit byte mode selected by `encoding="ISO-8859-1"`. In byte mode one byte is one character, and anything above U+00FF takes a character reference. No BOM in either (per [utf8everywhere](https://utf8everywhere.org/))
-- XML 1.1 line-ending normalization (`#x85`, `#x2028`)
+- Line-ending normalization of the declared version (`#x85` and `#x2028` in XML 1.1 only)
 - XSD schema validation: complex/simple types, facets, sequence/choice/all, attribute groups, simpleContent/complexContent, `xs:any`, and 35+ built-in types
 - Facets constrain attribute values and element text alike, and a derived simple type enforces the facets it inherits from its base. A violation on an attribute is reported at that attribute's own line and column
 - Global `xs:attribute` declarations and `xs:attribute ref=`. Attributes match on namespace and local name together, so a qualified attribute from an imported vocabulary is type-checked rather than assumed valid
@@ -108,8 +108,7 @@ err = validator.ValidateSchema(xmlDoc, schema)
 
 - DOCTYPE declarations
 - General entity references beyond the five predefined ones
-- XML 1.0 documents (the declaration must say `version="1.1"`)
-- Missing XML declaration
+- Any version other than `1.0` and `1.1`
 - Encodings other than UTF-8 and ISO-8859-1 (UTF-16 inputs and BOMs are rejected)
 - XSD: `xs:redefine`, `xs:override`, and `xs:notation`
 - A selector or field XPath outside the subset XSD defines for them -- a predicate, a function, an axis other than `child::`/`attribute::`, or `..`
@@ -121,7 +120,7 @@ Use `wow-look-at-my/xml-validator` as a GitHub Action to validate XML files in C
 
 ### Zero-config (recommended)
 
-With no inputs, the action auto-discovers every `*.xml` and `*.xsd` file in the workspace and checks each one for XML 1.1 well-formedness:
+With no inputs, the action auto-discovers every `*.xml` and `*.xsd` file in the workspace and checks each one for well-formedness:
 
 ```yaml
 - uses: wow-look-at-my/xml-validator@master
@@ -151,7 +150,7 @@ Point `schema` at an XSD to validate every file against it:
 | Input | Required | Description |
 |-------|----------|-------------|
 | `files` | No | Space-separated files or glob patterns to validate. When omitted, auto-discovers every `*.xml` and `*.xsd` file in the workspace. |
-| `schema` | No | Path to an XSD schema to validate every file against. When omitted, only XML 1.1 well-formedness is checked. |
+| `schema` | No | Path to an XSD schema to validate every file against. When omitted, only well-formedness is checked. |
 | `args` | No | Additional CLI arguments passed to each invocation. |
 
 ## Build & test

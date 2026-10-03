@@ -141,12 +141,37 @@ func TestCharRefForRestrictedCharInAttr(t *testing.T) {
 
 // --- Rejection tests ---
 
-func TestRejectXML10(t *testing.T) {
-	mustReject(t, `<?xml version="1.0"?><r/>`, "only XML 1.1 is supported")
+func TestAcceptXML10(t *testing.T) {
+	require.NoError(t, Validate(strings.NewReader(`<?xml version="1.0"?><r/>`)))
 }
 
-func TestRejectMissingDecl(t *testing.T) {
-	mustReject(t, `<r/>`, "must begin with an XML declaration")
+func TestAMissingDeclIsXML10(t *testing.T) {
+	require.NoError(t, Validate(strings.NewReader(`<r a="b">text</r>`)))
+	require.NoError(t, Validate(strings.NewReader("<r>\u0080</r>")))
+	mustReject(t, "<r>&#x1;</r>", "invalid XML 1.0 character")
+	mustReject(t, `<r xmlns:p="urn:x"><s xmlns:p=""/></r>`, "cannot undeclare")
+}
+
+func TestTheVersionChoosesTheCharacterClass(t *testing.T) {
+	require.NoError(t, Validate(strings.NewReader(`<?xml version="1.1"?><r>&#x1;</r>`)))
+	mustReject(t, `<?xml version="1.0"?><r>&#x1;</r>`, "invalid XML 1.0 character")
+	mustReject(t, `<?xml version="1.0"?><r a="&#x1F;"/>`, "invalid XML 1.0 character")
+	mustReject(t, "<?xml version=\"1.0\"?><r>\x01</r>", "invalid character U+0001")
+	require.NoError(t, Validate(strings.NewReader("<?xml version=\"1.0\"?><r a=\"\u0085\">\u0080\u009F</r>")))
+	mustReject(t, "<?xml version=\"1.1\"?><r>\u0080</r>", "restricted character U+0080")
+}
+
+func TestTheVersionChoosesTheLineEnds(t *testing.T) {
+	require.NoError(t, Validate(strings.NewReader("<?xml version=\"1.1\"?><r\u0085a=\"b\"/>")))
+	mustReject(t, "<?xml version=\"1.0\"?><r\u0085a=\"b\"/>", "")
+	require.NoError(t, Validate(strings.NewReader("<?xml version=\"1.0\"?><r\r\na=\"b\"/>")))
+}
+
+func TestOnlyXML11UndeclaresAPrefix(t *testing.T) {
+	doc := `<r xmlns:p="urn:x"><s xmlns:p=""/></r>`
+	require.NoError(t, Validate(strings.NewReader(`<?xml version="1.1"?>`+doc)))
+	mustReject(t, `<?xml version="1.0"?>`+doc, "cannot undeclare")
+	require.NoError(t, Validate(strings.NewReader(`<?xml version="1.0"?><r xmlns=""/>`)), "the default namespace can always be undeclared")
 }
 
 func TestRejectDOCTYPE(t *testing.T) {
@@ -210,7 +235,8 @@ func TestRejectContentAfterRoot(t *testing.T) {
 }
 
 func TestRejectInvalidVersion(t *testing.T) {
-	mustReject(t, `<?xml version="2.0"?><r/>`, "only XML 1.1 is supported")
+	mustReject(t, `<?xml version="2.0"?><r/>`, "only XML 1.0 and XML 1.1 are supported")
+	mustReject(t, `<?xml version="1.2"?><r/>`, "only XML 1.0 and XML 1.1 are supported")
 }
 
 func TestRejectBadEncodingName(t *testing.T) {
@@ -407,7 +433,7 @@ func TestValidateReturnsErrorType(t *testing.T) {
 		{"empty input", ""},
 		{"utf-8 BOM", "\xEF\xBB\xBF<?xml version=\"1.1\"?><r/>"},
 		{"utf-16 BOM", "\xFF\xFE<?xml version=\"1.1\"?><r/>"},
-		{"bad version", `<?xml version="1.0"?><r/>`},
+		{"bad version", `<?xml version="2.0"?><r/>`},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -484,5 +510,5 @@ func TestRejectSecondRootElement(t *testing.T) {
 }
 
 func TestRejectXmlDeclNotAtStart(t *testing.T) {
-	mustReject(t, " <?xml version=\"1.1\"?><r/>", "must begin with an XML declaration")
+	mustReject(t, " <?xml version=\"1.1\"?><r/>", "target must not be 'xml'")
 }

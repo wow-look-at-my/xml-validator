@@ -14,7 +14,7 @@ func ExampleValidate() {
 }
 
 func ExampleValidate_invalid() {
-	err := validator.Validate(strings.NewReader(`<?xml version="1.0"?><r/>`))
+	err := validator.Validate(strings.NewReader(`<?xml version="1.1"?><r>&lt;</x>`))
 	fmt.Println(err != nil)
 	// Output: true
 }

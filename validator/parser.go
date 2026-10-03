@@ -12,15 +12,35 @@ type parser struct {
 	line    int
 	col     int
 	nsStack []map[string]string
+	version reader.Version
 }
 
 func newParser(input []rune) *parser {
 	return &parser{
-		input: input,
-		pos:   0,
-		line:  1,
-		col:   1,
+		input:   input,
+		pos:     0,
+		line:    1,
+		col:     1,
+		version: reader.Version10,
 	}
+}
+
+// isChar applies the Char production of the document's version.
+func (p *parser) isChar(r rune) bool {
+	if p.version == reader.Version11 {
+		return IsChar(r)
+	}
+	return reader.IsChar10(r)
+}
+
+// isRestricted reports a character that Version11 allows only as a reference.
+func (p *parser) isRestricted(r rune) bool {
+	return p.version == reader.Version11 && IsRestrictedChar(r)
+}
+
+// isCharRefValue is isChar plus the reference to U+0000 that IsCharRefValue admits.
+func (p *parser) isCharRefValue(r rune) bool {
+	return r == 0 || p.isChar(r)
 }
 
 func (p *parser) peek() rune {
@@ -134,7 +154,7 @@ func (p *parser) parseProlog() error {
 
 func (p *parser) parseXMLDecl() error {
 	if !p.lookingAt("<?xml") {
-		return p.errorf("XML 1.1 documents must begin with an XML declaration (<?xml ...?>)")
+		return nil
 	}
 	if err := p.expect("<?xml"); err != nil {
 		return err
@@ -156,8 +176,11 @@ func (p *parser) parseXMLDecl() error {
 	if err != nil {
 		return err
 	}
-	if version != "1.1" {
-		return p.errorf("unsupported XML version %q; only XML 1.1 is supported", version)
+	switch reader.Version(version) {
+	case reader.Version10, reader.Version11:
+		p.version = reader.Version(version)
+	default:
+		return p.errorf("unsupported XML version %q; only XML 1.0 and XML 1.1 are supported", version)
 	}
 
 	savedPos, savedLine, savedCol := p.pos, p.line, p.col
@@ -304,7 +327,7 @@ func (p *parser) parseComment() error {
 			return p.errorf("'--' is not allowed inside a comment")
 		}
 		r := p.advance()
-		if !IsChar(r) {
+		if !p.isChar(r) {
 			return p.errorf("invalid character U+%04X in comment", r)
 		}
 	}
@@ -337,7 +360,7 @@ func (p *parser) parsePI() error {
 			return nil
 		}
 		r := p.advance()
-		if !IsChar(r) {
+		if !p.isChar(r) {
 			return p.errorf("invalid character U+%04X in processing instruction", r)
 		}
 	}

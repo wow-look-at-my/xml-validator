@@ -54,6 +54,16 @@ func TestValidatesStdin(t *testing.T) {
 	assert.Contains(t, out, "valid XML 1.1 document")
 }
 
+func TestNamesTheVersionTheDocumentDeclares(t *testing.T) {
+	out, err := run(t, `<?xml version="1.0"?><r/>`)
+	require.NoError(t, err)
+	assert.Contains(t, out, "valid XML 1.0 document")
+
+	out, err = run(t, `<r/>`)
+	require.NoError(t, err)
+	assert.Contains(t, out, "valid XML 1.0 document")
+}
+
 // The error travels back to cobra, which prints it and sets the exit status.
 func TestReportsAnInvalidDocument(t *testing.T) {
 	_, err := run(t, "", write(t, "bad.xml", `<?xml version="1.1"?><r>`))

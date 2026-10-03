@@ -1,6 +1,6 @@
 # xml-validator
 
-Strict XML 1.1 validator with XSD schema validation. Anything unsupported is a hard error.
+Strict XML 1.0 and XML 1.1 validator with XSD schema validation. Anything unsupported is a hard error.
 
 ## Four modules, imported separately
 
@@ -35,7 +35,7 @@ xml-validator                           # validate from stdin
 xml-validator --schema schema.xsd file  # validate against XSD schema
 ```
 
-Exit 0 on valid XML 1.1, exit 1 with error message on failure.
+Exit 0 on valid XML, exit 1 with error message on failure. The success line names the version the document declares.
 
 ## Library usage
 
@@ -58,7 +58,7 @@ Tree nodes carry positions too: `Element` and `Attr` both have `Line` and `Col`.
 
 ## Supported
 
-- XML 1.1 declaration (required)
+- XML 1.0 and XML 1.1. The parser reads the version from the declaration, and a document with no declaration is XML 1.0. `reader.SniffVersion` reads it from raw bytes first, because the version decides line endings before anything parses. The version picks the character class (`reader.IsChar10` or `IsChar`), the restricted class (XML 1.1 only), the line endings (`#x85` and `#x2028` end a line in XML 1.1 only) and namespace undeclaration (XML 1.1 only). Name characters are the same in both
 - Elements, attributes, text, CDATA sections, comments, PIs
 - Character references (`&#N;`, `&#xN;`) and predefined entity references (`&amp;` `&lt;` `&gt;` `&apos;` `&quot;`)
 - Namespace validation (Namespaces in XML 1.1)
@@ -95,8 +95,7 @@ Tree nodes carry positions too: `Element` and `Attr` both have `Line` and `Col`.
 - `processContents="skip"` and `processContents="lax"` on `xs:any` / `xs:anyAttribute`. Only `strict` (the default) is allowed. This validator does not offer a no- or partial-validation mode
 - DOCTYPE declarations
 - General entity references (beyond the 5 predefined)
-- XML 1.0 documents
-- Missing XML declaration
+- Any version other than `1.0` and `1.1`
 - Encodings other than UTF-8 and ISO-8859-1. UTF-16 inputs and BOMs are rejected, and any other encoding declaration is rejected by name
 - xs:redefine, xs:override
 - xs:notation
@@ -106,7 +105,8 @@ Tree nodes carry positions too: `Element` and `Attr` both have `Line` and `Col`.
 
 ## Project Structure
 
-- `reader/chars.go` -- XML 1.1 character class predicates
+- `reader/chars.go` -- the character class predicates of both versions
+- `reader/version.go` -- `Version`, and `SniffVersion` over raw bytes
 - `reader/reader.go` -- `Decode`: decoder selection, BOM/UTF-16 reject, line normalization
 - `reader/encoding.go` -- the two modes, the alias table, declaration sniffing, both decoders
 - `reader/entities.go` -- the five predefined entities, matched without allocating

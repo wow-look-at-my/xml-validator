@@ -24,7 +24,7 @@ The `path` output names the binary this run resolved. It is set either way.
 
 ## What CI proves
 
-The `action` job in `.github/workflows/ci.yml` runs the action from the checkout. A change therefore runs here before any consumer sees it. It covers a valid document, a document validated against a schema, and an XML 1.0 document that must be rejected. That last one is a negative control: without it the other cases also pass for an action that reports success whatever the validator answered. Fixtures live in `testdata/action/`.
+The `action` job in `.github/workflows/ci.yml` runs the action from the checkout. A change therefore runs here before any consumer sees it. It covers a valid document, a document validated against a schema, and a malformed document that must be rejected. That last one is a negative control: without it the other cases also pass for an action that reports success whatever the validator answered. Fixtures live in `testdata/action/`.
 
 ## Writing comments in this file
 
