@@ -300,13 +300,6 @@ func (p *parser) parseCharRef() (rune, error) {
 		p.advance()
 	}
 
-	// The digits go in a stack buffer, not a slice that grows: a document
-	// that escapes anything pays this path on every reference, and the
-	// allocation showed up as 2.6 per reference in the benchmarks.
-	//
-	// The buffer is small because a character is at most 8 hex digits, and
-	// leading zeros are skipped first so `&#0000000;` still parses -- a
-	// document may write as many of them as it likes.
 	var buf [8]byte
 	n := 0
 	start := p.pos
@@ -381,9 +374,9 @@ func (p *parser) parseCharRef() (rune, error) {
 	return r, nil
 }
 
-// The five predefined entities are matched against the input where they sit.
-// Building the name as a string first cost two allocations on every `&amp;`
-// in the document, which is the whole cost of escaping text that is mostly
+// Those predefined entities are matched against the input where they sit.
+// Building the name as a string first cost allocations on every `&amp;` in
+// the document, which is the whole cost of escaping text that is mostly
 // ampersands.
 func (p *parser) parseEntityRef() (rune, error) {
 	if p.eof() || !IsNameStartChar(p.peek()) {

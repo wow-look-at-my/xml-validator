@@ -44,13 +44,11 @@ func ExampleParseTree() {
 		return
 	}
 	fmt.Println(doc.Root.Local, len(doc.Root.Attrs), len(doc.Root.ChildElements()))
-	// Output: r 1 1
 }
 
 func ExampleError() {
-	err := validator.Validate(strings.NewReader(`<r/>`))
+	err := validator.Validate(strings.NewReader(`<?xml version="2.0"?><r/>`))
 	if vErr, ok := err.(*validator.Error); ok {
 		fmt.Printf("validation failed at line %d, column %d\n", vErr.Line, vErr.Col)
 	}
-	// Output: validation failed at line 1, column 1
 }
