@@ -10,7 +10,7 @@ inputs:
     required: false
     default: ''
   schema:
-    description: 'Path to an XSD schema to validate every file against. When omitted, only XML 1.1 well-formedness is checked.'
+    description: 'Path to an XSD schema to validate every file against. When omitted, only well-formedness is checked.'
     required: false
     default: ''
   args:

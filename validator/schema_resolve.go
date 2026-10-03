@@ -7,10 +7,6 @@ import (
 )
 
 // resolving tracks the complex types already visited in one resolution pass.
-// A recursive schema -- an element whose content refers back to itself, which
-// is how a schema describes an arbitrarily nested tree -- would otherwise walk
-// the same type forever. Resolution is idempotent per type, so visiting each
-// pointer once is both a termination guarantee and the correct result.
 type resolving = set.Set[*ComplexType]
 
 func resolveSchemaRefs(s *Schema) error {

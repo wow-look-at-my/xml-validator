@@ -9,20 +9,12 @@ import (
 )
 
 // ParseSchema parses an XSD schema tree with no support for resolving
-// xs:import schemaLocation hints. Imports without a schemaLocation are
-// accepted as namespace declarations; imports that name a schemaLocation
-// produce an error. Callers that need to follow schemaLocation hints should
-// use ParseSchemaWithResolver instead.
+// xs:import schemaLocation hints.
 func ParseSchema(doc *Document) (*Schema, error) {
 	return ParseSchemaWithResolver(doc, nil)
 }
 
-// ParseSchemaWithResolver parses an XSD schema tree. Each xs:import or
-// xs:include directive with a non-empty schemaLocation is loaded via resolver,
-// parsed, and merged into the returned schema. Components from
-// imported/included schemas are looked up by local name (the same way the
-// validator resolves types in the main schema), so per-namespace name
-// collisions are not supported.
+// ParseSchemaWithResolver parses an XSD schema tree.
 func ParseSchemaWithResolver(doc *Document, resolver SchemaResolver) (*Schema, error) {
 	visited := set.New[importKey]()
 	return parseSchemaDoc(doc, resolver, visited)
@@ -286,7 +278,6 @@ func parseComplexType(el *Element) (*ComplexType, error) {
 			}
 			ct.AnyAttribute = aa
 		case "annotation":
-			// skip
 		}
 	}
 
@@ -519,7 +510,7 @@ func parseAnyAttrDecl(el *Element) (*AnyAttrDecl, error) {
 // than "strict". This validator does not provide a no-validation mode: "skip"
 // disables validation outright, and "lax" disables it for any element whose
 // declaration cannot be located -- both contradict the project's reason for
-// existing. Use "strict" (the default) or do not run the validator.
+// existing.
 func validateProcessContents(pc string) error {
 	if pc == "strict" {
 		return nil

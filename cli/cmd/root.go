@@ -1,10 +1,13 @@
 package cmd
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/spf13/cobra"
+	"github.com/wow-look-at-my/xml-validator/reader"
 	"github.com/wow-look-at-my/xml-validator/validator"
 )
 
@@ -12,8 +15,10 @@ var schemaFile string
 
 var rootCmd = &cobra.Command{
 	Use:   "xml-validator [file]",
-	Short: "Strict XML 1.1 validator",
-	Long: `Validates XML documents strictly against the XML 1.1 specification.
+	Short: "Strict XML 1.0 and XML 1.1 validator",
+	Long: `Validates XML documents strictly against the XML 1.0 or XML 1.1
+specification, whichever the document declares. A document with no XML
+declaration is XML 1.0.
 
 Use --schema to also validate against an XSD schema:
   xml-validator --schema schema.xsd input.xml
@@ -22,16 +27,15 @@ Supported features:
   - Elements, attributes, text content, CDATA sections
   - Comments and processing instructions
   - Character references and predefined entity references
-  - Namespace validation (Namespaces in XML 1.1)
+  - Namespace validation (Namespaces in XML 1.0 and 1.1)
   - UTF-8 encoding (no BOM)
-  - XML 1.1 line ending normalization
+  - Line ending normalization of the declared version
   - XSD schema validation (--schema)
 
 Anything unsupported is a hard error:
   - DOCTYPE declarations
   - General entity references (beyond the 5 predefined)
-  - XML 1.0 documents (version must be "1.1")
-  - Missing XML declaration
+  - Any version other than "1.0" and "1.1"
   - Encodings other than UTF-8 (UTF-16 inputs and UTF-8 BOMs are rejected)
   - processContents="skip" or "lax" on xs:any / xs:anyAttribute -- only
     "strict" (the default) is allowed`,
@@ -69,10 +73,14 @@ func runWellFormedness(cmd *cobra.Command, args []string) error {
 		input = f
 	}
 
-	if err := validator.Validate(input); err != nil {
+	data, err := io.ReadAll(input)
+	if err != nil {
+		return fmt.Errorf("reading input: %w", err)
+	}
+	if err := validator.Validate(bytes.NewReader(data)); err != nil {
 		return err
 	}
-	fmt.Fprintln(cmd.OutOrStdout(), "valid XML 1.1 document")
+	fmt.Fprintf(cmd.OutOrStdout(), "valid XML %s document\n", reader.SniffVersion(data))
 	return nil
 }
 
@@ -84,6 +92,10 @@ func runWithSchema(cmd *cobra.Command, args []string) error {
 	if err := validator.ValidateWithSchemaFile(args[0], schemaFile); err != nil {
 		return err
 	}
-	fmt.Fprintln(cmd.OutOrStdout(), "valid XML 1.1 document (schema validated)")
+	data, err := os.ReadFile(args[0])
+	if err != nil {
+		return fmt.Errorf("cannot open file: %w", err)
+	}
+	fmt.Fprintf(cmd.OutOrStdout(), "valid XML %s document (schema validated)\n", reader.SniffVersion(data))
 	return nil
 }

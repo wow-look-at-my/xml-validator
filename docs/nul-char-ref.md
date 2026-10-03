@@ -1,10 +1,10 @@
 # `&#0;` is a character reference, not a NUL byte, not a terminator
 
-Three different things get called "null" in the same sentence. They are not the same thing:
+Different things get called "null" in the same sentence. They are not the same thing:
 
 1. **`&#0;`** -- four ASCII bytes in the document's byte stream. A document that uses it contains no byte with the value zero.
 2. **U+0000** -- the character the reference resolves to. It is the parsed value's first character, or its middle one, like any other character.
-3. **The end of a document** -- which XML marks with the root element's end tag, never with a character.
+3. **The end of a document** -- which XML marks with the root element's end tag, not with a character.
 
 This validator accepts (1), produces (2), and treats neither as (3).
 
@@ -16,26 +16,26 @@ A lone surrogate stays rejected too. It is not a character in any encoding, so t
 
 ## What the tests prove, and where
 
-Two layers, because the disbelief runs at two levels. One is what the library does with the value. The other is what the program a user runs does with the file.
+Layers, because the disbelief runs at a couple of levels. One is what the library does with the value. The other is what the program a user runs does with the file.
 
 ### Library roundtrip -- `validator/roundtrip_nul_test.go`
 
-The parser turns `&#0;` into U+0000. The test file's `serializeDoc` turns U+0000 back into `&#0;`. A roundtrip is parse, emit, parse again. The two trees must match:
+The parser turns `&#0;` into U+0000. The test file's `serializeDoc` turns U+0000 back into `&#0;`. A roundtrip is parse, emit, parse again. The trees must match:
 
 - The reparsed tree equals the first one, and a second roundtrip changes no bytes.
 - `&#0;`, `&#00;`, `&#x0;`, `&#x00;` and `&#0000000;` all parse to the same character and all emit as the one canonical `&#0;`.
 - The emitted document contains no NUL byte.
 - Content after the reference -- sibling elements, their attributes, the closing tags -- survives the roundtrip.
 - The parsed value is an ordinary Go string. `len` counts the NUL, indexing reaches it, and `strings.Split` splits on it.
-- Inside CDATA the same four characters are text. No reference resolves and no U+0000 is produced. The emitter escapes the ampersand to keep it that way.
+- Inside CDATA the same a few characters are text. No reference resolves and no U+0000 is produced. The emitter escapes the ampersand to keep it that way.
 - A literal NUL byte is rejected in character data, attribute values, CDATA and comments.
-- An `xs:length` facet of 3 accepts `a&#0;b`, and a facet of 1 rejects it with "value length 3". A terminator leaves a value of length 1.
+- An `xs:length` facet of multiple accepts `a&#0;b`, and a facet of multiple rejects it with "value length 3". A terminator leaves a value of length 1.
 
 Three more take a real binary payload -- one of every byte value, 0 through 255, carried as the characters U+0000 through U+00FF:
 
-- Written with a reference only where one is needed, the payload survives the roundtrip through both character data and an attribute value. It decodes back to the same 256 bytes.
+- Written with a reference only where one is needed, the payload survives the roundtrip through both character data and an attribute value. It decodes back to the same many bytes.
 - Written as nothing but references, the document is printable ASCII end to end. That wire form survives a transport with opinions about high bytes and NUL.
-- A payload with three NUL bytes in the middle keeps its tail.
+- A payload with a few NUL bytes in the middle keeps its tail.
 
 Encoding the payload takes more than the restricted characters. CR, NEL (U+0085) and LINE SEPARATOR (U+2028) all normalize to LF when they appear as literal characters. A tab or newline inside an attribute value is whitespace a conforming reader folds to a space. Normalization runs over the input before any reference resolves, so writing those as references is what carries them through.
 
@@ -48,15 +48,15 @@ The tests here drive the built binary, so nothing depends on a Go caller. `go-to
 - **The file holds no NUL byte.** `wc -c` of the fixture and `wc -c` after `tr -d '\000'` are both 36. Nothing was deleted, because there was nothing to delete.
 - **Parsing continues past the reference.** A fixture puts `&#0;` on line 2 and a second root element on line 3. A reader that stops at the NUL never sees line 3 and reports the file valid. The validator exits 1 and names line 3.
 
-One more runs the whole binary roundtrip through the shell, so nothing in it depends on Go at all. `printf` writes 256 raw bytes and `od` turns each one into a character reference. The validator accepts the document. `grep` and `printf` turn the references back into bytes, and the two SHA-256 digests must match. The expected digest is pinned in the suite: `40aff2e9...bf944880` is the SHA-256 of the bytes 0x00..0xFF in order. The comparison therefore does not rest on the generator alone. The encoded document is 1454 bytes, all of them printable ASCII.
+One more runs the whole binary roundtrip through the shell, so nothing in it depends on Go at all. `printf` writes many raw bytes and `od` turns each one into a character reference. The validator accepts the document. `grep` and `printf` turn the references back into bytes, and the SHA-256 digests must match. The expected digest is pinned in the suite: `40aff2e9...bf944880` is the SHA-256 of the bytes 0x00..0xFF in order. The comparison therefore does not rest on the generator alone. The encoded document is many bytes, all of them printable ASCII.
 
 The rest cover the spellings, stdin, and the well-formed tail. They also cover the literal NUL byte in character data and in CDATA, and `xs:length` at 3, at 1 and at 256.
 
 ## The three wire forms, and why the high half is not escaped
 
-The minimally-escaped form leaves U+0080 through U+00FF literal. They are two bytes each because the document is UTF-8, the only encoding this validator accepts here. A raw Latin-1 byte fails with `invalid UTF-8 byte sequence`, and an `encoding="ISO-8859-1"` declaration does not change that. What still takes a reference above U+007F is U+007F to U+0084 and U+0086 to U+009F, which are restricted characters, and U+0085, which normalizes to LF. Neither rule is about the byte being high.
+The minimally-escaped form leaves U+0080 through U+00FF literal. They are a couple of bytes each because the document is UTF-8, the only encoding this validator accepts here. A raw Latin-1 byte fails with `invalid UTF-8 byte sequence`. An `encoding="ISO-8859-1"` declaration does not change that. What still takes a reference above U+007F is U+007F to U+0084 and U+0086 to U+009F. This are restricted characters, and U+0085, which normalizes to LF. Neither rule is about the byte being high.
 
-For a payload that is genuinely bytes, XSD has `xs:base64Binary` and `xs:hexBinary`. Both are ASCII on the wire and both measure length in octets. The same 256-byte payload, all four ways:
+For a payload that is genuinely bytes, XSD has `xs:base64Binary` and `xs:hexBinary`. Both are ASCII on the wire and both measure length in octets. The same 256-byte payload, all ways:
 
 | form | document size | content |
 |---|---|---|
@@ -65,7 +65,7 @@ For a payload that is genuinely bytes, XSD has `xs:base64Binary` and `xs:hexBina
 | `xs:hexBinary` | 546 | printable ASCII, 512 digits |
 | `xs:base64Binary` | 378 | printable ASCII, 344 characters |
 
-`validator/roundtrip_binary_test.go` roundtrips the payload through both binary types and pins those sizes. The dats suite runs the same two through the shell. It uses `base64 -w0` and `od -tx1` on the way in, and `base64 -d` and `printf` on the way out. It then compares SHA-256 digests, with the schema stating a length of 256 octets in each case.
+`validator/roundtrip_binary_test.go` roundtrips the payload through both binary types and pins those sizes. The dats suite runs the same two through the shell. It uses `base64 -w0` and `od -tx1` on the way in, and `base64 -d` and `printf` on the way out. It then compares SHA-256 digests, with the schema stating a length of multiple octets in each case.
 
 ## Facet lengths are characters, not bytes
 

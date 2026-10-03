@@ -137,6 +137,10 @@ func (p *parser) parseAttributes() ([]attribute, map[string]string, error) {
 				return nil, nil, &Error{Line: attrLine, Col: attrCol,
 					Message: "the prefix 'xmlns' must not be declared"}
 			}
+			if val == "" && p.version == reader.Version10 {
+				return nil, nil, &Error{Line: attrLine, Col: attrCol,
+					Message: fmt.Sprintf("Namespaces in XML 1.0 cannot undeclare the prefix %q (only XML 1.1 can)", prefix)}
+			}
 			if prefix == "xml" && val != "http://www.w3.org/XML/1998/namespace" {
 				return nil, nil, &Error{Line: attrLine, Col: attrCol,
 					Message: "the prefix 'xml' must not be bound to any namespace other than http://www.w3.org/XML/1998/namespace"}
@@ -174,10 +178,10 @@ func (p *parser) parseAttValue() (string, error) {
 			val = append(val, resolved)
 			continue
 		}
-		if IsRestrictedChar(r) {
+		if p.isRestricted(r) {
 			return "", p.errorf("restricted character U+%04X must not appear literally in attribute value (use a character reference)", r)
 		}
-		if !IsChar(r) {
+		if !p.isChar(r) {
 			return "", p.errorf("invalid character U+%04X in attribute value", r)
 		}
 		val = append(val, p.advance())
@@ -223,7 +227,7 @@ func (p *parser) parseContent() error {
 			if err != nil {
 				return err
 			}
-			if !IsCharRefValue(r) {
+			if !p.isCharRefValue(r) {
 				return p.errorf("character reference resolves to invalid character U+%04X", r)
 			}
 		} else {
@@ -244,10 +248,10 @@ func (p *parser) parseCharData() error {
 		if r == ']' && p.peekAt(1) == ']' && p.peekAt(2) == '>' {
 			return p.errorf("']]>' is not allowed in character data")
 		}
-		if IsRestrictedChar(r) {
+		if p.isRestricted(r) {
 			return p.errorf("restricted character U+%04X must not appear literally in character data (use a character reference)", r)
 		}
-		if !IsChar(r) {
+		if !p.isChar(r) {
 			return p.errorf("invalid character U+%04X in character data", r)
 		}
 		p.advance()
@@ -268,7 +272,7 @@ func (p *parser) parseCDSect() error {
 			return nil
 		}
 		r := p.advance()
-		if !IsChar(r) {
+		if !p.isChar(r) {
 			return p.errorf("invalid character U+%04X in CDATA section", r)
 		}
 	}
@@ -296,13 +300,6 @@ func (p *parser) parseCharRef() (rune, error) {
 		p.advance()
 	}
 
-	// The digits go in a stack buffer, not a slice that grows: a document
-	// that escapes anything pays this path on every reference, and the
-	// allocation showed up as 2.6 per reference in the benchmarks.
-	//
-	// The buffer is small because a character is at most 8 hex digits, and
-	// leading zeros are skipped first so `&#0000000;` still parses -- a
-	// document may write as many of them as it likes.
 	var buf [8]byte
 	n := 0
 	start := p.pos
@@ -334,9 +331,7 @@ func (p *parser) parseCharRef() (rune, error) {
 	if p.eof() {
 		return 0, p.errorf("unterminated character reference")
 	}
-	// The digit text names a problem and is needed nowhere else, so each
-	// error path slices it out itself. A closure capturing the parser would
-	// be neater and allocates on every reference, error or not.
+	// The digit text names a problem and is needed nowhere else, so each error path slices it out itself.
 	end := p.pos
 	empty := end == start
 	p.advance() // consume ';'
@@ -348,10 +343,7 @@ func (p *parser) parseCharRef() (rune, error) {
 		return 0, p.errorf("invalid character reference value %q", string(p.input[start:end]))
 	}
 
-	// Folded here rather than handed to strconv: the digits were already
-	// scanned and checked above, and the call cost more than the arithmetic
-	// on a path that runs once per escaped character. Zero digits is how
-	// `&#0;` is written, and folds to zero on its own.
+	// Folded here rather than handed to strconv: the digits were already scanned and checked above.
 	var val int64
 	for _, c := range buf[:n] {
 		var d int64
@@ -371,15 +363,15 @@ func (p *parser) parseCharRef() (rune, error) {
 	}
 
 	r := rune(val)
-	if !IsCharRefValue(r) {
-		return 0, p.errorf("character reference &#%s; resolves to invalid XML 1.1 character U+%04X", string(p.input[start:end]), r)
+	if !p.isCharRefValue(r) {
+		return 0, p.errorf("character reference &#%s; resolves to invalid XML %s character U+%04X", string(p.input[start:end]), p.version, r)
 	}
 	return r, nil
 }
 
-// The five predefined entities are matched against the input where they sit.
-// Building the name as a string first cost two allocations on every `&amp;`
-// in the document, which is the whole cost of escaping text that is mostly
+// Those predefined entities are matched against the input where they sit.
+// Building the name as a string first cost allocations on every `&amp;` in
+// the document, which is the whole cost of escaping text that is mostly
 // ampersands.
 func (p *parser) parseEntityRef() (rune, error) {
 	if p.eof() || !IsNameStartChar(p.peek()) {

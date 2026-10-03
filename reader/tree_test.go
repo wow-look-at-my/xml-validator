@@ -10,9 +10,7 @@ import (
 	"github.com/wow-look-at-my/xml-validator/reader"
 )
 
-// Reading is what this module does: bytes in, a tree out. Validation lives in
-// the validator module, so what a document MEANS is not checked here -- only
-// that it is read as written.
+// Reading is what this module does: bytes in, a tree out.
 
 const decl = `<?xml version="1.1"?>`
 

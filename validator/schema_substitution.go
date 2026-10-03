@@ -45,8 +45,7 @@ func resolveSubstitutionGroups(s *Schema) error {
 	}
 	for head, direct := range heads {
 		if blocksSubstitution(head, s) {
-			// The head refuses to be replaced, so it gets no members and an
-			// instance using one is an unexpected element there.
+			// The head refuses to be replaced, so it gets no members and an instance using one is an unexpected element there.
 			continue
 		}
 		head.substitutes = closeSubstitutes(direct, heads)
@@ -99,10 +98,11 @@ func blocksSubstitution(head *ElementDecl, s *Schema) bool {
 	return false
 }
 
-// checkSubstitutionType enforces the one rule that makes a substitution
-// meaningful: the member's type must be the head's or derive from it. The check
-// stays quiet where it cannot see the whole chain -- an unresolved imported type
-// is unknown, not wrong, and rejecting it would fail a schema that is fine.
+// checkSubstitutionType enforces the rule that makes a substitution
+// meaningful: the member's type must be the head's or derive from it. The
+// check stays quiet where it cannot see the whole chain -- an unresolved
+// imported type is unknown, not wrong, and rejecting it would fail a schema
+// that is fine.
 func checkSubstitutionType(member, head *ElementDecl, s *Schema) error {
 	memberType := declaredType(member, s)
 	headType := declaredType(head, s)
@@ -210,8 +210,7 @@ func (sv *schemaValidator) substituteFor(child *Element, decl *ElementDecl) *Ele
 	if decl.Ref == "" {
 		return nil
 	}
-	// The members are closed on the GLOBAL declaration, after the particle
-	// copied its fields, so ask the global rather than this copy.
+	// The members are closed on the GLOBAL declaration, after the particle copied its fields.
 	head := sv.schema.Elements[qnameKey(decl.Namespace, decl.Name)]
 	if head == nil {
 		head = findByLocal(sv.schema.Elements, decl.Name)

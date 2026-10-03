@@ -31,16 +31,14 @@ func Decode(r io.Reader) ([]rune, error) {
 		}
 	}
 
-	return normalizeLineEndings(runes), nil
+	return normalizeLineEndings(runes, SniffVersion(raw)), nil
 }
 
-// rejectUnsupportedEncoding rejects any input that begins with a byte-order
-// mark or that matches the UTF-16 leading-NUL heuristic from XML 1.1 appendix
-// F. Neither mode this validator reads takes a BOM: it is meaningless for
-// UTF-8 (per the utf8everywhere recommendation) and some downstream tools read
-// it as a literal U+FEFF, and byte mode has no character above U+00FF to spell
-// one with. A document declaring byte mode still starts with `<?xml` in ASCII,
-// so this check runs before the declaration is read and applies to both.
+// Neither mode this validator reads takes a BOM: it is meaningless for UTF-8
+// (per the utf8everywhere recommendation) and some downstream tools read it as
+// a literal U+FEFF, and byte mode has no character above U+00FF to spell one
+// with. A document declaring byte mode still starts with `<?xml` in ASCII, so
+// this check runs before the declaration is read and applies to both.
 func rejectUnsupportedEncoding(data []byte) error {
 	if len(data) >= 3 && data[0] == 0xEF && data[1] == 0xBB && data[2] == 0xBF {
 		return fmt.Errorf("unsupported encoding: input begins with a UTF-8 BOM (raw UTF-8 only)")
@@ -62,28 +60,21 @@ func rejectUnsupportedEncoding(data []byte) error {
 	return nil
 }
 
-// normalizeLineEndings applies XML 1.1 line ending normalization:
-//
-//	#xD #xA  -> #xA
-//	#xD #x85 -> #xA
-//	#x85     -> #xA
-//	#x2028   -> #xA
-//	#xD      -> #xA (when not followed by #xA or #x85)
-//
-// It rewrites input in place. Every rule either replaces one rune with one
-// rune or two with one, so the write index never overtakes the read index,
-// and the alternative is a second copy of the whole document per parse.
-func normalizeLineEndings(input []rune) []rune {
+// normalizeLineEndings maps each line end to LF, by the rules of the version.
+// Version11 reads CR LF, CR NEL, NEL, LINE SEPARATOR and a lone CR as a line end.
+// Version10 reads only CR LF and a lone CR. NEL and LINE SEPARATOR stay characters.
+func normalizeLineEndings(input []rune, version Version) []rune {
+	v11 := version == Version11
 	w := 0
 	for i := 0; i < len(input); i++ {
 		r := input[i]
 		switch {
 		case r == 0xD:
 			input[w] = 0xA
-			if i+1 < len(input) && (input[i+1] == 0xA || input[i+1] == 0x85) {
+			if i+1 < len(input) && (input[i+1] == 0xA || (v11 && input[i+1] == 0x85)) {
 				i++
 			}
-		case r == 0x85, r == 0x2028:
+		case v11 && (r == 0x85 || r == 0x2028):
 			input[w] = 0xA
 		default:
 			input[w] = r

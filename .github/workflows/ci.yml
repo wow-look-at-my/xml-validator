@@ -57,12 +57,12 @@ jobs:
           schema: 'testdata/action/valid.xsd'
 
       # The negative control: the checks above also pass for an action that never fails.
-      - name: Reject an XML 1.0 document
+      - name: Reject a malformed document
         id: reject
         continue-on-error: true
         uses: ./
         with:
-          files: 'testdata/action/xml10.xml'
+          files: 'testdata/action/malformed.xml'
 
       # install-only validates nothing, so the rejection below is what proves the binary arrived.
       - name: Put the binary on PATH and validate nothing
@@ -70,14 +70,14 @@ jobs:
         with:
           install-only: 'true'
 
-      - name: The installed binary runs and still rejects XML 1.0
+      - name: The installed binary runs and still rejects a malformed document
         uses: wow-look-at-my/actions@typescript#latest
         with:
           script: |
             await $`xml-validator testdata/action/valid.xml`;
-            const code = await exec.exec('xml-validator', ['testdata/action/xml10.xml'], { ignoreReturnCode: true });
+            const code = await exec.exec('xml-validator', ['testdata/action/malformed.xml'], { ignoreReturnCode: true });
             if (code === 0) {
-              core.setFailed('the installed binary accepted an XML 1.0 document');
+              core.setFailed('the installed binary accepted a malformed document');
             }
 
       - name: The rejection must have failed its step
@@ -88,5 +88,5 @@ jobs:
           script: |
             const outcome = (process.env.OUTCOME ?? '').trim();
             if (outcome !== 'failure') {
-              core.setFailed(`the action reported ${outcome || 'nothing'} for an XML 1.0 document`);
+              core.setFailed(`the action reported ${outcome || 'nothing'} for a malformed document`);
             }

@@ -7,15 +7,7 @@ import (
 )
 
 // Conditional type assignment: xs:alternative gives an element a type chosen
-// per instance. The first alternative whose test holds decides the type, and an
-// alternative with no test always holds, which is how a default is written.
-//
-// The test language is the "required subset" of XPath 2.0 that XSD 1.1 defines
-// for this attribute; `schema_alternative_expr.go` parses and evaluates it.
-// Anything outside that subset is a hard error at schema-parse time, because a
-// test this engine cannot evaluate would pick the wrong type in silence.
-//
-// see docs/conditional-types.md
+// per instance.
 
 // TypeAlternative is one xs:alternative on an element declaration.
 type TypeAlternative struct {
@@ -112,9 +104,7 @@ func resolveAlternatives(ed *ElementDecl, s *Schema) error {
 	return nil
 }
 
-// chooseType picks the type an instance element takes. The alternatives are
-// tried in order; the declared type is the answer when none holds, which is
-// what XSD says an element with no matching alternative falls back to.
+// chooseType picks the type an instance element takes.
 func chooseType(el *Element, decl *ElementDecl) Type {
 	for _, alt := range decl.Alternatives {
 		if alt.test == nil || alt.test.eval(el) {

@@ -61,8 +61,7 @@ func TestSchemaParticlesGroupRef(t *testing.T) {
   </xs:element>
 </xs:schema>`
 	mustSchemaValid(t, `<?xml version="1.1"?><root><key>k</key><value>v</value><extra>v</extra></root>`, xsd)
-	// The group is what the reference stands for, so its members are required
-	// exactly as if they had been written out at the reference.
+	// The group is what the reference stands for, so its members are required exactly as if they had been written out.
 	mustSchemaReject(t, `<?xml version="1.1"?><root><extra>v</extra></root>`, xsd, `occurrence(s) of "key"`)
 }
 
@@ -112,7 +111,7 @@ func TestSchemaGroupRefOccursAndCycle(t *testing.T) {
 
 func TestSchemaParticlesNestedGroups(t *testing.T) {
 	// parseParticles dispatches to parseSequence, parseChoice, parseAll for
-	// nested compositors. Make sure all three nested branches parse.
+	// nested compositors. Make sure all of them nested branches parse.
 	xsd := `<?xml version="1.0"?>
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
   <xs:element name="root">

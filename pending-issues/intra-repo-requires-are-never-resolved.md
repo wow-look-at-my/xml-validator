@@ -14,7 +14,7 @@ Those requires now carry `// go-toolchain:auto-branch`, so go-toolchain re-resol
 
 No job here consumes a module of this repo from outside. CI runs `go-toolchain` once per module, in the directory where the replace wins. A require is never load-bearing in this repository at all. The staleness that produced the outage is gone. The vantage point that shows such staleness still does not exist.
 
-Two ways to build it:
+Ways to build it:
 
 1. **Delete the replace directives and add a `go.work` for local development.** The requires become load-bearing everywhere, so a version that does not resolve fails the module's own build. This removes the class rather than detecting it. It needs a decision about whether `go-toolchain` runs correctly under a workspace. That is why it is written here rather than applied.
-2. **Add a job that builds these modules the way an outside consumer does.** That is a scratch module requiring `.../validator` at the pushed commit, with no replace, built from the proxy. It catches a defect one push later than option 1, and the commit has to be published before it can run.
+2. **Add a job that builds these modules the way an outside consumer does.** That is a scratch module requiring `.../validator` at the pushed commit, with no replace, built from the proxy. It catches a defect one push later than option 1. The commit has to be published before it can run.

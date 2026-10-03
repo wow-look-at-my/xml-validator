@@ -1,12 +1,4 @@
 // Measures what each XML wire form costs, over a corpus of real files.
-//
-// Usage: node tools/encoding-sizes.js [--validate] [--samples N]
-//
-// Every form carries the same payload: the file's bytes. A document is built,
-// optionally checked with build/xml-validator, and its size recorded. The
-// table it prints is the one in docs/encodings.md.
-//
-// see docs/encodings.md
 
 const fs = require('fs');
 const path = require('path');
@@ -26,14 +18,11 @@ function argValue(flag, fallback) {
 // in it is a sample -- the layout tools/extract-corpus.js writes.
 function corpusCategories(root) {
 	const out = {};
-	// Images come from the corpus/images submodule, which references the
-	// Hugging Face documentation-images dataset instead of copying it.
+	// Images come from the corpus/images submodule.
 	const images = path.join(__dirname, '..', 'corpus', 'images', 'transformers', 'model_doc');
 	if (fs.existsSync(images)) {
 		for (const file of fs.readdirSync(images)) {
 			const full = path.join(images, file);
-			// An LFS pointer is a few hundred bytes of text. Skip what the
-			// checkout has not fetched instead of measuring the pointer.
 			if (fs.statSync(full).size < 1024) continue;
 			const ext = path.extname(file).toLowerCase();
 			const category = ext === '.png' ? 'image-png' : (ext === '.jpg' || ext === '.jpeg') ? 'image-jpeg' : null;
@@ -87,8 +76,7 @@ function collect(findArgs) {
 		files.push(p);
 		if (files.length >= PER_CATEGORY * 4) break;
 	}
-	// Spread the sample across the listing instead of taking the first N,
-	// which would be one directory's worth of near-identical files.
+	// Spread the sample across the listing instead of taking the first N.
 	const step = Math.max(1, Math.floor(files.length / PER_CATEGORY));
 	return files.filter((_, i) => i % step === 0).slice(0, PER_CATEGORY);
 }
@@ -102,7 +90,7 @@ function restricted(c) {
 }
 
 // A character that cannot stand for itself: markup delimiters, U+0000, the
-// restricted characters, and the three that line-ending normalization folds.
+// restricted characters.
 function needsReference(c) {
 	return c === 0x26 || c === 0x3c || c === 0x3e || c === 0 ||
 		restricted(c) || c === 0x0d || c === 0x85 || c === 0x2028;
@@ -217,8 +205,7 @@ for (const [category, all] of Object.entries(categories)) {
 			sums[form] = (sums[form] ?? 0) + doc.length;
 			counts[form] = (counts[form] ?? 0) + payload.length;
 			totals[form] = (totals[form] ?? 0) + doc.length;
-			// Per form, because a form skips the samples it cannot carry and
-			// dividing by the whole corpus would report it as free.
+			// Per form, because a form skips the samples it cannot carry and dividing by the whole corpus would report it.
 			totalPayload[form] = (totalPayload[form] ?? 0) + payload.length;
 		}
 		totals.payload = (totals.payload ?? 0) + payload.length;

@@ -7,9 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// The encoding declaration decides how the bytes are read, so it is read from
-// the bytes. Every spelling a declaration may use is ASCII in both modes.
-// see docs/encodings.md
+// The encoding declaration decides how the bytes are read, so it is read from the bytes.
 
 const xmlDecl = `<?xml version="1.1"?>`
 
@@ -77,8 +75,42 @@ func TestNormalizeLineEndings(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, normalizeLineEndings(tt.input))
+			assert.Equal(t, tt.want, normalizeLineEndings(tt.input, Version11))
 		})
+	}
+}
+
+// Version10 ends a line at CR LF and a lone CR only. NEL and LS stay characters.
+func TestNormalizeLineEndingsVersion10(t *testing.T) {
+	tests := []struct {
+		name        string
+		input, want []rune
+	}{
+		{"CR LF", []rune{'\r', '\n'}, []rune{'\n'}},
+		{"CR NEL", []rune{'\r', 0x85}, []rune{'\n', 0x85}},
+		{"NEL alone", []rune{0x85}, []rune{0x85}},
+		{"LS", []rune{0x2028}, []rune{0x2028}},
+		{"CR alone", []rune{'\r'}, []rune{'\n'}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, normalizeLineEndings(tt.input, Version10))
+		})
+	}
+}
+
+func TestSniffVersion(t *testing.T) {
+	for doc, want := range map[string]Version{
+		`<?xml version="1.1"?><r/>`:                  Version11,
+		`<?xml version='1.1' encoding="UTF-8"?><r/>`: Version11,
+		"<?xml\n  version = \"1.1\"?><r/>":           Version11,
+		`<?xml version="1.0"?><r/>`:                  Version10,
+		`<r/>`:                                       Version10,
+		` <?xml version="1.1"?><r/>`:                 Version10,
+		`<?xml encoding="UTF-8" version="1.1"?><r/>`: Version10,
+		`<?xml version="1.10"?><r/>`:                 Version10,
+	} {
+		assert.Equal(t, want, SniffVersion([]byte(doc)), doc)
 	}
 }
 
