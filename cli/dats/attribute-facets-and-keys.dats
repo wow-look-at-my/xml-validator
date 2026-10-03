@@ -1,4 +1,4 @@
-# Constraint classes that fail QUIETLY when they regress: a facet on an
+# Two constraint classes that fail QUIETLY when they regress: a facet on an
 # attribute value, and an identity constraint. Element text keeps validating
 # either way, so a schema still reports "schema validated" while the constraint
 # it states does nothing. A consumer then ships a guarantee it does not have.
