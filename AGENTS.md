@@ -84,7 +84,7 @@ Tree nodes carry positions too: `Element` and `Attr` both have `Line` and `Col`.
   - xs:anyAttribute wildcard attributes
   - xs:import with optional schemaLocation, loaded via a `SchemaResolver`. The CLI and `ValidateWithSchemaFile` wire a filesystem-backed one
   - xs:include with schemaLocation (same resolver mechanism as xs:import)
-  - Identity constraints: `xs:key`, `xs:keyref`, `xs:unique`. See `docs/identity-constraints.md` for the XPath subset, the two deliberate deviations, and how a keyref finds its key
+  - Identity constraints: `xs:key`, `xs:keyref`, `xs:unique`. See `docs/identity-constraints.md` for the XPath subset, the deliberate deviations, and how a keyref finds its key
   - Substitution groups, including `abstract` heads, `block="substitution"` / `blockDefault`, and transitive members. See `docs/substitution-groups.md`
   - `xs:alternative` conditional type assignment over the XPath subset XSD 1.1 requires: comparisons, `and`/`or` with parentheses, `not()`, casts, and constructor functions. See `docs/conditional-types.md`
 
