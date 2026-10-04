@@ -17,10 +17,13 @@ func ParseSchema(doc *Document) (*Schema, error) {
 // ParseSchemaWithResolver parses an XSD schema tree.
 func ParseSchemaWithResolver(doc *Document, resolver SchemaResolver) (*Schema, error) {
 	visited := set.New[importKey]()
-	return parseSchemaDoc(doc, resolver, visited)
+	return parseSchemaDoc(doc, "", resolver, visited)
 }
 
-func parseSchemaDoc(doc *Document, resolver SchemaResolver, visited set.Set[importKey]) (*Schema, error) {
+// parseSchemaDoc parses a schema document. base is where the document was
+// loaded from. Its relative schemaLocation hints resolve against base, and
+// the top-level document has an empty base.
+func parseSchemaDoc(doc *Document, base string, resolver SchemaResolver, visited set.Set[importKey]) (*Schema, error) {
 	root := doc.Root
 	if root.Local != "schema" || root.Namespace != xsdNS {
 		return nil, fmt.Errorf("expected xs:schema root element, got {%s}%s", root.Namespace, root.Local)
@@ -102,7 +105,7 @@ func parseSchemaDoc(doc *Document, resolver SchemaResolver, visited set.Set[impo
 				s.AttrGroups[ag.Name] = ag
 			}
 		case "import":
-			imp, err := parseImport(child, resolver, visited)
+			imp, err := parseImport(child, base, resolver, visited)
 			if err != nil {
 				return nil, err
 			}
@@ -113,7 +116,7 @@ func parseSchemaDoc(doc *Document, resolver SchemaResolver, visited set.Set[impo
 				}
 			}
 		case "include":
-			included, err := parseInclude(child, s.TargetNamespace, resolver, visited)
+			included, err := parseInclude(child, s.TargetNamespace, base, resolver, visited)
 			if err != nil {
 				return nil, err
 			}
