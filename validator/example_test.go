@@ -52,5 +52,5 @@ func ExampleError() {
 	if vErr, ok := err.(*validator.Error); ok {
 		fmt.Printf("validation failed at line %d, column %d\n", vErr.Line, vErr.Col)
 	}
-	// Output: validation failed at line 1, column 1
+	// Output: validation failed at line 1, column 20
 }
