@@ -17,7 +17,7 @@ tests:
 		files:
 			nul.xml: |
 				<?xml version="1.1"?>
-				<r>a&
+				<r>a&#0;b</r>
 	  outputs:
 		stdout:
 			- "valid XML 1.1 document"
@@ -28,7 +28,7 @@ tests:
 		files:
 			spellings.xml: |
 				<?xml version="1.1"?>
-				<r>&
+				<r>&#0;&#00;&#x0;&#x00;&#0000000;</r>
 	  outputs:
 		stdout:
 			- "valid XML 1.1 document"
@@ -39,7 +39,7 @@ tests:
 		files:
 			nul.xml: |
 				<?xml version="1.1"?>
-				<r>a&
+				<r>a&#0;b</r>
 	  outputs:
 		stdout:
 			0: "^36 36$"
@@ -51,7 +51,7 @@ tests:
 		files:
 			late-error.xml: |
 				<?xml version="1.1"?>
-				<r>a&
+				<r>a&#0;b</r>
 				<second-root/>
 	  outputs:
 		stderr:
@@ -69,7 +69,7 @@ tests:
 			tail.xml: |
 				<?xml version="1.1"?>
 				<r>
-					<a>1&#; </a>
+					<a>1&#0;2</a>
 					<b at="&#0;">after</b>
 					<c/>
 				</r>
@@ -100,7 +100,7 @@ tests:
 	  inputs:
 		stdin: |
 			<?xml version="1.1"?>
-			<r>a&
+			<r>a&#0;b</r>
 	  outputs:
 		stdout:
 			- "valid XML 1.1 document"
@@ -112,7 +112,7 @@ tests:
 		files:
 			doc.xml: |
 				<?xml version="1.1"?>
-				<r>a&
+				<r>a&#0;b</r>
 			len3.xsd: |
 				<?xml version="1.1"?>
 				<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
