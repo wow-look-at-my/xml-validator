@@ -33,9 +33,6 @@ tests:
 		stdout:
 			- "valid XML 1.1 document"
 
-	# The file that just validated holds no NUL byte at all: deleting every
-	# NUL byte leaves the byte count unchanged, and the reference is four
-	# ASCII bytes of the file's 36.
 	- desc: the validated file contains no NUL byte
 	  cmd: 'printf "%s %s\n" "$(wc -c < {inputs.nul.xml})" "$(tr -d "\000" < {inputs.nul.xml} | wc -c)"'
 	  inputs:
@@ -47,8 +44,6 @@ tests:
 		stdout:
 			0: "^36 36$"
 
-	# A reader that stopped at the NUL would never reach line 3, so it would
-	# report this file as valid. The error names line 3.
 	- desc: parsing continues past the reference to a later error
 	  exit: 1
 	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" {inputs.late-error.xml}'
@@ -110,8 +105,7 @@ tests:
 		stdout:
 			- "valid XML 1.1 document"
 
-	# Schema validation counts the value as three characters: a, U+0000, b. A
-	# terminator would leave a value of length 1.
+	# Schema validation counts the value as a few characters: a, U+0000, b.
 	- desc: the schema length facet counts the NUL as one character
 	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema {inputs.len3.xsd} {inputs.doc.xml}'
 	  inputs:
@@ -134,9 +128,6 @@ tests:
 		stdout:
 			- "valid XML 1.1 document (schema validated)"
 
-	# The full binary roundtrip, at the executable: 256 raw bytes -- one of
-	# every value, U+0000 included -- become an XML document, the validator
-	# accepts it, and decoding the references gives the same 256 bytes back.
 	# The pinned digest is the SHA-256 of the bytes 0x00..0xFF in order, so
 	# the comparison does not rest on the generator alone.
 	- desc: a 256-byte binary payload roundtrips through XML and back
@@ -167,7 +158,7 @@ tests:
 
 	# XSD's own answer for arbitrary bytes. The payload rides an
 	# xs:base64Binary element, the schema states its length in octets, and
-	# base64 -d gives the same 256 bytes back.
+	# base64 -d gives the same many bytes back.
 	- desc: a 256-byte payload roundtrips through xs:base64Binary
 	  cmd: |
 		set -e
@@ -199,8 +190,8 @@ tests:
 			- "xml 378 bytes, decoded 256 bytes"
 			- "base64 roundtrip identical"
 
-	# The same payload as hexBinary: 512 digits, still 256 octets to the
-	# length facet.
+	# The same payload as hexBinary: digits, still octets to the length
+	# facet.
 	- desc: a 256-byte payload roundtrips through xs:hexBinary
 	  cmd: |
 		set -e
@@ -241,8 +232,8 @@ tests:
 		stderr:
 			- "invalid UTF-8 byte sequence"
 
-	# The same 256 bytes, counted by the schema engine: 256 characters, not a
-	# 1-character value that stops at the first one.
+	# The same many bytes, counted by the schema engine: many characters, not
+	# a 1-character value that stops at the first one.
 	- desc: the schema counts the binary payload as 256 characters
 	  cmd: |
 		set -e
