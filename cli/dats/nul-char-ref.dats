@@ -15,9 +15,7 @@ tests:
 	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" {inputs.nul.xml}'
 	  inputs:
 		files:
-			nul.xml: |
-				<?xml version="1.1"?>
-				<r>a&
+			nul.xml: "<?xml version=\"1.1\"?>\n<r>a&#0;b</r>\n"
 	  outputs:
 		stdout:
 			- "valid XML 1.1 document"
@@ -26,9 +24,7 @@ tests:
 	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" {inputs.spellings.xml}'
 	  inputs:
 		files:
-			spellings.xml: |
-				<?xml version="1.1"?>
-				<r>&
+			spellings.xml: "<?xml version=\"1.1\"?>\n<r>&#0;&#00;&#x0;&#x00;&#0000000;</r>\n"
 	  outputs:
 		stdout:
 			- "valid XML 1.1 document"
@@ -37,9 +33,7 @@ tests:
 	  cmd: 'printf "%s %s\n" "$(wc -c < {inputs.nul.xml})" "$(tr -d "\000" < {inputs.nul.xml} | wc -c)"'
 	  inputs:
 		files:
-			nul.xml: |
-				<?xml version="1.1"?>
-				<r>a&
+			nul.xml: "<?xml version=\"1.1\"?>\n<r>a&#0;b</r>\n"
 	  outputs:
 		stdout:
 			0: "^36 36$"
@@ -49,10 +43,7 @@ tests:
 	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" {inputs.late-error.xml}'
 	  inputs:
 		files:
-			late-error.xml: |
-				<?xml version="1.1"?>
-				<r>a&
-				<second-root/>
+			late-error.xml: "<?xml version=\"1.1\"?>\n<r>a&#0;b</r>\n<second-root/>\n"
 	  outputs:
 		stderr:
 			- "line 3"
@@ -66,13 +57,7 @@ tests:
 	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" {inputs.tail.xml}'
 	  inputs:
 		files:
-			tail.xml: |
-				<?xml version="1.1"?>
-				<r>
-					<a>1&#; </a>
-					<b at="&#0;">after</b>
-					<c/>
-				</r>
+			tail.xml: "<?xml version=\"1.1\"?>\n<r>\n\t<a>1&#0;2</a>\n\t<b at=\"&#0;\">after</b>\n\t<c/>\n</r>\n"
 	  outputs:
 		stdout:
 			- "valid XML 1.1 document"
@@ -98,9 +83,7 @@ tests:
 	- desc: the reference works on stdin too
 	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator"'
 	  inputs:
-		stdin: |
-			<?xml version="1.1"?>
-			<r>a&
+		stdin: "<?xml version=\"1.1\"?>\n<r>a&#0;b</r>\n"
 	  outputs:
 		stdout:
 			- "valid XML 1.1 document"
@@ -110,9 +93,7 @@ tests:
 	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema {inputs.len3.xsd} {inputs.doc.xml}'
 	  inputs:
 		files:
-			doc.xml: |
-				<?xml version="1.1"?>
-				<r>a&
+			doc.xml: "<?xml version=\"1.1\"?>\n<r>a&#0;b</r>\n"
 			len3.xsd: |
 				<?xml version="1.1"?>
 				<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
