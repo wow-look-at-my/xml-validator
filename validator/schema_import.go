@@ -3,6 +3,9 @@ package validator
 import (
 	"bytes"
 	"fmt"
+	"net/url"
+	"path"
+	"path/filepath"
 
 	"github.com/wow-look-at-my/go-containers/set"
 )
@@ -20,7 +23,28 @@ type importResult struct {
 	imported  *Schema
 }
 
-func parseInclude(el *Element, parentNS string, resolver SchemaResolver, visited set.Set[importKey]) (*Schema, error) {
+// resolveLocation resolves a schemaLocation hint against the location of the
+// schema that holds it, as XSD resolves a URI reference against the base URI
+// of its document. An absolute hint, or a hint in the top-level schema, is
+// returned as written.
+func resolveLocation(base, hint string) string {
+	if base == "" || path.IsAbs(hint) || filepath.IsAbs(hint) {
+		return hint
+	}
+	ref, err := url.Parse(hint)
+	if err != nil {
+		return path.Join(path.Dir(base), hint)
+	}
+	if ref.IsAbs() {
+		return hint
+	}
+	if b, err := url.Parse(base); err == nil && b.IsAbs() {
+		return b.ResolveReference(ref).String()
+	}
+	return path.Join(path.Dir(base), hint)
+}
+
+func parseInclude(el *Element, parentNS, base string, resolver SchemaResolver, visited set.Set[importKey]) (*Schema, error) {
 	loc, _ := el.Attr("schemaLocation")
 	if loc == "" {
 		return nil, fmt.Errorf("xs:include requires a schemaLocation attribute")
@@ -28,13 +52,14 @@ func parseInclude(el *Element, parentNS string, resolver SchemaResolver, visited
 	if resolver == nil {
 		return nil, fmt.Errorf("xs:include schemaLocation %q requires a schema resolver", loc)
 	}
-	key := importKey{Location: loc}
+	resolved := resolveLocation(base, loc)
+	key := importKey{Location: resolved}
 	if visited.Contains(key) {
 		return nil, nil
 	}
 	visited.Add(key)
 
-	data, err := resolver(parentNS, loc)
+	data, err := resolver(parentNS, resolved)
 	if err != nil {
 		return nil, fmt.Errorf("resolving xs:include %q: %w", loc, err)
 	}
@@ -45,7 +70,7 @@ func parseInclude(el *Element, parentNS string, resolver SchemaResolver, visited
 	if err != nil {
 		return nil, fmt.Errorf("parsing included schema %q: %w", loc, err)
 	}
-	included, err := parseSchemaDoc(doc, resolver, visited)
+	included, err := parseSchemaDoc(doc, resolved, resolver, visited)
 	if err != nil {
 		return nil, fmt.Errorf("parsing included schema %q: %w", loc, err)
 	}
@@ -74,7 +99,7 @@ func parseInclude(el *Element, parentNS string, resolver SchemaResolver, visited
 	return included, nil
 }
 
-func parseImport(el *Element, resolver SchemaResolver, visited set.Set[importKey]) (*importResult, error) {
+func parseImport(el *Element, base string, resolver SchemaResolver, visited set.Set[importKey]) (*importResult, error) {
 	ns, _ := el.Attr("namespace")
 	loc, _ := el.Attr("schemaLocation")
 	directive := &Import{Namespace: ns, SchemaLocation: loc}
@@ -85,13 +110,14 @@ func parseImport(el *Element, resolver SchemaResolver, visited set.Set[importKey
 	if resolver == nil {
 		return nil, fmt.Errorf("xs:import schemaLocation %q requires a schema resolver", loc)
 	}
-	key := importKey{Namespace: ns, Location: loc}
+	resolved := resolveLocation(base, loc)
+	key := importKey{Namespace: ns, Location: resolved}
 	if visited.Contains(key) {
 		return &importResult{directive: directive}, nil
 	}
 	visited.Add(key)
 
-	data, err := resolver(ns, loc)
+	data, err := resolver(ns, resolved)
 	if err != nil {
 		return nil, fmt.Errorf("resolving xs:import %q: %w", loc, err)
 	}
@@ -102,7 +128,7 @@ func parseImport(el *Element, resolver SchemaResolver, visited set.Set[importKey
 	if err != nil {
 		return nil, fmt.Errorf("parsing imported schema %q: %w", loc, err)
 	}
-	imported, err := parseSchemaDoc(doc, resolver, visited)
+	imported, err := parseSchemaDoc(doc, resolved, resolver, visited)
 	if err != nil {
 		return nil, fmt.Errorf("parsing imported schema %q: %w", loc, err)
 	}

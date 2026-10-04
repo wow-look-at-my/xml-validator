@@ -10,6 +10,55 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestResolveLocationIsRelativeToTheSchemaThatHoldsTheHint(t *testing.T) {
+	for _, tc := range []struct{ base, hint, want string }{
+		{"", "merge.xsd", "merge.xsd"},
+		{"a.xsd", "b.xsd", "b.xsd"},
+		{"../config/config.xsd", "merge.xsd", "../config/merge.xsd"},
+		{"sub/a.xsd", "../c.xsd", "c.xsd"},
+		{"sub/a.xsd", "/abs/c.xsd", "/abs/c.xsd"},
+		{"https://ex.com/x/a.xsd", "b.xsd", "https://ex.com/x/b.xsd"},
+		{"sub/a.xsd", "https://ex.com/b.xsd", "https://ex.com/b.xsd"},
+	} {
+		assert.Equal(t, tc.want, resolveLocation(tc.base, tc.hint), "%q against %q", tc.hint, tc.base)
+	}
+}
+
+// An included schema's own import resolves next to that schema, not next to
+// the schema the validation started from.
+func TestANestedHintResolvesNextToTheSchemaThatHoldsIt(t *testing.T) {
+	dir := t.TempDir()
+	write := func(rel, body string) string {
+		p := filepath.Join(dir, filepath.FromSlash(rel))
+		require.NoError(t, os.MkdirAll(filepath.Dir(p), 0o755))
+		require.NoError(t, os.WriteFile(p, []byte(body), 0o644))
+		return p
+	}
+	write("config/merge.xsd", `<?xml version="1.1"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:merge">
+  <xs:attribute name="op" type="xs:string"/>
+</xs:schema>`)
+	write("config/config.xsd", `<?xml version="1.1"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:c="urn:config" xmlns:m="urn:merge"
+           targetNamespace="urn:config" elementFormDefault="qualified">
+  <xs:import namespace="urn:merge" schemaLocation="merge.xsd"/>
+  <xs:complexType name="rules">
+    <xs:attribute ref="m:op"/>
+  </xs:complexType>
+</xs:schema>`)
+	xsd := write("perm/rules.xsd", `<?xml version="1.1"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:c="urn:config"
+           targetNamespace="urn:config" elementFormDefault="qualified">
+  <xs:include schemaLocation="../config/config.xsd"/>
+  <xs:element name="rules" type="c:rules"/>
+</xs:schema>`)
+	good := write("perm/good.xml", `<?xml version="1.1"?><rules xmlns="urn:config" xmlns:m="urn:merge" m:op="add"/>`)
+	bad := write("perm/bad.xml", `<?xml version="1.1"?><rules xmlns="urn:config" extra="x"/>`)
+
+	require.NoError(t, ValidateWithSchemaFile(good, xsd))
+	require.Error(t, ValidateWithSchemaFile(bad, xsd), "the nested schema loaded, so it still rejects")
+}
+
 func TestSchemaImportWithoutLocation(t *testing.T) {
 	xsd := `<?xml version="1.0"?>
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
