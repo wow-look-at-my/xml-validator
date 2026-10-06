@@ -165,7 +165,7 @@ tests:
 		w="$(mktemp -d)"
 		: > "$w/orig.bin"
 		for i in $(seq 0 255); do printf "\\$(printf '%03o' "$i")" >> "$w/orig.bin"; done
-		{ printf '<?xml version="1.1"?><blob>'; base64 -w0 < "$w/orig.bin"; printf '</blob>'; } > "$w/b64.xml"
+		{ printf '<?xml version="1.1"?><blob>'; base64 < "$w/orig.bin" | tr -d '\n'; printf '</blob>'; } > "$w/b64.xml"
 		"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema {inputs.b64-256.xsd} "$w/b64.xml"
 		sed -e 's|.*<blob>||' -e 's|</blob>.*||' "$w/b64.xml" | base64 -d > "$w/dec.bin"
 		echo "xml $(wc -c < "$w/b64.xml" | tr -d " ") bytes, decoded $(wc -c < "$w/dec.bin" | tr -d " ") bytes"
