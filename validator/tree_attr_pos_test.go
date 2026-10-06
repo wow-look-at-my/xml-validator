@@ -9,8 +9,8 @@ import (
 )
 
 // Attributes carry their own position so a consumer reporting a problem with an
-// attribute's value can point at that attribute rather than at the element,
-// which on a multi-attribute element is the wrong place to look.
+// attribute's value can point at that attribute rather than at the element.
+// Which on a multi-attribute element is the wrong place to look.
 func TestAttrPositions(t *testing.T) {
 	src := `<?xml version="1.1" encoding="UTF-8"?>
 <root>

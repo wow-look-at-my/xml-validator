@@ -61,7 +61,7 @@ func Execute() {
 
 // A run reports a problem by returning it, and cobra turns that into the exit
 // status. Exiting from in here instead would leave these functions unreachable
-// from a test, which is how the CLI ended up covered only by its dats suites.
+// from a test, which is how the CLI ended up covered only. By its dats suites.
 func runWellFormedness(cmd *cobra.Command, args []string) error {
 	input := cmd.InOrStdin()
 	if len(args) > 0 {

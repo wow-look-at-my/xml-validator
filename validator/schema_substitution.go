@@ -100,7 +100,7 @@ func blocksSubstitution(head *ElementDecl, s *Schema) bool {
 
 // checkSubstitutionType enforces the rule that makes a substitution
 // meaningful: the member's type must be the head's or derive from it. The
-// check stays quiet where it cannot see the whole chain -- an unresolved
+// check stays quiet where it cannot see the whole chain. An unresolved
 // imported type is unknown, not wrong, and rejecting it would fail a schema
 // that is fine.
 func checkSubstitutionType(member, head *ElementDecl, s *Schema) error {
@@ -181,8 +181,8 @@ func typeLabel(t Type) string {
 }
 
 // allSlotFor finds the element particle a child fills in an all group, and the
-// declaration to validate it against: the particle's own, or the member
-// substituting for it.
+// declaration to validate it against: the particle's own, or the member.
+// Substituting for it.
 func (sv *schemaValidator) allSlotFor(child *Element, items []Particle, declMap map[string]*ElementDecl) (slot, decl *ElementDecl) {
 	if ed, ok := declMap[child.Local]; ok {
 		return ed, ed
@@ -200,7 +200,7 @@ func (sv *schemaValidator) allSlotFor(child *Element, items []Particle, declMap 
 }
 
 // substituteFor returns the declaration to validate child against where decl is
-// expected: decl itself when the names match, or the substitution group member
+// expected. Decl itself when the names match, or the substitution group member
 // standing in for it. Substitution replaces a REFERENCE to a global element, so
 // a local declaration matches by name only.
 func (sv *schemaValidator) substituteFor(child *Element, decl *ElementDecl) *ElementDecl {

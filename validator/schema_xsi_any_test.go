@@ -19,7 +19,7 @@ func TestSchemaXSIAttributesAccepted(t *testing.T) {
 }
 
 // TestSchemaAnyInAllGroupWrongNamespace covers the namespace-constraint
-// branch of xs:any: an element whose namespace does not match the wildcard
+// branch of xs:any. An element whose namespace does not match the wildcard
 // is "unexpected" regardless of whether anything else is declared.
 func TestSchemaAnyInAllGroupWrongNamespace(t *testing.T) {
 	xsd := `<?xml version="1.0"?>
@@ -76,7 +76,7 @@ func TestSchemaAnyNamespaceTargetNamespace(t *testing.T) {
 
 // TestWildcardMatchesNS pins the namespace-constraint matcher for every
 // supported form (##any, ##local, ##other, ##targetNamespace, explicit URI,
-// multi-token). The matcher is shared by xs:any and xs:anyAttribute, so this
+// multi-token). The matcher is shared by xs:any and xs:anyAttribute. This
 // keeps coverage even though the wildcard tests above only exercise a few
 // constraint values directly.
 func TestWildcardMatchesNS(t *testing.T) {

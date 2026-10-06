@@ -41,7 +41,7 @@ function corpusCategories(root) {
 }
 
 // Without one, each category is a find(1) expression over the machine's own
-// files, so the corpus is still real data rather than something invented here.
+// files. The corpus is still real data rather than something invented here.
 const FIND_CATEGORIES = {
 	'Go source': ['/home/user/xml-validator', '-name', '*.go'],
 	'JavaScript/TS': ['/opt', '-name', '*.js', '-o', '-name', '*.ts'],
@@ -133,7 +133,7 @@ function utf8Mode(payload) {
 	return Buffer.from(parts.join(''), 'utf8');
 }
 
-// Byte mode carrying TEXT rather than bytes: the payload is decoded, and each
+// Byte mode carrying TEXT rather than bytes: the payload is decoded. Each
 // character it holds is written as one byte where Latin-1 has one, and as a
 // reference where it does not. This is the mode's intended use, and the
 // column above is the same mode asked to carry arbitrary bytes.

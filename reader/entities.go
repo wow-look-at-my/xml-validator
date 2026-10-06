@@ -2,8 +2,8 @@ package reader
 
 // PredefinedEntity resolves those entity references XML defines without a DTD.
 // The name is passed as the runes it occupies in the input rather than as a
-// string, because building the string first allocated on every `&amp;` in the
-// document -- see docs/encodings.md.
+// string. This is because building the string first allocated on every `&amp;`
+// in the document -- see docs/encodings.md.
 func PredefinedEntity(name []rune) (rune, bool) {
 	switch {
 	case runesAre(name, "amp"):

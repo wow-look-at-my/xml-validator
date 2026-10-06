@@ -30,8 +30,8 @@ func TestParsesElementsAttributesAndText(t *testing.T) {
 	assert.Equal(t, "two", kids[2].TextContent())
 }
 
-// Positions are what a consumer reports a problem with, and an attribute has
-// its own: on a multi-attribute element it is not where the element starts.
+// Positions are what a consumer reports a problem with. An attribute has its
+// own: on a multi-attribute element it is not where the element starts.
 func TestNodesCarryTheirPosition(t *testing.T) {
 	doc, err := reader.ParseTree(strings.NewReader(decl + "\n<r\n  first=\"1\"\n  second=\"2\"/>"))
 	require.NoError(t, err)

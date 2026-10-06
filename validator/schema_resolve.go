@@ -214,7 +214,8 @@ func resolveContentModel(cm ContentModel, s *Schema, seen resolving) error {
 // resolveAttrRef fills a use="..." reference from the global attribute it names.
 // The reference contributes only whether the attribute is required: the name,
 // namespace, and type are the global declaration's, which is what makes a
-// qualified attribute in an instance document resolvable at all.
+// qualified attribute. That attribute is in an instance document resolvable at
+// all.
 func resolveAttrRef(ad *AttrDecl, s *Schema) error {
 	if ad.Ref == "" {
 		return nil
@@ -255,7 +256,7 @@ func resolveAttrType(ad *AttrDecl, s *Schema) error {
 // resolveSimpleTypeRefs links a simple type to its base type, its list item
 // type, and its union members. Validation walks those links to apply the facets
 // a type inherits as well as the ones it states, so a derivation cycle would
-// recurse forever and fails here instead.
+// recurse forever. The derivation cycle fails here instead.
 func resolveSimpleTypeRefs(st *SimpleType, s *Schema, path set.Set[*SimpleType]) error {
 	if st == nil {
 		return nil

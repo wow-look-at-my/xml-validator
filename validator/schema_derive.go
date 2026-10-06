@@ -7,13 +7,13 @@ import (
 )
 
 // A content model is written once and used from several places: a named group
-// is referenced by many types, and a derived type states only its own half of
-// a declaration. Resolution flattens both into the model the validator walks,
+// is referenced by many types. A derived type states only its own half of a
+// declaration. Resolution flattens both into the model the validator walks,
 // so matching never has to know how a declaration was assembled.
 //
 // Both are COPIED rather than shared. A reference states its own occurrence
-// counts, and resolution fills in element refs in place, so uses of one
-// group would otherwise overwrite each other's counts.
+// counts. Resolution fills in element refs in place, so uses of one group
+// would otherwise overwrite each other's counts.
 
 // expandGroupRefs replaces every GroupRef in a content model with a copy of
 // the group it names. stack carries the groups being expanded: a group that
@@ -75,7 +75,7 @@ func expandGroupRef(gr *GroupRef, s *Schema, stack set.Set[string]) (Particle, e
 
 // resolveDerivation folds a complexContent base into the type deriving from it.
 // An extension's own content follows the base's, which is the order an instance
-// document has to be in; a restriction states its content in full, so only the
+// document has to be in. A restriction states its content in full, so only the
 // base's attributes carry over, and only where the restriction did not restate
 // or prohibit them.
 func resolveDerivation(ct *ComplexType, s *Schema, seen resolving) error {

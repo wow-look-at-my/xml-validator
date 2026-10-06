@@ -111,8 +111,8 @@ func declaration(e Encoding) string {
 }
 
 // emit writes the document's characters as the bytes its encoding calls for.
-// In byte mode that is one byte each, which is the whole point of the mode;
-// writing the string as Go holds it would encode them as UTF-8 instead.
+// In byte mode that is one byte each, which is the whole point of the mode.
+// Writing the string as Go holds it would encode them as UTF-8 instead.
 func emit(w io.Writer, doc string, e Encoding) error {
 	if e != Bytes {
 		_, err := io.WriteString(w, doc)

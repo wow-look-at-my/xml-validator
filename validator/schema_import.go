@@ -24,9 +24,9 @@ type importResult struct {
 }
 
 // resolveLocation resolves a schemaLocation hint against the location of the
-// schema that holds it, as XSD resolves a URI reference against the base URI
-// of its document. An absolute hint, or a hint in the top-level schema, is
-// returned as written.
+// schema that holds it, as XSD resolves a URI reference against the base.
+// URI of its document. An absolute hint, or a hint in the top-level schema,
+// is returned as written.
 func resolveLocation(base, hint string) string {
 	if base == "" || path.IsAbs(hint) || filepath.IsAbs(hint) {
 		return hint
@@ -135,11 +135,11 @@ func parseImport(el *Element, base string, resolver SchemaResolver, visited set.
 	return &importResult{directive: directive, imported: imported}, nil
 }
 
-// mergeImportedSchema folds src into dst. Because the validator resolves
-// components by local name only, any name that is already defined in dst
-// (whether by the main schema or by an earlier import) is a hard error --
-// silently dropping the second definition would let users validate against
-// an incomplete schema set without any signal.
+// mergeImportedSchema folds src into dst. Any name that is already defined
+// in dst (whether by the main schema or by an earlier import) is a hard
+// error -- silently dropping the second definition would let users
+// validate against an incomplete. Schema set without any signal. This
+// happens because the validator resolves components by local name only.
 func mergeImportedSchema(dst, src *Schema) error {
 	for name, ed := range src.Elements {
 		if _, exists := dst.Elements[name]; exists {

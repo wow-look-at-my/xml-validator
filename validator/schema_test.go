@@ -48,8 +48,8 @@ func TestSchemaUndeclaredRoot(t *testing.T) {
 
 // A root is matched by namespace and local name together, the same as any
 // other element. Sharing a local name with a declared element is a
-// coincidence, and taking it for a match validated a document written against
-// a whole other vocabulary -- the thing a caller reaches for a schema to rule
+// coincidence. Taking it for a match validated a document written against a
+// whole other vocabulary -- the thing a caller reaches for a schema to rule
 // out.
 func TestSchemaRootInAnotherNamespaceIsRejected(t *testing.T) {
 	xsd := `<?xml version="1.0"?>
