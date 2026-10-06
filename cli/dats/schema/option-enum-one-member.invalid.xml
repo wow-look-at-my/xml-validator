@@ -1,0 +1,8 @@
+<?xml version="1.1" encoding="UTF-8"?>
+<!-- rejects: attribute "type" on element "option": value "enum(only)" does not match pattern -->
+<catalog xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="schema.xsd">
+	<entry name="a">
+		<body/>
+		<option name="x" type="enum(only)"/>
+	</entry>
+</catalog>

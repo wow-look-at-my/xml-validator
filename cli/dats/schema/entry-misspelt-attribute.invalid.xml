@@ -1,0 +1,7 @@
+<?xml version="1.1" encoding="UTF-8"?>
+<!-- rejects: unexpected attribute "nmae" on element "entry" -->
+<catalog xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="schema.xsd">
+	<entry nmae="X">
+		<body/>
+	</entry>
+</catalog>

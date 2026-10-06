@@ -1,0 +1,8 @@
+<?xml version="1.1" encoding="UTF-8"?>
+<!-- rejects: element "body" appears too many times (max 1) -->
+<catalog xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="schema.xsd">
+	<entry name="a">
+		<body/>
+		<body/>
+	</entry>
+</catalog>

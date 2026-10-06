@@ -1,0 +1,5 @@
+<?xml version="1.1" encoding="UTF-8"?>
+<!-- rejects: unexpected attribute "foreground" on element "style" -->
+<catalog xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="schema.xsd">
+	<style name="s" foreground="#fff"/>
+</catalog>

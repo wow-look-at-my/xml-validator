@@ -1,0 +1,7 @@
+<?xml version="1.1" encoding="UTF-8"?>
+<!-- rejects: unexpected element "palette" in all group of "theme" -->
+<catalog xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="schema.xsd">
+	<theme name="t">
+		<palette/>
+	</theme>
+</catalog>

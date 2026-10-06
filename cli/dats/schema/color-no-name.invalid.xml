@@ -1,0 +1,7 @@
+<?xml version="1.1" encoding="UTF-8"?>
+<!-- rejects: required attribute "name" is missing on element "color" -->
+<catalog xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="schema.xsd">
+	<theme name="t">
+		<color light="#fff" dark="#000"/>
+	</theme>
+</catalog>

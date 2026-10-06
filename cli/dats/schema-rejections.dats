@@ -1,4 +1,4 @@
-# The documents tml.schema.xsd must REJECT, one test each.
+# The documents dats/schema/schema.xsd must REJECT, one test each.
 #
 # A validator that accepts every document passes a suite of valid ones. Each
 # case here names the error its fixture must produce, so a rejection by the
@@ -8,219 +8,219 @@ setup:
 	- test -x "$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator"
 
 tests:
-	- desc: a misspelt attribute on Component
-	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema dats/schema/tml.schema.xsd dats/schema/invalid/component-misspelt-attribute.tml'
+	- desc: a misspelt attribute on entry
+	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema dats/schema/schema.xsd dats/schema/entry-misspelt-attribute.invalid.xml'
 	  exit: 1
 	  outputs:
 		stderr:
-			- 'unexpected attribute "nmae" on element "Component"'
+			- 'unexpected attribute "nmae" on element "entry"'
 
-	- desc: a Component nested in a Component
-	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema dats/schema/tml.schema.xsd dats/schema/invalid/component-nested.tml'
+	- desc: an entry nested in an entry
+	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema dats/schema/schema.xsd dats/schema/entry-nested.invalid.xml'
 	  exit: 1
 	  outputs:
 		stderr:
-			- 'unexpected element "Component" in all group of "Component"'
+			- 'unexpected element "entry" in all group of "entry"'
 
-	- desc: a Component with no name
-	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema dats/schema/tml.schema.xsd dats/schema/invalid/component-no-name.tml'
+	- desc: an entry with no name
+	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema dats/schema/schema.xsd dats/schema/entry-no-name.invalid.xml'
 	  exit: 1
 	  outputs:
 		stderr:
-			- 'required attribute "name" is missing on element "Component"'
+			- 'required attribute "name" is missing on element "entry"'
 
-	- desc: a Component with no Template
-	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema dats/schema/tml.schema.xsd dats/schema/invalid/component-no-template.tml'
+	- desc: an entry with no body
+	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema dats/schema/schema.xsd dats/schema/entry-no-body.invalid.xml'
 	  exit: 1
 	  outputs:
 		stderr:
-			- 'element "Component" requires at least 1 occurrence(s) of "Template", got 0'
+			- 'element "entry" requires at least 1 occurrence(s) of "body", got 0'
 
-	- desc: a Component with two Templates
-	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema dats/schema/tml.schema.xsd dats/schema/invalid/component-two-templates.tml'
+	- desc: an entry with two bodies
+	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema dats/schema/schema.xsd dats/schema/entry-two-bodies.invalid.xml'
 	  exit: 1
 	  outputs:
 		stderr:
-			- 'element "Template" appears too many times (max 1)'
+			- 'element "body" appears too many times (max 1)'
 
-	- desc: an unknown child of Component
-	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema dats/schema/tml.schema.xsd dats/schema/invalid/component-unknown-child.tml'
+	- desc: an unknown child of entry
+	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema dats/schema/schema.xsd dats/schema/entry-unknown-child.invalid.xml'
 	  exit: 1
 	  outputs:
 		stderr:
-			- 'unexpected element "Slots" in all group of "Component"'
+			- 'unexpected element "extra" in all group of "entry"'
 
-	- desc: a DataTemplate with no name
-	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema dats/schema/tml.schema.xsd dats/schema/invalid/datatemplate-no-name.tml'
+	- desc: a section with no name
+	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema dats/schema/schema.xsd dats/schema/section-no-name.invalid.xml'
 	  exit: 1
 	  outputs:
 		stderr:
-			- 'required attribute "name" is missing on element "DataTemplate"'
+			- 'required attribute "name" is missing on element "section"'
 
-	- desc: a DataTemplate with no Template
-	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema dats/schema/tml.schema.xsd dats/schema/invalid/datatemplate-no-template.tml'
+	- desc: a section with no body
+	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema dats/schema/schema.xsd dats/schema/section-no-body.invalid.xml'
 	  exit: 1
 	  outputs:
 		stderr:
-			- 'element "DataTemplate" requires at least 1 occurrence(s) of "Template", got 0'
+			- 'element "section" requires at least 1 occurrence(s) of "body", got 0'
 
-	- desc: an Import with no src
-	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema dats/schema/tml.schema.xsd dats/schema/invalid/import-no-src.tml'
+	- desc: an include with no src
+	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema dats/schema/schema.xsd dats/schema/include-no-src.invalid.xml'
 	  exit: 1
 	  outputs:
 		stderr:
-			- 'required attribute "src" is missing on element "Import"'
+			- 'required attribute "src" is missing on element "include"'
 
-	- desc: an unknown attribute on Import
-	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema dats/schema/tml.schema.xsd dats/schema/invalid/import-unknown-attribute.tml'
+	- desc: an unknown attribute on include
+	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema dats/schema/schema.xsd dats/schema/include-unknown-attribute.invalid.xml'
 	  exit: 1
 	  outputs:
 		stderr:
-			- 'unexpected attribute "from" on element "Import"'
+			- 'unexpected attribute "from" on element "include"'
 
 	- desc: an enum type with one member
-	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema dats/schema/tml.schema.xsd dats/schema/invalid/property-enum-one-member.tml'
+	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema dats/schema/schema.xsd dats/schema/option-enum-one-member.invalid.xml'
 	  exit: 1
 	  outputs:
 		stderr:
-			- 'attribute "type" on element "Property": value "enum(only)" does not match pattern'
+			- 'attribute "type" on element "option": value "enum(only)" does not match pattern'
 
-	- desc: a Property with no name
-	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema dats/schema/tml.schema.xsd dats/schema/invalid/property-no-name.tml'
+	- desc: an option with no name
+	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema dats/schema/schema.xsd dats/schema/option-no-name.invalid.xml'
 	  exit: 1
 	  outputs:
 		stderr:
-			- 'required attribute "name" is missing on element "Property"'
+			- 'required attribute "name" is missing on element "option"'
 
-	- desc: a Property with no type
-	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema dats/schema/tml.schema.xsd dats/schema/invalid/property-no-type.tml'
+	- desc: an option with no type
+	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema dats/schema/schema.xsd dats/schema/option-no-type.invalid.xml'
 	  exit: 1
 	  outputs:
 		stderr:
-			- 'required attribute "type" is missing on element "Property"'
+			- 'required attribute "type" is missing on element "option"'
 
-	- desc: a Property that is required and defaulted
-	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema dats/schema/tml.schema.xsd dats/schema/invalid/property-required-and-default.tml'
+	- desc: an option that is required and defaulted
+	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema dats/schema/schema.xsd dats/schema/option-required-and-default.invalid.xml'
 	  exit: 1
 	  outputs:
 		stderr:
-			- 'unexpected attribute "default" on element "Property"'
+			- 'unexpected attribute "default" on element "option"'
 
 	- desc: a required attribute that is not a bool
-	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema dats/schema/tml.schema.xsd dats/schema/invalid/property-required-not-a-bool.tml'
+	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema dats/schema/schema.xsd dats/schema/option-required-not-a-bool.invalid.xml'
 	  exit: 1
 	  outputs:
 		stderr:
-			- 'attribute "required" on element "Property": value "yes" is not one of the allowed values: true, false'
+			- 'attribute "required" on element "option": value "yes" is not one of the allowed values: true, false'
 
-	- desc: an unknown attribute on Property
-	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema dats/schema/tml.schema.xsd dats/schema/invalid/property-unknown-attribute.tml'
+	- desc: an unknown attribute on option
+	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema dats/schema/schema.xsd dats/schema/option-unknown-attribute.invalid.xml'
 	  exit: 1
 	  outputs:
 		stderr:
-			- 'unexpected attribute "bogus" on element "Property"'
+			- 'unexpected attribute "bogus" on element "option"'
 
-	- desc: an unknown property type
-	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema dats/schema/tml.schema.xsd dats/schema/invalid/property-unknown-type.tml'
+	- desc: an unknown option type
+	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema dats/schema/schema.xsd dats/schema/option-unknown-type.invalid.xml'
 	  exit: 1
 	  outputs:
 		stderr:
-			- 'attribute "type" on element "Property": value "number" does not match pattern'
+			- 'attribute "type" on element "option": value "number" does not match pattern'
 
-	- desc: a root that is neither a Component nor a Theme
-	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema dats/schema/tml.schema.xsd dats/schema/invalid/root-not-a-definition.tml'
+	- desc: a root the schema does not declare
+	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema dats/schema/schema.xsd dats/schema/root-not-a-definition.invalid.xml'
 	  exit: 1
 	  outputs:
 		stderr:
-			- 'element "Widget" is not declared as a global element in the schema'
+			- 'element "gadget" is not declared as a global element in the schema'
 
 	- desc: an align outside its vocabulary
-	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema dats/schema/tml.schema.xsd dats/schema/invalid/style-bad-align.tml'
+	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema dats/schema/schema.xsd dats/schema/style-bad-align.invalid.xml'
 	  exit: 1
 	  outputs:
 		stderr:
-			- 'attribute "align" on element "Style": value "middle" does not match pattern'
+			- 'attribute "align" on element "style": value "middle" does not match pattern'
 
 	- desc: a style bool that is not true or false
-	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema dats/schema/tml.schema.xsd dats/schema/invalid/style-bad-bool.tml'
+	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema dats/schema/schema.xsd dats/schema/style-bad-bool.invalid.xml'
 	  exit: 1
 	  outputs:
 		stderr:
-			- 'attribute "bold" on element "Style": value "yes" does not match pattern'
+			- 'attribute "bold" on element "style": value "yes" does not match pattern'
 
-	- desc: a Style with no name
-	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema dats/schema/tml.schema.xsd dats/schema/invalid/style-no-name.tml'
+	- desc: a style with no name
+	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema dats/schema/schema.xsd dats/schema/style-no-name.invalid.xml'
 	  exit: 1
 	  outputs:
 		stderr:
-			- 'required attribute "name" is missing on element "Style"'
+			- 'required attribute "name" is missing on element "style"'
 
-	- desc: a thickness of three values
-	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema dats/schema/tml.schema.xsd dats/schema/invalid/style-three-value-thickness.tml'
+	- desc: a padding of three values
+	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema dats/schema/schema.xsd dats/schema/style-three-value-padding.invalid.xml'
 	  exit: 1
 	  outputs:
 		stderr:
-			- 'attribute "padding" on element "Style": value "1 2 3" does not match pattern'
+			- 'attribute "padding" on element "style": value "1 2 3" does not match pattern'
 
 	- desc: an unknown style attribute
-	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema dats/schema/tml.schema.xsd dats/schema/invalid/style-unknown-attribute.tml'
+	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema dats/schema/schema.xsd dats/schema/style-unknown-attribute.invalid.xml'
 	  exit: 1
 	  outputs:
 		stderr:
-			- 'unexpected attribute "foreground" on element "Style"'
+			- 'unexpected attribute "foreground" on element "style"'
 
 	- desc: a border outside its vocabulary
-	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema dats/schema/tml.schema.xsd dats/schema/invalid/style-unknown-border.tml'
+	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema dats/schema/schema.xsd dats/schema/style-unknown-border.invalid.xml'
 	  exit: 1
 	  outputs:
 		stderr:
-			- 'attribute "border" on element "Style": value "fancy" does not match pattern'
+			- 'attribute "border" on element "style": value "fancy" does not match pattern'
 
-	- desc: a Theme with no name
-	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema dats/schema/tml.schema.xsd dats/schema/invalid/theme-no-name.tml'
+	- desc: a theme with no name
+	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema dats/schema/schema.xsd dats/schema/theme-no-name.invalid.xml'
 	  exit: 1
 	  outputs:
 		stderr:
-			- 'required attribute "name" is missing on element "Theme"'
+			- 'required attribute "name" is missing on element "theme"'
 
-	- desc: an unknown child of Theme
-	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema dats/schema/tml.schema.xsd dats/schema/invalid/theme-unknown-child.tml'
+	- desc: an unknown child of theme
+	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema dats/schema/schema.xsd dats/schema/theme-unknown-child.invalid.xml'
 	  exit: 1
 	  outputs:
 		stderr:
-			- 'unexpected element "Palette" in all group of "Theme"'
+			- 'unexpected element "palette" in all group of "theme"'
 
-	- desc: a Token with no name
-	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema dats/schema/tml.schema.xsd dats/schema/invalid/token-no-name.tml'
+	- desc: a color with no name
+	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema dats/schema/schema.xsd dats/schema/color-no-name.invalid.xml'
 	  exit: 1
 	  outputs:
 		stderr:
-			- 'required attribute "name" is missing on element "Token"'
+			- 'required attribute "name" is missing on element "color"'
 
-	- desc: a Token with no value at all
-	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema dats/schema/tml.schema.xsd dats/schema/invalid/token-no-value.tml'
+	- desc: a color with no value at all
+	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema dats/schema/schema.xsd dats/schema/color-no-value.invalid.xml'
 	  exit: 1
 	  outputs:
 		stderr:
-			- 'required attribute "light" is missing on element "Token"'
+			- 'required attribute "light" is missing on element "color"'
 
-	- desc: a Token with dark and no light
-	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema dats/schema/tml.schema.xsd dats/schema/invalid/token-only-dark.tml'
+	- desc: a color with dark and no light
+	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema dats/schema/schema.xsd dats/schema/color-only-dark.invalid.xml'
 	  exit: 1
 	  outputs:
 		stderr:
-			- 'required attribute "light" is missing on element "Token"'
+			- 'required attribute "light" is missing on element "color"'
 
-	- desc: a Token with light and no dark
-	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema dats/schema/tml.schema.xsd dats/schema/invalid/token-only-light.tml'
+	- desc: a color with light and no dark
+	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema dats/schema/schema.xsd dats/schema/color-only-light.invalid.xml'
 	  exit: 1
 	  outputs:
 		stderr:
-			- 'required attribute "dark" is missing on element "Token"'
+			- 'required attribute "dark" is missing on element "color"'
 
-	- desc: a Token with a value and a pair
-	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema dats/schema/tml.schema.xsd dats/schema/invalid/token-value-and-pair.tml'
+	- desc: a color with a value and a pair
+	  cmd: '"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema dats/schema/schema.xsd dats/schema/color-value-and-pair.invalid.xml'
 	  exit: 1
 	  outputs:
 		stderr:
-			- 'unexpected attribute "light" on element "Token"'
+			- 'unexpected attribute "light" on element "color"'
