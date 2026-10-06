@@ -12,7 +12,7 @@ tests:
 		w="$(mktemp -d)"
 		printf %b '<?xml version="1.1" encoding="ISO-8859-1"?><r>caf\351 na\357ve</r>' > "$w/latin1.xml"
 		"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" "$w/latin1.xml"
-		echo "document $(wc -c < "$w/latin1.xml") bytes"
+		echo "document $(wc -c < "$w/latin1.xml" | tr -d " ") bytes"
 	  outputs:
 		stdout:
 			- "valid XML 1.1 document"
@@ -27,7 +27,7 @@ tests:
 		w="$(mktemp -d)"
 		printf %b '<?xml version="1.1"?><r>caf\303\251 na\303\257ve</r>' > "$w/utf8.xml"
 		"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" "$w/utf8.xml"
-		echo "document $(wc -c < "$w/utf8.xml") bytes"
+		echo "document $(wc -c < "$w/utf8.xml" | tr -d " ") bytes"
 	  outputs:
 		stdout:
 			- "valid XML 1.1 document"
@@ -92,7 +92,7 @@ tests:
 		done
 		printf '</r>' >> "$w/all.xml"
 		"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema {inputs.len256.xsd} "$w/all.xml"
-		echo "document $(wc -c < "$w/all.xml") bytes for 256 characters"
+		echo "document $(wc -c < "$w/all.xml" | tr -d " ") bytes for 256 characters"
 	  inputs:
 		files:
 			len256.xsd: |

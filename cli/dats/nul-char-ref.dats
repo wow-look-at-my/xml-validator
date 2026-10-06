@@ -3,7 +3,7 @@
 # user runs, not only for the library.
 #
 # $GO_TOOLCHAIN_DATS_BUILD_DIR holds copies of the binaries this build just
-# made. It is read-only inside the sandbox, and the dats phase assimilates a
+# made. It is read-only inside the sandbox. The dats phase assimilates a
 # cosmo APE copy as it stages it, so these tests exec that path in place.
 # see docs/nul-char-ref.md
 
@@ -34,7 +34,7 @@ tests:
 			- "valid XML 1.1 document"
 
 	- desc: the validated file contains no NUL byte
-	  cmd: 'printf "%s %s\n" "$(wc -c < {inputs.nul.xml})" "$(tr -d "\000" < {inputs.nul.xml} | wc -c)"'
+	  cmd: 'printf "%s %s\n" "$(wc -c < {inputs.nul.xml} | tr -d " ")" "$(tr -d "\000" < {inputs.nul.xml} | wc -c | tr -d " ")"'
 	  inputs:
 		files:
 			nul.xml: |
@@ -141,8 +141,8 @@ tests:
 		  printf '</r>'; } > "$w/enc.xml"
 		"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" "$w/enc.xml"
 		grep -o '&#[0-9]*;' "$w/enc.xml" | tr -cd '0-9\n' | while read -r n; do printf "\\$(printf '%03o' "$n")"; done > "$w/dec.bin"
-		echo "sizes: orig $(wc -c < "$w/orig.bin") xml $(wc -c < "$w/enc.xml") decoded $(wc -c < "$w/dec.bin")"
-		echo "bytes outside printable ASCII in the xml: $(LC_ALL=C tr -d '\040-\176' < "$w/enc.xml" | wc -c)"
+		echo "sizes: orig $(wc -c < "$w/orig.bin" | tr -d " ") xml $(wc -c < "$w/enc.xml" | tr -d " ") decoded $(wc -c < "$w/dec.bin" | tr -d " ")"
+		echo "bytes outside printable ASCII in the xml: $(LC_ALL=C tr -d '\040-\176' < "$w/enc.xml" | wc -c | tr -d " ")"
 		echo "orig   $(sha256sum < "$w/orig.bin")"
 		echo "decode $(sha256sum < "$w/dec.bin")"
 		test "$(sha256sum < "$w/orig.bin")" = "$(sha256sum < "$w/dec.bin")"
@@ -168,7 +168,7 @@ tests:
 		{ printf '<?xml version="1.1"?><blob>'; base64 -w0 < "$w/orig.bin"; printf '</blob>'; } > "$w/b64.xml"
 		"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema {inputs.b64-256.xsd} "$w/b64.xml"
 		sed -e 's|.*<blob>||' -e 's|</blob>.*||' "$w/b64.xml" | base64 -d > "$w/dec.bin"
-		echo "xml $(wc -c < "$w/b64.xml") bytes, decoded $(wc -c < "$w/dec.bin") bytes"
+		echo "xml $(wc -c < "$w/b64.xml" | tr -d " ") bytes, decoded $(wc -c < "$w/dec.bin" | tr -d " ") bytes"
 		test "$(sha256sum < "$w/orig.bin")" = "$(sha256sum < "$w/dec.bin")"
 		echo base64 roundtrip identical
 	  inputs:
@@ -201,7 +201,7 @@ tests:
 		{ printf '<?xml version="1.1"?><blob>'; od -An -v -tx1 "$w/orig.bin" | tr -d ' \n' | tr 'a-f' 'A-F'; printf '</blob>'; } > "$w/hex.xml"
 		"$GO_TOOLCHAIN_DATS_BUILD_DIR/xml-validator" --schema {inputs.hex-256.xsd} "$w/hex.xml"
 		sed -e 's|.*<blob>||' -e 's|</blob>.*||' "$w/hex.xml" | tr -d '\n' | sed 's/../&\n/g' | grep . | while read -r h; do printf "\\$(printf '%03o' "$((16#$h))")"; done > "$w/dec.bin"
-		echo "xml $(wc -c < "$w/hex.xml") bytes, decoded $(wc -c < "$w/dec.bin") bytes"
+		echo "xml $(wc -c < "$w/hex.xml" | tr -d " ") bytes, decoded $(wc -c < "$w/dec.bin" | tr -d " ") bytes"
 		test "$(sha256sum < "$w/orig.bin")" = "$(sha256sum < "$w/dec.bin")"
 		echo hex roundtrip identical
 	  inputs:
