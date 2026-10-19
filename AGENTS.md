@@ -23,7 +23,7 @@ Each module `replace`s its siblings to the directory they are in. A build then u
 go-toolchain
 ```
 
-Run it at the repository root and it walks every module: tidy, vet, tests with coverage, the build, and the dats suites in `cli/`. The CLI binary lands at `cli/build/xml-validator`.
+Run it at the repository root. It walks every module: tidy, vet, tests with coverage, the build, and the dats suites in `cli/`. The CLI binary lands at `cli/build/xml-validator`.
 
 CI gates one module per job instead, each with `working-directory:`. The action runs `go-toolchain matrix`, which builds the module it stands in and does not walk a tree of modules. Only the `cli` job publishes.
 
@@ -69,12 +69,12 @@ Tree nodes carry positions too: `Element` and `Attr` both have `Line` and `Col`.
 - `&#0;` -- one deliberate deviation from the XML 1.1 `Char` production, which starts at `#x1`. A reference that resolves to U+0000 is accepted and carried through to the parsed value. A literal NUL byte and a lone surrogate are still rejected. See `IsCharRefValue` in `validator/chars.go`, and `docs/nul-char-ref.md`. The reference is not a NUL byte and not a document terminator, proved at both the library and the CLI layer.
 - XSD schema validation (`--schema`):
   - Element declarations (global, local, refs)
-  - Root matching by namespace AND local name. A root in another namespace, or in none, is a different element from the declared one. It is rejected by name. A shared local name is a coincidence, and taking it for a match validated a document written against another vocabulary
+  - Root matching by namespace AND local name. A root in another namespace, or in none, is a different element from the declared one. Name rejects it. A shared local name is a coincidence, and taking it for a match validated a document written against another vocabulary
   - Complex types (sequence, choice, all content models)
   - Simple types (restriction with facets, list, union)
   - Attributes (required/optional/prohibited, type checking, fixed values)
   - Global `xs:attribute` declarations and `xs:attribute ref=`, matched by namespace AND local name. A qualified attribute resolves to the global declaration in its own namespace. An imported vocabulary's attributes are therefore type-checked. An undeclared one is an error rather than something a wildcard waves through
-  - Named types, groups, attribute groups. An `xs:group ref` is replaced by a copy of the group's content model, carrying the occurrence counts stated at the reference
+  - Named types, groups, attribute groups. A copy of the group's content model replaces an `xs:group ref`, carrying the occurrence counts stated at the reference
   - simpleContent and complexContent (extension/restriction). An extension's content follows its base's, and its attributes add to the base's. A restriction states its own content model. It still inherits the base's attributes where it does not restate them
   - 35+ built-in XSD types (string, integer, boolean, decimal, date, etc.)
   - Facets: enumeration, pattern, minLength, maxLength, length, min/maxInclusive, min/maxExclusive, totalDigits, fractionDigits. An attribute value and element text take the same path, so every facet constrains both. A restriction of a restriction enforces the facets it inherits as well as the ones it states. On a list the length facets count items rather than characters. On anything else a length facet counts characters, and octets for `xs:hexBinary` and `xs:base64Binary` -- never the bytes of the UTF-8 encoding. A facet value that is not a non-negative integer is an error, not a length of 0
@@ -96,7 +96,7 @@ Tree nodes carry positions too: `Element` and `Attr` both have `Line` and `Col`.
 - DOCTYPE declarations
 - General entity references (beyond the 5 predefined)
 - Any version other than `1.0` and `1.1`
-- Encodings other than UTF-8 and ISO-8859-1. UTF-16 inputs and BOMs are rejected, and any other encoding declaration is rejected by name
+- Encodings other than UTF-8 and ISO-8859-1. Name rejects uTF-16 inputs and BOMs
 - xs:redefine, xs:override
 - xs:notation
 - Any unrecognized child of an `xs:element`, and any `xs:alternative` test outside the subset XSD requires. Any selector or field XPath outside the supported subset is an error too: a constraint either runs or says it cannot

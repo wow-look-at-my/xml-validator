@@ -21,4 +21,4 @@ In an `xs:all` group a substitute fills the slot of the element it stands in for
 
 ## The one place this stays quiet
 
-`checkSubstitutionType` skips the derivation check when it cannot see a whole chain. That is an element with no declared type, or a type named but absent because its schema was imported without a `schemaLocation`. An unresolved type is unknown, not wrong. Rejecting it fails a schema that is fine. A head typed `xs:anyType` accepts any member, which is what that type means.
+`checkSubstitutionType` skips the derivation check when it cannot see a whole chain. That is an element with no declared type, or a type named but absent because its schema was imported without a `schemaLocation`. An unresolved type is unknown, not incorrect. Rejecting it fails a schema that is fine. A head typed `xs:anyType` accepts any member, which is what that type means.

@@ -159,4 +159,4 @@ Point `schema` at an XSD to validate every file against it:
 go-toolchain
 ```
 
-Run it at the repository root and it walks all modules: tidy, vet, tests with coverage, the build, and the CLI suites under `cli/dats/`. The binary lands at `cli/build/xml-validator`.
+Run it at the repository root. It walks all modules: tidy, vet, tests with coverage, the build, and the CLI suites under `cli/dats/`. The binary lands at `cli/build/xml-validator`.

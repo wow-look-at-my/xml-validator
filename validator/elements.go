@@ -371,7 +371,7 @@ func (p *parser) parseCharRef() (rune, error) {
 
 // Those predefined entities are matched against the input where they sit.
 // Building the name as a string first cost allocations on every `&amp;` in
-// the document, which is the whole cost of escaping text that is mostly
+// the document. This is the whole cost of escaping text that is mostly
 // ampersands.
 func (p *parser) parseEntityRef() (rune, error) {
 	if p.eof() || !IsNameStartChar(p.peek()) {

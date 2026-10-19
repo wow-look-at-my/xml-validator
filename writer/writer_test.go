@@ -125,7 +125,7 @@ func TestBinaryAsHex(t *testing.T) {
 	assert.Equal(t, payload, decoded)
 }
 
-// Carrying bytes as text is the other answer, and it is bigger for arbitrary
+// Carrying bytes as text is the other answer. It is bigger for arbitrary
 // bytes: a quarter of them cannot appear literally in any XML document.
 func TestBinaryAsTextCarriesTheSameBytes(t *testing.T) {
 	payload := make([]byte, 256)

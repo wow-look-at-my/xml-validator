@@ -1,4 +1,4 @@
-// Extracts measurable samples from the corpus submodules.
+// Extracts measurable samples from the files tools/fetch-corpus.js downloads.
 
 const fs = require('fs');
 const path = require('path');
@@ -10,7 +10,7 @@ const MAX_SAMPLE_BYTES = 20000;
 const CORPUS = path.join(__dirname, '..', 'corpus');
 
 // Wikipedia in scripts that stress both modes differently: Latin-1 prose is
-// what byte mode is for, and a script outside Latin-1 is what it is not.
+// what byte mode is for. A script outside Latin-1 is what it is not.
 const WIKIPEDIA = {
 	'prose-icelandic': '20231101.is',
 	'prose-nepali': '20231101.ne',
@@ -43,8 +43,8 @@ function save(category, values) {
 	console.log(`${category.padEnd(18)} ${n} samples`);
 }
 
-// A pointer-only checkout is not a failure to report as an empty category:
-// say which lfs pull command fills it in.
+// A missing download is not a failure to report as an empty category:
+// say which fetch command fills it in.
 function requireBlobs(glob, hint) {
 	const files = execFileSync('sh', ['-c', `ls -l ${glob} 2>/dev/null | awk '$5 > 100000'`], { encoding: 'utf8' });
 	if (!files.trim()) {
@@ -54,13 +54,13 @@ function requireBlobs(glob, hint) {
 
 for (const [category, config] of Object.entries(WIKIPEDIA)) {
 	const glob = path.join(CORPUS, 'wikipedia', config, '*.parquet');
-	requireBlobs(glob, `git -C corpus/wikipedia lfs pull --include="${config}/*"`);
+	requireBlobs(glob, `node tools/fetch-corpus.js corpus/wikipedia/${config}`);
 	const rows = duckdb(`SELECT text FROM read_parquet('${glob}') LIMIT ${PER_CATEGORY * 4}`);
 	save(category, rows.map((r) => r.text));
 }
 
 const rosetta = path.join(CORPUS, 'rosetta-code', 'data', '*.parquet');
-requireBlobs(rosetta, 'git -C corpus/rosetta-code lfs pull --include="data/*"');
+requireBlobs(rosetta, 'node tools/fetch-corpus.js corpus/rosetta-code');
 for (const language of ROSETTA_LANGUAGES) {
 	const rows = duckdb(
 		`SELECT code FROM read_parquet('${rosetta}') WHERE language_name = '${language}' LIMIT ${PER_CATEGORY * 4}`);
@@ -70,7 +70,7 @@ for (const language of ROSETTA_LANGUAGES) {
 const images = path.join(CORPUS, 'images', 'transformers', 'model_doc');
 if (fs.existsSync(images)) {
 	const fetched = fs.readdirSync(images).filter((f) => fs.statSync(path.join(images, f)).size >= 1024);
-	console.log(`images             ${fetched.length} files, measured in place from the submodule`);
+	console.log(`images             ${fetched.length} files, measured in place`);
 } else {
-	console.log('images             not checked out (see the header of this file)');
+	console.log('images             not downloaded (run: node tools/fetch-corpus.js corpus/images)');
 }

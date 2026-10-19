@@ -35,8 +35,8 @@ func Decode(r io.Reader) ([]rune, error) {
 }
 
 // Neither mode this validator reads takes a BOM: it is meaningless for UTF-8
-// (per the utf8everywhere recommendation) and some downstream tools read it as
-// a literal U+FEFF, and byte mode has no character above U+00FF to spell one
+// (per the utf8everywhere recommendation). Some downstream tools read it as a
+// literal U+FEFF, and byte mode has no character above U+00FF to spell one
 // with. A document declaring byte mode still starts with `<?xml` in ASCII, so
 // this check runs before the declaration is read and applies to both.
 func rejectUnsupportedEncoding(data []byte) error {

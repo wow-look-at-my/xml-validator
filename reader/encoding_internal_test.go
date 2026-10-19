@@ -49,16 +49,16 @@ func TestSniffEncoding(t *testing.T) {
 	}
 }
 
-// An encoding declaration past the sniff window is not a declaration at all:
-// it cannot appear there, because the declaration is the first thing in the
+// An encoding declaration past the sniff window is not a declaration at all.
+// It cannot appear there, because the declaration is the first thing in the
 // document.
 func TestSniffEncodingIgnoresLaterText(t *testing.T) {
 	doc := xmlDecl + `<r>` + strings.Repeat("x", 400) + `encoding="ISO-8859-1"</r>`
 	assert.Equal(t, encodingUTF8, sniffEncoding([]byte(doc)))
 }
 
-// Line-ending normalization rewrites its input in place, so what comes back
-// has to be right even though the slice it read from is the one it wrote to.
+// Line-ending normalization rewrites its input in place. What comes back has
+// to be right even though the slice it read from is the one it wrote to.
 func TestNormalizeLineEndings(t *testing.T) {
 	tests := []struct {
 		name        string

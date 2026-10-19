@@ -10,8 +10,8 @@ import (
 )
 
 // A qualified attribute is validated against the global declaration in its own
-// namespace. Nothing here is a wildcard: an attribute with no declaration to
-// match is an error, which is what lets a schema carry a foreign vocabulary
+// namespace. Nothing here is a wildcard. An attribute with no declaration to
+// match is an error. This is what lets a schema carry a foreign vocabulary
 // without giving up on checking it.
 const globalAttrXSD = `<?xml version="1.0"?>
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
@@ -104,9 +104,10 @@ func TestSchemaRecursiveElementRejectsUndeclaredChild(t *testing.T) {
 		`<param name="a" type="object"><other/></param>`, recursiveXSD, "unexpected element")
 }
 
-// An unresolvable ref used to leave a particle with an empty name, which then
-// matched nothing and reported "requires at least 1 occurrence(s) of """ --
-// a schema bug wearing an instance-document error's clothes.
+// An unresolvable ref used to leave a particle with an empty name. This also
+// covers which then matched nothing and reported "requires at least 1
+// occurrence(s) of """ -- a schema bug wearing an instance-document error's
+// clothes.
 func TestSchemaUnresolvedElementRefIsAnError(t *testing.T) {
 	xsd := `<?xml version="1.0"?>
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
@@ -138,7 +139,7 @@ func TestSchemaUnresolvedAttributeRefIsAnError(t *testing.T) {
 }
 
 // A prefix declared on the schema element is what a ref's QName is resolved
-// through; the tree parser keeps xmlns declarations out of Attrs, so the
+// through. The tree parser keeps xmlns declarations out of Attrs, so the
 // in-scope map on the element is the only place that binding lives.
 func TestSchemaRefResolvesThroughDeclaredPrefix(t *testing.T) {
 	xsd := `<?xml version="1.0"?>

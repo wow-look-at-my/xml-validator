@@ -510,7 +510,7 @@ func parseAnyAttrDecl(el *Element) (*AnyAttrDecl, error) {
 }
 
 // validateProcessContents rejects every wildcard processContents value other
-// than "strict". This validator does not provide a no-validation mode: "skip"
+// than "strict". This validator does not provide a no-validation mode. "skip"
 // disables validation outright, and "lax" disables it for any element whose
 // declaration cannot be located -- both contradict the project's reason for
 // existing.

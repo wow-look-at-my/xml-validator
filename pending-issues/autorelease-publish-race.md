@@ -14,7 +14,7 @@ Found 6 per-platform artifact(s) and 0 portable artifact(s) across 1 project(s):
 - failing run: 31902939879, head `5e0d07f`
 - run that won the race: 31902959805, head `4db0582`, published the version seconds earlier and reported success
 
-The failing run's own work was entirely correct. The red check says nothing about the commit it is attached to. That is the whole problem. A red build that does not mean the code is broken teaches everyone to skim past red builds.
+The failing run's own work was fully correct. The red check says nothing about the commit it is attached to. That is the whole problem. A red build that does not mean the code is broken teaches everyone to skim past red builds.
 
 ## Why it is a real defect and not bad luck
 
@@ -26,7 +26,7 @@ Any repo that takes pushes in quick succession hits it. Quick pushes are normal:
 2. **Derive an explicit version from the commit SHA.** Runs then never contend, because they are never publishing the same version. Costs the monotonic numbering.
 3. **A concurrency group on the publish step.** Serializes the runs, which hides the race rather than removing it. A genuine simultaneous arrival still ties.
 
-One rule holds whichever lands. **A publish that loses the race must not fail the build when its artifact is byte-identical to the published one.** Nothing is wrong in that case. Nothing needs a human.
+One rule holds whichever lands. **A publish that loses the race must not fail the build when its artifact is byte-identical to the published one.** Nothing is incorrect in that case. Nothing needs a human.
 
 ## How to reproduce
 
