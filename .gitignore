@@ -1,5 +1,5 @@
 /build/
-corpus/samples/
+corpus/
 
 # Every module builds into its own build/.
 */build/

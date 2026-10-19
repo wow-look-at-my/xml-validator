@@ -18,7 +18,7 @@ function argValue(flag, fallback) {
 // in it is a sample -- the layout tools/extract-corpus.js writes.
 function corpusCategories(root) {
 	const out = {};
-	// Images come from the corpus/images submodule.
+	// Images are the corpus/images files tools/fetch-corpus.js downloads.
 	const images = path.join(__dirname, '..', 'corpus', 'images', 'transformers', 'model_doc');
 	if (fs.existsSync(images)) {
 		for (const file of fs.readdirSync(images)) {

@@ -32,7 +32,7 @@ Line-ending normalization also still applies, and in byte mode it has more to do
 
 ## What it costs and what it saves
 
-Measured, not estimated: samples over 14.8 MiB, drawn from the corpus submodules. The built binary checked every document behind the table below. `tools/extract-corpus.js` pulls the samples out and `tools/encoding-sizes.js --corpus corpus/samples --validate` produces this:
+Measured, not estimated: samples over 14.8 MiB, drawn from the corpus. `tools/fetch-corpus.js` downloads it from the pinned URLs in `tools/corpus-manifest.tsv` and checks each file's sha256. The built binary checked every document behind the table below. `tools/extract-corpus.js` pulls the samples out and `tools/encoding-sizes.js --corpus corpus/samples --validate` produces this:
 
 | corpus | files | median | byte mode (text) | byte mode (bytes) | UTF-8 | base64 | hex | all refs |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
@@ -88,13 +88,15 @@ base64 is not fast. References are slow. `BenchmarkValidateNoReferences` separat
 
 Byte mode reads the binary payload at 20.8 MB/s and this at 117.4 MB/s, on the same parser and the same payload size. What changed is the number of references, and nothing else.
 
-The allocation column used to tell the same story louder -- 42,537 for the binary payload against 35 for base64. A reference built a rune slice and a string before it parsed its digits. A predefined entity built its name as a string before it compared it. Neither does now. The digits go in a stack buffer. An entity name is matched where it sits. The line-ending normalizer rewrites its input instead of copying it. Every column above is flat at a few dozen allocations per document, whatever the document holds. `validator/alloc_test.go` fails if that stops being true.
+The allocation column used to tell the same story louder -- 42,537 for the binary payload against 35 for base64. A reference built a rune slice and a string before it parsed its digits. A predefined entity built its name as a string before it compared it. Neither does now. The digits go in a stack buffer. An entity name is matched where it sits.
+
+The line-ending normalizer rewrites its input instead of copying it. Every column above is flat at a few dozen allocations per document, whatever the document holds. `validator/alloc_test.go` fails if that stops being true.
 
 What is left is the work itself. A literal character is a pointer bump and a range check. A reference is a scan, a digit fold and a validity check.
 
 With references out of the way, what remains is document size. Throughput per payload byte tracks the expansion ratio: byte mode at 1.00x reads 117.4 MB/s against UTF-8 at 2.00x reading 48.8 MB/s. The parser walks at a near-constant rate per DOCUMENT byte, so a form that doubles the document roughly halves the throughput.
 
-base64 wins on binary for both reasons at once. It removes every reference. It is the smallest form that does. Give it a payload that needed no references anyway and it loses to byte mode by 2.2x. Being 33% larger is all it has left.
+base64 wins on binary for both reasons at once. It removes every reference. It is the smallest form that does. Give it a payload that needed no references anyway and it loses to byte mode by 2.2x. Being 33% larger is all it left.
 
 The cases separate cleanly:
 
