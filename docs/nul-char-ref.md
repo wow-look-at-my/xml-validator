@@ -10,7 +10,9 @@ This validator accepts (1), produces (2), and treats neither as (3).
 
 ## The deviation, stated plainly
 
-The XML 1.1 `Char` production starts at `#x1`, so a strict reading rejects a reference that resolves to U+0000. This validator accepts it. `IsCharRefValue` in `validator/chars.go` is `IsChar` plus U+0000. It is used only where a character reference resolves: content and attribute values. A literal NUL byte is still rejected everywhere: character data, attribute values, CDATA sections and comments. So the reference is the only way U+0000 enters a parsed value. That is what keeps the byte stream free of NUL bytes by construction.
+The XML 1.1 `Char` production starts at `#x1`, so a strict reading rejects a reference that resolves to U+0000. This validator accepts it. `IsCharRefValue` in `validator/chars.go` is `IsChar` plus U+0000. It is used only where a character reference resolves: content and attribute values. A literal NUL byte is still rejected everywhere: character data, attribute values, CDATA sections and comments. So the reference is the only way U+0000 enters a parsed value.
+
+That is what keeps the byte stream free of NUL bytes by construction.
 
 A lone surrogate stays rejected too. It is not a character in any encoding, so there is nothing for a reference to resolve to.
 
@@ -48,13 +50,17 @@ The tests here drive the built binary, so nothing depends on a Go caller. `go-to
 - **The file holds no NUL byte.** `wc -c` of the fixture and `wc -c` after `tr -d '\000'` are both 36. Nothing was deleted, because there was nothing to delete.
 - **Parsing continues past the reference.** A fixture puts `&#0;` on line 2 and a second root element on line 3. A reader that stops at the NUL never sees line 3 and reports the file valid. The validator exits 1 and names line 3.
 
-One more runs the whole binary roundtrip through the shell, so nothing in it depends on Go at all. `printf` writes many raw bytes and `od` turns each one into a character reference. The validator accepts the document. `grep` and `printf` turn the references back into bytes, and the SHA-256 digests must match. The expected digest is pinned in the suite: `40aff2e9...bf944880` is the SHA-256 of the bytes 0x00..0xFF in order. The comparison therefore does not rest on the generator alone. The encoded document is many bytes, all of them printable ASCII.
+One more runs the whole binary roundtrip through the shell, so nothing in it depends on Go at all. `printf` writes many raw bytes and `od` turns each one into a character reference. The validator accepts the document. `grep` and `printf` turn the references back into bytes, and the SHA-256 digests must match. The expected digest is pinned in the suite: `40aff2e9...bf944880` is the SHA-256 of the bytes 0x00..0xFF in order. The comparison therefore does not rest on the generator alone.
+
+The encoded document is many bytes, all of them printable ASCII.
 
 The rest cover the spellings, stdin, and the well-formed tail. They also cover the literal NUL byte in character data and in CDATA, and `xs:length` at 3, at 1 and at 256.
 
 ## The three wire forms, and why the high half is not escaped
 
-The minimally-escaped form leaves U+0080 through U+00FF literal. They are a couple of bytes each because the document is UTF-8, the only encoding this validator accepts here. A raw Latin-1 byte fails with `invalid UTF-8 byte sequence`. An `encoding="ISO-8859-1"` declaration does not change that. What still takes a reference above U+007F is U+007F to U+0084 and U+0086 to U+009F. This are restricted characters, and U+0085, which normalizes to LF. Neither rule is about the byte being high.
+The minimally-escaped form leaves U+0080 through U+00FF literal. They are a couple of bytes each because the document is UTF-8, the only encoding this validator accepts here. A raw Latin-1 byte fails with `invalid UTF-8 byte sequence`. An `encoding="ISO-8859-1"` declaration does not change that. What still takes a reference above U+007F is U+007F to U+0084 and U+0086 to U+009F. This are restricted characters, and U+0085, which normalizes to LF.
+
+Neither rule is about the byte being high.
 
 For a payload that is genuinely bytes, XSD has `xs:base64Binary` and `xs:hexBinary`. Both are ASCII on the wire and both measure length in octets. The same 256-byte payload, all ways:
 

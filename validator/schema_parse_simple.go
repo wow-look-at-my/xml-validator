@@ -68,7 +68,8 @@ func parseSimpleType(el *Element) (*SimpleType, error) {
 }
 
 // parseInlineSimpleType returns the xs:simpleType written inside an xs:list or
-// an xs:union member, or nil when the type is named by an attribute instead.
+// an xs:union member. Otherwise, nil when the type is named by an attribute
+// instead.
 func parseInlineSimpleType(el *Element) (*SimpleType, error) {
 	for _, child := range el.ChildElements() {
 		if child.Namespace == xsdNS && child.Local == "simpleType" {

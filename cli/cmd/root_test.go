@@ -12,9 +12,9 @@ import (
 )
 
 // The command is a package-level variable, so a test that sets a flag has to
-// put it back, and no test may drive it while another is. dats/ covers the
-// built binary end to end; these cover the paths the binary reaches through,
-// which the suites cannot measure.
+// put it back. No test may drive it while another is. dats/ covers the built
+// binary end to end; these cover the paths the binary reaches through, which
+// the suites cannot measure.
 
 // run drives the command the way main does, and returns what it printed. It
 // runs alone: rootCmd and schemaFile belong to the package, and an overlapping

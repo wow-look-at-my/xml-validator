@@ -46,7 +46,7 @@ func (sv *schemaValidator) addErrorAt(line, col int, format string, args ...any)
 // namespace AND local name, the same as every other element. A root in
 // another namespace is a different element, and the local name it shares with
 // a declared one is a coincidence. Falling back to that local name here
-// accepted a document written against a different vocabulary, which is the
+// accepted a document written against a different vocabulary. This is the
 // place a schema most has to say no.
 func (sv *schemaValidator) validateRoot(el *Element) {
 	rootName := el.Local
@@ -210,7 +210,7 @@ func qualifiedName(ns, local string) string {
 }
 
 // validateAttrValue checks an attribute against its declared type through the
-// same path element text takes, and reports a violation at the attribute's own
+// same path element text takes. Reports a violation at the attribute's own
 // position rather than the element's.
 func (sv *schemaValidator) validateAttrValue(el *Element, attr Attr, ad *AttrDecl) {
 	if ad.Type == nil {

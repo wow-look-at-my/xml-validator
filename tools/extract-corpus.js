@@ -10,7 +10,7 @@ const MAX_SAMPLE_BYTES = 20000;
 const CORPUS = path.join(__dirname, '..', 'corpus');
 
 // Wikipedia in scripts that stress both modes differently: Latin-1 prose is
-// what byte mode is for, and a script outside Latin-1 is what it is not.
+// what byte mode is for. A script outside Latin-1 is what it is not.
 const WIKIPEDIA = {
 	'prose-icelandic': '20231101.is',
 	'prose-nepali': '20231101.ne',

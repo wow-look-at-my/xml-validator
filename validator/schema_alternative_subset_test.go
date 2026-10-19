@@ -6,7 +6,7 @@ import "testing"
 // conforming schema.
 
 // numeric selects an xs:int content type, textual an xs:string one, so the
-// document tells us which alternative won: a non-numeric body is an error only
+// document tells us which alternative won. A non-numeric body is an error only
 // when the numeric type was chosen.
 const subsetXSD = `<?xml version="1.0"?>
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">

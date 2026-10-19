@@ -27,7 +27,7 @@ var byteEncodingNames = set.Of(
 	"CSISOLATIN1",
 )
 
-// canonicalEncoding maps a declared name to the mode it selects. The empty
+// CanonicalEncoding maps a declared name to the mode it selects. The empty
 // string means the name is neither, which the declaration parser reports.
 // CanonicalEncoding maps a declared encoding name to the mode it selects.
 func CanonicalEncoding(declared string) string {
@@ -46,7 +46,7 @@ func CanonicalEncoding(declared string) string {
 // anything decodes them.
 //
 // It reports UTF-8 for a document that declares nothing. A declaration it
-// cannot make sense of also reads as UTF-8, so the declaration parser is the
+// cannot make sense of also reads as UTF-8. The declaration parser is the
 // one that reports the syntax error, at the right position.
 func sniffEncoding(raw []byte) string {
 	const window = 256

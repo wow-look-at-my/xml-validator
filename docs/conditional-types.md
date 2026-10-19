@@ -22,7 +22,7 @@ AttrName    ::= '@' NameTest
 ConstructorFunction ::= QName '(' SimpleValue ')'
 ```
 
-`and` binds tighter than `or`, as in XPath. Parentheses override that. A test outside this grammar is a hard error at schema-parse time. The spec permits that: a processor "may but is not required to" support expressions beyond the required subset. A test this engine cannot evaluate picks the wrong type in silence.
+`and` binds tighter than `or`, as in XPath. Parentheses override that. A test outside this grammar is a hard error at schema-parse time. The spec permits that: a processor "may but is not required to" support expressions beyond the required subset. A test this engine cannot evaluate picks the incorrect type in silence.
 
 What that rules out here: a function other than `not()` (only `fn:not` and the constructor functions are required), a path step into element content, and a cast to a user-defined type.
 

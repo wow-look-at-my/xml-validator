@@ -193,7 +193,7 @@ func TestParsedNulIsAnOrdinaryStringByte(t *testing.T) {
 	assert.Equal(t, 5, len([]rune(text)))
 }
 
-// Inside CDATA the same a few characters are text, not a reference: no NUL is
+// Inside CDATA the same a few characters are text, not a reference. No NUL is
 // produced, and the emitted document escapes the ampersand to keep it that way.
 func TestNulCharRefInCDATAStaysLiteral(t *testing.T) {
 	doc, out := roundtrip(t, xmlDecl+`<r><![CDATA[a&#0;b]]></r>`)
@@ -269,7 +269,7 @@ func TestRoundtripEveryByteValue(t *testing.T) {
 }
 
 // The same payload written as nothing but references. Every byte becomes
-// `&#N;`, so the document is printable ASCII end to end -- a wire form that
+// `&#N;`. The document is printable ASCII end to end -- a wire form that
 // survives a transport with opinions about high bytes and NUL.
 func TestRoundtripEveryByteValueAsReferences(t *testing.T) {
 	payload := allBytes()

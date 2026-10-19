@@ -18,7 +18,7 @@ permissions:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event.repository.visibility == 'public' && 'ubuntu-latest' || vars.CI_RUNNER || 'ubuntu-latest' }}
     strategy:
       fail-fast: false
       matrix:
@@ -37,7 +37,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       # One fat APE over every host go-toolchain verifies. darwin/amd64 and windows/arm64 are refused.
-      - uses: wow-look-at-my/go-toolchain@master
+      - uses: wow-look-at-my/go-toolchain@lkgb
         with:
           working-directory: ${{ matrix.module }}
           autorelease: ${{ matrix.autorelease }}
@@ -45,7 +45,7 @@ jobs:
 
   # No Go test reaches the action, so this job runs it from the checkout. docs/action.md
   action:
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event.repository.visibility == 'public' && 'ubuntu-latest' || vars.CI_RUNNER || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -86,11 +86,10 @@ jobs:
 
       - name: The rejection must have failed its step
         uses: wow-look-at-my/actions@typescript#latest
-        env:
-          OUTCOME: ${{ steps.reject.outcome }}
         with:
+          steps: ${{ toJSON(steps) }}
           script: |
-            const outcome = (process.env.OUTCOME ?? '').trim();
+            const outcome = (String(steps.reject.outcome ?? "")).trim();
             if (outcome !== 'failure') {
               core.setFailed(`the action reported ${outcome || 'nothing'} for a malformed document`);
             }

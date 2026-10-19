@@ -1,6 +1,7 @@
-// Package validator checks that a document is well-formed XML, by the rules of
-// the version its declaration names, and checks it against an XSD schema.
-// The xml-validator command-line tool runs it, and a Go program can embed it.
+// Package validator checks that a document is well-formed XML. That validator
+// is by the rules of the version its declaration names, and checks it against
+// an XSD schema. The xml-validator command-line tool runs it, and a Go program
+// can embed it.
 //
 // [Validate] checks well-formedness alone. [ValidateWithSchemaBytes] and
 // [ValidateWithSchemaFile] also enforce a schema, and [ValidateWithSchemaResolver]
